@@ -1,0 +1,87 @@
+@import "tailwindcss";
+
+:root {
+  --pink: #db2777;
+  --pink-dark: #be185d;
+  --orange: #ea580c;
+  --orange-dark: #c2410c;
+  --blue: #2563eb;
+  --ink: #111827;
+  --muted: #4b5563;
+  --paper: #ffffff;
+  --blush: #fdf2f8;
+  --peach: #fff7ed;
+}
+
+@theme inline {
+  --color-pink: var(--pink);
+  --color-pink-dark: var(--pink-dark);
+  --color-orange: var(--orange);
+  --color-orange-dark: var(--orange-dark);
+  --color-blue: var(--blue);
+  --color-ink: var(--ink);
+  --color-muted: var(--muted);
+  --color-paper: var(--paper);
+  --color-blush: var(--blush);
+  --color-peach: var(--peach);
+  --font-sans: var(--font-body);
+  --font-display: var(--font-display-face), ui-serif, Georgia, serif;
+}
+
+.font-display {
+  font-family: var(--font-display);
+}
+
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border-width: 0;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  margin: 0;
+  padding: 0;
+  background: var(--paper);
+  color: var(--ink);
+}
+
+@keyframes rise {
+  from {
+    opacity: 0;
+    transform: translateY(16px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-rise {
+  animation: rise 0.7s ease-out both;
+}
+
+.animate-rise-delay {
+  animation: rise 0.8s ease-out 0.12s both;
+}
+
+.hero-wash {
+  background: linear-gradient(135deg, #fdf2f8 0%, #ffffff 45%, #fff7ed 100%);
+}
+
+.section-title span {
+  color: var(--pink);
+}

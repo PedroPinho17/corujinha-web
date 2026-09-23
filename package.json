@@ -1,0 +1,33 @@
+{
+  "name": "corujinha",
+  "private": true,
+  "packageManager": "pnpm@9.15.9",
+  "scripts": {
+    "dev": "turbo run dev --filter=@corujinha/api --filter=web",
+    "build": "turbo run build",
+    "lint": "turbo run lint",
+    "docker:up": "docker compose up -d",
+    "docker:down": "docker compose down",
+    "db:generate": "pnpm --filter @corujinha/database generate",
+    "db:migrate": "node --env-file=.env ./node_modules/prisma/build/index.js migrate dev --schema=packages/database/prisma/schema.prisma",
+    "db:deploy": "node --env-file=.env ./node_modules/prisma/build/index.js migrate deploy --schema=packages/database/prisma/schema.prisma",
+    "db:seed": "node --env-file=.env --import tsx packages/database/prisma/seed.ts",
+    "db:studio": "node --env-file=.env ./node_modules/prisma/build/index.js studio --schema=packages/database/prisma/schema.prisma",
+    "migrate:legacy": "tsx --env-file=.env scripts/migrate-legacy.ts",
+    "sync:legacy-media": "tsx --env-file=.env scripts/sync-legacy-media.ts",
+    "generate:favicons": "node scripts/generate-favicons.mjs"
+  },
+  "devDependencies": {
+    "@aws-sdk/client-s3": "^3.840.0",
+    "@prisma/client": "^6.11.1",
+    "@types/node": "^22.15.32",
+    "better-auth": "^1.2.12",
+    "dotenv": "^17.4.2",
+    "mysql2": "^3.14.2",
+    "prisma": "^6.11.1",
+    "sharp": "^0.35.3",
+    "tsx": "^4.20.3",
+    "turbo": "^2.11.3",
+    "typescript": "^5.8.3"
+  }
+}

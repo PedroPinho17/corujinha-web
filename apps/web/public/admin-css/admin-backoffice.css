@@ -1,0 +1,17 @@
+/* Admin backoffice — neutralize Bootstrap global link underlines */
+
+.admin-backoffice a,
+.admin-backoffice a:hover,
+.admin-backoffice a:focus,
+.admin-backoffice a:active {
+  text-decoration: none !important;
+}
+
+.admin-backoffice .nav-link-text {
+  text-decoration: none !important;
+}
+
+.admin-backoffice .admin-profile-link,
+.admin-backoffice .admin-profile-link span {
+  text-decoration: none !important;
+}

@@ -1,0 +1,239 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum UserRole {
+  ADMIN
+  EDITOR
+}
+
+enum ContactStatus {
+  NEW
+  SENT
+  FAILED
+}
+
+enum ContactKind {
+  GENERAL
+  ENROLLMENT
+}
+
+// --- Better Auth ---
+
+model User {
+  id                 String    @id @default(cuid())
+  name               String
+  email              String    @unique
+  emailVerified      Boolean   @default(false)
+  image              String?
+  role               UserRole  @default(EDITOR)
+  mustChangePassword Boolean   @default(false)
+  createdAt          DateTime  @default(now())
+  updatedAt          DateTime  @updatedAt
+  sessions           Session[]
+  accounts           Account[]
+  passkeys           Passkey[]
+
+  @@map("user")
+}
+
+model Session {
+  id        String   @id @default(cuid())
+  expiresAt DateTime
+  token     String   @unique
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  ipAddress String?
+  userAgent String?
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("session")
+}
+
+model Account {
+  id                    String    @id @default(cuid())
+  accountId             String
+  providerId            String
+  userId                String
+  user                  User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  accessToken           String?
+  refreshToken          String?
+  idToken               String?
+  accessTokenExpiresAt  DateTime?
+  refreshTokenExpiresAt DateTime?
+  scope                 String?
+  password              String?
+  createdAt             DateTime  @default(now())
+  updatedAt             DateTime  @updatedAt
+
+  @@map("account")
+}
+
+model Verification {
+  id         String   @id @default(cuid())
+  identifier String
+  value      String
+  expiresAt  DateTime
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@map("verification")
+}
+
+model Passkey {
+  id           String    @id @default(cuid())
+  name         String?
+  publicKey    String
+  userId       String
+  user         User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  credentialID String
+  counter      Int
+  deviceType   String
+  backedUp     Boolean
+  transports   String?
+  createdAt    DateTime? @default(now())
+  aaguid       String?
+
+  @@index([userId])
+  @@map("passkey")
+}
+
+// --- CMS (parity with Laravel Corujinha) ---
+
+model TeamMember {
+  id           String   @id @default(cuid())
+  sortOrder    Int      @default(0)
+  name         String
+  description  String?
+  imageKey     String?
+  /// Optional i18n: { "en": { "name": "...", "description": "..." }, "fr": {...} }
+  translations Json?
+  published    Boolean  @default(true)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  @@index([published, sortOrder])
+}
+
+model Post {
+  id           String    @id @default(cuid())
+  sortOrder    Int       @default(0)
+  title        String
+  content      String?
+  link         String?
+  phone        String?
+  email        String?
+  featured     Boolean   @default(false)
+  imageKey     String?
+  translations Json?
+  published    Boolean   @default(true)
+  publishedAt  DateTime?
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  @@index([published, featured, sortOrder])
+  @@index([publishedAt])
+}
+
+model Entity {
+  id           String      @id @default(cuid())
+  sortOrder    Int         @default(0)
+  name         String
+  description  String?
+  location     String?
+  website      String?
+  translations Json?
+  published    Boolean     @default(true)
+  createdAt    DateTime    @default(now())
+  updatedAt    DateTime    @updatedAt
+  formations   Formation[]
+
+  @@index([published, sortOrder])
+}
+
+model Formation {
+  id           String   @id @default(cuid())
+  sortOrder    Int      @default(0)
+  name         String
+  description  String?
+  duration     String?
+  location     String?
+  entityId     String?
+  entity       Entity?  @relation(fields: [entityId], references: [id], onDelete: SetNull)
+  translations Json?
+  active       Boolean  @default(true)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  @@index([active, sortOrder])
+  @@index([entityId])
+}
+
+model SchoolProtocol {
+  id          String   @id @default(cuid())
+  schoolName  String
+  link        String?
+  description String?
+  documentKey String?
+  sortOrder   Int      @default(0)
+  active      Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([active, sortOrder])
+}
+
+model GalleryImage {
+  id        String   @id @default(cuid())
+  imageKey  String
+  alt       String?
+  album     String?
+  sortOrder Int      @default(0)
+  published Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([published, sortOrder])
+}
+
+model ContactMessage {
+  id         String        @id @default(cuid())
+  name       String
+  email      String
+  phone      String?
+  message    String
+  kind       ContactKind   @default(GENERAL)
+  subject    String?
+  schoolYear String?
+  location   String?
+  status     ContactStatus @default(NEW)
+  readAt     DateTime?
+  adminNotes String?
+  createdAt  DateTime      @default(now())
+  updatedAt  DateTime      @updatedAt
+
+  @@index([status, createdAt])
+  @@index([readAt, createdAt])
+  @@index([kind, createdAt])
+}
+
+model SiteSettings {
+  id              String   @id @default(cuid())
+  brandingName    String   @default("Corujinha")
+  brandingLogoKey String?
+  contactEmail    String?
+  contactPhone    String?
+  address         String?
+  facebookUrl     String?
+  instagramUrl    String?
+  /// Full editable site copy (hero, services, about, partner, contact, footer)
+  content         Json?
+  updatedAt       DateTime @updatedAt
+  createdAt       DateTime @default(now())
+}

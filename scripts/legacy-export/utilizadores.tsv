@@ -1,0 +1,3 @@
+﻿id	email	password	nome	id_permissao	mudanca_password	timestamp_criacao	timestamp_ultima_alteracao
+1	pedro0409romariz@gmail.com	$2y$12$QvplmnU6cn/5.NyOKGcj.eh58EuYZdRJLzzrVjV8K01So1bYCwhqa	Pedro Pinho	1	0	0000-00-00 00:00:00	2025-12-06 04:39:14
+2	vera@corujinha.pt	$2y$12$GuZtuUCq4w1XQe5B6c9OCuwK0Z65RbrCvF8qIe2WyaZBRp3KQrXn6	Vera Branquinho	1	1	2025-12-06 04:23:31	2025-12-06 04:23:31

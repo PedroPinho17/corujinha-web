@@ -1,0 +1,44 @@
+{
+  "name": "@corujinha/api",
+  "version": "0.0.1",
+  "private": true,
+  "scripts": {
+    "dev": "nest start --watch",
+    "build": "nest build",
+    "start": "node dist/main.js",
+    "start:prod": "node dist/main.js",
+    "lint": "echo ok"
+  },
+  "dependencies": {
+    "@aws-sdk/client-s3": "^3.840.0",
+    "@aws-sdk/s3-request-presigner": "^3.840.0",
+    "@better-auth/passkey": "^1.6.24",
+    "@nestjs/bullmq": "^11.0.2",
+    "@nestjs/common": "^11.1.3",
+    "@nestjs/config": "^4.0.2",
+    "@nestjs/core": "^11.1.3",
+    "@nestjs/platform-express": "^11.1.3",
+    "@sentry/nestjs": "^9.34.0",
+    "@corujinha/database": "workspace:*",
+    "@corujinha/shared": "workspace:*",
+    "better-auth": "^1.2.12",
+    "bullmq": "^5.56.0",
+    "class-transformer": "^0.5.1",
+    "class-validator": "^0.14.2",
+    "deepl-node": "^1.17.3",
+    "dotenv": "^17.4.2",
+    "ioredis": "^5.6.1",
+    "nodemailer": "^7.0.5",
+    "reflect-metadata": "^0.2.2",
+    "rxjs": "^7.8.2"
+  },
+  "devDependencies": {
+    "@nestjs/cli": "^11.0.7",
+    "@nestjs/schematics": "^11.0.5",
+    "@types/express": "^5.0.3",
+    "@types/multer": "^1.4.13",
+    "@types/node": "^22.15.32",
+    "@types/nodemailer": "^6.4.17",
+    "typescript": "^5.8.3"
+  }
+}

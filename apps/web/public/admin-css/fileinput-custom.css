@@ -1,0 +1,129 @@
+.file-input .input-group {
+    align-items: stretch;
+    /* let children match heights */
+}
+
+/* Make caption input and buttons same height and vertically centered text */
+.file-input .btn-file,
+.file-input .btn-kv-clear {
+    height: 40px; /* button height */
+    padding: .45rem .9rem;
+    display: inline-flex;
+    align-items: center;
+    font-size: .85rem;
+    line-height: 1.2;
+}
+
+/* Make caption (left input) match buttons height exactly */
+.file-input .file-caption-main .file-caption.form-control {
+    height: 40px !important; /* match buttons */
+    min-height: 40px !important;
+    padding: .45rem .75rem !important; /* align text vertically */
+    display: flex;
+    align-items: center;
+    font-size: .85rem;
+    line-height: 1.2;
+}
+
+/* Inner name container should not add extra height */
+.file-input .file-caption-main .file-caption-name,
+.file-input .file-caption-main input.file-caption-name {
+    height: auto !important;
+    padding: 0 !important;
+    line-height: 1.2 !important;
+    border: 0;
+    box-shadow: none;
+    background: transparent;
+}
+
+/* Alternative layout: caption full width above buttons when wrapper has class .fileinput-stacked */
+.fileinput-stacked .file-input .input-group {flex-wrap:wrap;}
+.fileinput-stacked .file-input .file-caption-main {flex:1 1 100%; margin-bottom:.5rem;}
+.fileinput-stacked .file-input .input-group .btn-group {flex:1 1 auto;}
+
+/* Force the button group to align flush with caption field */
+.file-input .input-group .btn-group {
+    display: flex;
+}
+
+/* Adjust border radii to unify appearance */
+.file-input .file-caption-main .file-caption-name {
+    border-top-right-radius: 0;
+    border-bottom-right-radius: 0;
+}
+
+.file-input .btn-kv-clear {
+    border-radius: 0;
+    border-top-left-radius: 4px;
+    border-bottom-left-radius: 4px;
+}
+
+.file-input .btn-file {
+    border-top-left-radius: 0;
+    border-bottom-left-radius: 0;
+    border-top-right-radius: 4px;
+    border-bottom-right-radius: 4px;
+}
+
+/* Improve icons spacing/size inside buttons */
+.file-input .btn .bi {margin-right: .35rem; font-size: 1rem; line-height: 1;}
+
+.file-input .btn-file {
+    background: linear-gradient(90deg, #0d6efd, #0b5ed7); /* bootstrap primary tones */
+    border: 1px solid #0b5ed7;
+    color: #fff;
+}
+
+.file-input .btn-file:hover {
+    background: linear-gradient(90deg, #0b5ed7, #0a58ca);
+    border-color: #0a58ca;
+}
+
+.file-input .btn-file:focus {
+    box-shadow: 0 0 0 .15rem rgba(0, 102, 204, .35);
+}
+
+.file-input .btn-kv-clear {
+    background: #f8f9fa;
+    color: #444;
+    border: 1px solid #ced4da;
+}
+
+.file-input .btn-kv-clear:hover {
+    background: #e2e6ea;
+    color: #222;
+}
+
+/* Center file preview action buttons */
+.kv-preview-thumb .file-footer-buttons {
+    display: flex;
+    justify-content: center;
+    gap: .35rem;
+}
+
+/* Optional: smaller zoom icon */
+.kv-file-zoom {
+    font-size: .9rem;
+}
+
+/* Krajee in Next admin — legacy hidden-xs + button visibility */
+.admin-krajee .hidden-xs {
+    display: inline !important;
+}
+
+.admin-krajee .btn-kv-clear,
+.admin-krajee .fileinput-remove,
+.admin-krajee .fileinput-remove-button,
+.admin-krajee .kv-file-remove {
+    cursor: pointer;
+    pointer-events: auto !important;
+    opacity: 1 !important;
+    visibility: visible !important;
+    display: inline-flex !important;
+}
+
+.admin-krajee .file-preview .fileinput-remove,
+.admin-krajee .kv-file-remove {
+    opacity: 1 !important;
+    visibility: visible !important;
+}

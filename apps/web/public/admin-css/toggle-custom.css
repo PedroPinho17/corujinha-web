@@ -1,0 +1,47 @@
+
+.toggle.btn {
+  min-width: 68px !important;
+  min-height: 35px !important;
+}
+
+.toggle-idioma-custom.btn {
+    border-radius: 12px !important;
+    min-width: 32px !important;
+    min-height: 16px !important;
+    font-weight: 600;
+    font-size: 0.85rem;
+    box-shadow: 0 1px 4px rgba(20,184,166,0.08);
+    padding: 0 !important;
+    transition: all .18s cubic-bezier(.4,0,.2,1);
+}
+.toggle-idioma-custom .toggle-group > .toggle-on {
+    background: #14b8a6 !important;
+    color: #fff !important;
+    border-radius: 12px 0 0 12px !important;
+    border: none !important;
+    padding: 0 6px !important;
+    font-size: 1.05em;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+.toggle-idioma-custom .toggle-group > .toggle-off {
+    background: #e2e8f0 !important;
+    color: #2d3748 !important;
+    border-radius: 0 12px 12px 0 !important;
+    border: none !important;
+    padding: 0 6px !important;
+    font-size: 1.05em;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+.toggle-idioma-custom .toggle-group > .toggle-handle {
+    background: #fff !important;
+    border-radius: 50% !important;
+    width: 13px !important;
+    height: 13px !important;
+    margin-top: 1.5px !important;
+    box-shadow: 0 1px 4px rgba(20,184,166,0.10);
+    border: 1px solid #cbd5e1;
+}
