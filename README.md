@@ -1,8 +1,8 @@
-# Portal Corujinha
+# corujinha-web
+
+Portal e CMS da Corujinha — centro de explicações (Next.js + NestJS).
 
 Monorepo Next.js 15 + NestJS + PostgreSQL + Prisma + Redis + BullMQ + S3 + Better Auth (Passkey) + shadcn/ui + Docker/Coolify + Sentry.
-
-Espelha o padrão [vh-team-fighters](../vh-team-fighters) / ClubOS. Fonte Laravel: `C:\Projetos_WEB\corujinha`.
 
 ## Estrutura
 
