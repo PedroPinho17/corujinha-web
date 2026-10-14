@@ -1,277 +1,206 @@
 "use client";
 
 import { useEffect, useId, useRef, useState } from "react";
+import { ImagePlus, Trash2, Loader2, RefreshCw, FileText } from "lucide-react";
+import { uploadImage } from "@/lib/admin-api";
 import { Label } from "@/components/ui/label";
-import { adminFetch } from "@/lib/admin-api";
-import { ensureAdminPlugins, getJQuery } from "@/lib/admin-plugins";
-import { mediaUrl } from "@/lib/utils";
+import { cn, mediaUrl } from "@/lib/utils";
 
 type Props = {
   label?: string;
+  folder?: string;
   value?: string;
   onChange: (key: string) => void;
-  folder?: string;
   resetKey?: string;
+  optional?: boolean;
+  hint?: string;
+  className?: string;
 };
 
-function isRemoveControl(el: HTMLElement | null): boolean {
-  if (!el) return false;
-  const btn = el.closest("button");
-  if (!btn) return false;
-
-  const title = (btn.getAttribute("title") || "").toLowerCase();
-  const cls = btn.className || "";
-
-  return (
-    btn.classList.contains("fileinput-remove") ||
-    btn.classList.contains("fileinput-remove-button") ||
-    btn.classList.contains("kv-file-remove") ||
-    btn.classList.contains("btn-kv-clear") ||
-    cls.includes("fileinput-remove") ||
-    title.includes("remov")
-  );
-}
-
+/**
+ * Upload com preview (substitui Krajee jQuery — estável em Next.js/React).
+ * Mantém a API de props usada no admin (value string, onChange string).
+ */
 export function KrajeeFileInput({
   label = "Imagem",
+  folder = "uploads",
   value = "",
   onChange,
-  folder = "uploads",
   resetKey = "default",
+  optional = true,
+  hint,
+  className,
 }: Props) {
+  const inputId = useId();
   const inputRef = useRef<HTMLInputElement>(null);
-  const onChangeRef = useRef(onChange);
-  const valueRef = useRef(value);
-  const inputId = useId().replace(/:/g, "");
+  const [previewName, setPreviewName] = useState<string | null>(null);
+  const [previewSize, setPreviewSize] = useState<string | null>(null);
+  const [localPreview, setLocalPreview] = useState<string | null>(null);
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState("");
+  const [remoteBroken, setRemoteBroken] = useState(false);
+
+  const allowPdf = folder === "protocols";
+  const isPdf =
+    Boolean(value?.toLowerCase().endsWith(".pdf")) ||
+    Boolean(previewName?.toLowerCase().endsWith(".pdf"));
+  const displayUrl =
+    localPreview || (!remoteBroken && value && !isPdf ? mediaUrl(value) : null);
+  const meta = previewName ?? (value ? value.split("/").pop() : null);
 
   useEffect(() => {
-    onChangeRef.current = onChange;
-  }, [onChange]);
+    setRemoteBroken(false);
+    setPreviewName(null);
+    setPreviewSize(null);
+    if (localPreview) {
+      URL.revokeObjectURL(localPreview);
+      setLocalPreview(null);
+    }
+    if (inputRef.current) inputRef.current.value = "";
+    // reset when parent remounts form row
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [resetKey, value]);
 
   useEffect(() => {
-    valueRef.current = value;
-  }, [value]);
-
-  useEffect(() => {
-    let cancelled = false;
-    let $input: ReturnType<NonNullable<typeof window.jQuery>> | null = null;
-    let removeHandler: ((e: Event) => void) | null = null;
-
-    function previewFor(key: string) {
-      const url = key ? mediaUrl(key) : "";
-      return url ? [url] : [];
-    }
-
-    let clearing = false;
-
-    function clearAll() {
-      if (clearing) return;
-      clearing = true;
-      onChangeRef.current("");
-      valueRef.current = "";
-      setError("");
-
-      const $ = getJQuery();
-      if (!$ || !inputRef.current) {
-        clearing = false;
-        return;
-      }
-
-      const $el = $(inputRef.current);
-      try {
-        $el.fileinput("clear");
-      } catch {
-        /* ignore */
-      }
-
-      setTimeout(() => {
-        try {
-          $el.fileinput("refresh", {
-            initialPreview: [],
-            initialPreviewConfig: [],
-            initialPreviewAsData: false,
-            overwriteInitial: true,
-          });
-        } catch {
-          /* ignore */
-        }
-        clearing = false;
-      }, 50);
-    }
-
-    function refreshPreview(key: string) {
-      const $ = getJQuery();
-      if (!$ || !inputRef.current) return;
-      const $el = $(inputRef.current);
-      const urls = previewFor(key);
-      try {
-        $el.fileinput("refresh", {
-          initialPreview: urls,
-          initialPreviewConfig: urls.length ? [{ key: 1, showRemove: true }] : [],
-          initialPreviewAsData: false,
-          overwriteInitial: true,
-        });
-      } catch {
-        /* not ready */
-      }
-    }
-
-    async function init() {
-      await ensureAdminPlugins();
-      if (cancelled || !inputRef.current) return;
-
-      const $ = getJQuery();
-      if (!$) return;
-
-      $input = $(inputRef.current);
-      const startKey = valueRef.current;
-      const previewUrl = startKey ? mediaUrl(startKey) : "";
-
-      try {
-        $input.fileinput("destroy");
-      } catch {
-        /* first init */
-      }
-
-      $input.fileinput({
-        theme: "bs5",
-        language: "pt",
-        showUpload: false,
-        showRemove: true,
-        showCaption: false,
-        browseOnZoneClick: true,
-        browseIcon: '<i class="bi bi-image"></i> ',
-        previewFileIcon: '<i class="bi bi-image"></i>',
-        removeClass: "btn btn-default btn-outline-secondary",
-        allowedFileExtensions: ["jpg", "jpeg", "png", "gif", "webp"],
-        maxFileSize: 4096,
-        initialPreview: previewUrl ? [previewUrl] : [],
-        initialPreviewAsData: false,
-        initialPreviewConfig: previewUrl ? [{ key: 1, showRemove: true }] : [],
-        initialPreviewShowDelete: true,
-        overwriteInitial: true,
-        fileActionSettings: {
-          showZoom: true,
-          showDrag: false,
-          showRemove: true,
-          showUpload: false,
-          removeIcon: '<i class="bi bi-trash"></i>',
-          removeTitle: "Remover ficheiro",
-          zoomIcon: '<i class="bi bi-zoom-in"></i>',
-        },
-        layoutTemplates: {
-          main2: '{preview}\n<div class="input-group {class}">\n{remove}\n{browse}\n</div>',
-        },
-      });
-
-      // Mesmo padrão do Laravel fileinput-init.js — botão "Remover" da toolbar + preview
-      removeHandler = (e: Event) => {
-        const target = e.target as HTMLElement | null;
-        if (!target || !inputRef.current || !isRemoveControl(target)) return;
-
-        const inputWrap = inputRef.current.closest(".file-input");
-        const btnWrap = target.closest(".file-input, .file-preview, .file-preview-frame");
-        if (!inputWrap || !btnWrap || !inputWrap.contains(btnWrap)) return;
-
-        e.preventDefault();
-        e.stopPropagation();
-        e.stopImmediatePropagation();
-
-        clearAll();
-        return false;
-      };
-
-      document.addEventListener("click", removeHandler, true);
-
-      // Garantir que o botão da toolbar fica clicável quando há preview inicial
-      setTimeout(() => {
-        if (!inputRef.current) return;
-        const wrap = inputRef.current.closest(".file-input");
-        if (!wrap) return;
-        wrap.querySelectorAll<HTMLButtonElement>(
-          ".fileinput-remove-button, .btn-kv-clear, .fileinput-remove, .kv-file-remove",
-        ).forEach((btn) => {
-          btn.disabled = false;
-          btn.style.pointerEvents = "auto";
-          btn.style.opacity = "1";
-        });
-      }, 200);
-
-      $input
-        .off("change.krajeeUpload filecleared.krajee fileclear.krajee filepredelete.krajee")
-        .on("change.krajeeUpload", async function (this: HTMLInputElement) {
-          const file = this.files?.[0];
-          if (!file) return;
-
-          setUploading(true);
-          setError("");
-          try {
-            const presign = await adminFetch<{ key: string; uploadUrl: string }>(
-              "/api/admin/media/presign",
-              {
-                method: "POST",
-                body: JSON.stringify({ contentType: file.type, folder }),
-              },
-            );
-            const res = await fetch(presign.uploadUrl, {
-              method: "PUT",
-              body: file,
-              headers: { "Content-Type": file.type },
-            });
-            if (!res.ok) throw new Error("Upload falhou");
-
-            valueRef.current = presign.key;
-            onChangeRef.current(presign.key);
-            refreshPreview(presign.key);
-          } catch (err) {
-            setError(err instanceof Error ? err.message : "Erro no upload");
-            clearAll();
-          } finally {
-            setUploading(false);
-          }
-        })
-        .on("filepredelete.krajee", () => {
-          clearAll();
-        })
-        .on("fileclear.krajee filecleared.krajee", () => {
-          clearAll();
-        });
-    }
-
-    init().catch((err) => setError(String(err)));
-
     return () => {
-      cancelled = true;
-      if (removeHandler) {
-        document.removeEventListener("click", removeHandler, true);
-      }
-      try {
-        $input?.off("change.krajeeUpload filecleared.krajee fileclear.krajee filepredelete.krajee");
-        $input?.fileinput("destroy");
-      } catch {
-        /* ignore */
-      }
+      if (localPreview) URL.revokeObjectURL(localPreview);
     };
-  }, [resetKey, folder]);
+  }, [localPreview]);
+
+  async function onFile(file: File | undefined) {
+    setRemoteBroken(false);
+    if (!file) return;
+    setError("");
+    setPreviewName(file.name);
+    setPreviewSize(`${(file.size / 1024).toFixed(1)} KB`);
+    if (localPreview) URL.revokeObjectURL(localPreview);
+    const objectUrl = file.type.startsWith("image/")
+      ? URL.createObjectURL(file)
+      : null;
+    if (objectUrl) setLocalPreview(objectUrl);
+    else setLocalPreview(null);
+    setUploading(true);
+    try {
+      const { key } = await uploadImage(file, folder);
+      onChange(key);
+    } catch (err) {
+      console.error(err);
+      setError(err instanceof Error ? err.message : "Falha no upload");
+      if (objectUrl) URL.revokeObjectURL(objectUrl);
+      setLocalPreview(null);
+      setPreviewName(null);
+      setPreviewSize(null);
+      onChange("");
+      if (inputRef.current) inputRef.current.value = "";
+    } finally {
+      setUploading(false);
+    }
+  }
+
+  function clear() {
+    if (localPreview) URL.revokeObjectURL(localPreview);
+    setLocalPreview(null);
+    setPreviewName(null);
+    setPreviewSize(null);
+    setError("");
+    setRemoteBroken(false);
+    onChange("");
+    if (inputRef.current) inputRef.current.value = "";
+  }
+
+  const accept = allowPdf
+    ? "image/jpeg,image/png,image/webp,application/pdf"
+    : "image/jpeg,image/png,image/webp";
 
   return (
-    <div className="fileinput-stacked admin-krajee">
-      <Label htmlFor={inputId}>{label}</Label>
-      <input
-        ref={inputRef}
-        id={inputId}
-        type="file"
-        className="file fileinput-auto"
-        accept="image/*"
-        data-browse-on-zone-click="true"
-      />
-      {uploading && <p className="mt-1 text-xs text-slate-400">A enviar imagem…</p>}
-      {error && <p className="mt-1 text-xs text-rose-600">{error}</p>}
-      {value && !uploading && (
-        <p className="mt-1 truncate text-[11px] text-slate-400">{value}</p>
+    <div className={cn("space-y-2", className)}>
+      <Label htmlFor={inputId} className="text-sm text-slate-700">
+        {label}
+        {optional ? (
+          <span className="ml-1 font-normal text-slate-400">opcional</span>
+        ) : null}
+      </Label>
+
+      {!displayUrl && !isPdf ? (
+        <label
+          htmlFor={inputId}
+          className="group flex min-h-[7.5rem] w-full cursor-pointer flex-col items-center justify-center gap-2 rounded-md border border-dashed border-slate-300 bg-slate-50/50 px-4 py-10 text-center transition hover:border-pink-400 hover:bg-pink-50/40"
+        >
+          <ImagePlus className="h-7 w-7 text-slate-400 transition group-hover:text-pink-600" />
+          <span className="text-sm text-slate-600">
+            {allowPdf ? "Escolher ficheiro" : "Escolher imagem"}
+          </span>
+          <span className="text-[11px] text-slate-400">
+            {allowPdf ? "JPG · PNG · WEBP · PDF" : "JPG · PNG · WEBP"}
+          </span>
+        </label>
+      ) : (
+        <div className="overflow-hidden rounded-md border border-slate-200 bg-white">
+          <div className="relative flex min-h-[7.5rem] w-full items-center justify-center bg-slate-50">
+            {isPdf || (!displayUrl && value) ? (
+              <div className="flex flex-col items-center gap-2 p-6 text-slate-600">
+                <FileText className="h-10 w-10 text-slate-400" />
+                <p className="max-w-full truncate px-2 text-xs">{meta ?? "Documento"}</p>
+              </div>
+            ) : (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img
+                src={displayUrl!}
+                alt={previewName ?? "Preview"}
+                className="max-h-44 max-w-full object-contain p-3"
+                onError={() => {
+                  if (!localPreview) setRemoteBroken(true);
+                }}
+              />
+            )}
+            {uploading && (
+              <div className="absolute inset-0 flex items-center justify-center bg-white/80">
+                <Loader2 className="h-6 w-6 animate-spin text-pink-600" />
+              </div>
+            )}
+          </div>
+
+          <div className="flex items-center gap-2 border-t border-slate-100 px-2.5 py-2">
+            <div className="min-w-0 flex-1">
+              <p className="truncate text-xs text-slate-600">{meta}</p>
+              {previewSize ? (
+                <p className="text-[11px] text-slate-400">{previewSize}</p>
+              ) : null}
+            </div>
+            <button
+              type="button"
+              className="inline-flex h-8 items-center gap-1.5 rounded px-2 text-xs text-slate-600 transition hover:bg-slate-100 disabled:opacity-50"
+              onClick={() => inputRef.current?.click()}
+              disabled={uploading}
+            >
+              <RefreshCw className="h-3.5 w-3.5" />
+              Trocar
+            </button>
+            <button
+              type="button"
+              className="inline-flex h-8 w-8 items-center justify-center rounded text-slate-400 transition hover:bg-red-50 hover:text-red-700 disabled:opacity-50"
+              onClick={clear}
+              disabled={uploading}
+              aria-label="Remover"
+            >
+              <Trash2 className="h-3.5 w-3.5" />
+            </button>
+          </div>
+        </div>
       )}
+
+      <input
+        id={inputId}
+        ref={inputRef}
+        type="file"
+        accept={accept}
+        className="sr-only"
+        disabled={uploading}
+        onChange={(e) => void onFile(e.target.files?.[0])}
+      />
+
+      {hint ? <p className="text-[11px] leading-relaxed text-slate-400">{hint}</p> : null}
+      {error ? <p className="text-sm text-red-600">{error}</p> : null}
     </div>
   );
 }

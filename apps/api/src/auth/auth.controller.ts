@@ -1,14 +1,7 @@
-import { Controller, Get, Post, Put, Body, UseGuards } from "@nestjs/common";
+import { Controller, Get, Put, Body, UseGuards } from "@nestjs/common";
 import { AuthGuard, CurrentUser, SessionUser } from "./auth.guard";
 import { PrismaService } from "../prisma/prisma.service";
 import { IsOptional, IsString, MinLength } from "class-validator";
-import { hashPassword } from "better-auth/crypto";
-
-class ChangePasswordDto {
-  @IsString()
-  @MinLength(8)
-  password!: string;
-}
 
 class UpdateProfileDto {
   @IsString()
@@ -63,28 +56,5 @@ export class AuthController {
       },
     });
     return { user: full };
-  }
-
-  @Post("me/change-password")
-  @UseGuards(AuthGuard)
-  async changePassword(
-    @CurrentUser() user: SessionUser,
-    @Body() dto: ChangePasswordDto,
-  ) {
-    const passwordHash = await hashPassword(dto.password);
-    const account = await this.prisma.account.findFirst({
-      where: { userId: user.id, providerId: "credential" },
-    });
-    if (account) {
-      await this.prisma.account.update({
-        where: { id: account.id },
-        data: { password: passwordHash },
-      });
-    }
-    await this.prisma.user.update({
-      where: { id: user.id },
-      data: { mustChangePassword: false },
-    });
-    return { success: true };
   }
 }

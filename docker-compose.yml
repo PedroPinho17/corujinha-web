@@ -1,16 +1,20 @@
+# Infra local. Portas só em 127.0.0.1.
+# Object storage (Garage) e Mailpit: perfil `local` — pnpm docker:up ou --profile local.
+# Passwords e chaves S3: obrigatórias no .env (ver .env.example).
+
 services:
   postgres:
     image: postgres:16-alpine
     environment:
-      POSTGRES_USER: corujinha
-      POSTGRES_PASSWORD: corujinha
-      POSTGRES_DB: corujinha
+      POSTGRES_USER: ${POSTGRES_USER:-corujinha}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-corujinha}
+      POSTGRES_DB: ${POSTGRES_DB:-corujinha}
     ports:
-      - "5434:5432"
+      - "127.0.0.1:5434:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U corujinha -d corujinha"]
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-corujinha} -d ${POSTGRES_DB:-corujinha}"]
       interval: 5s
       timeout: 5s
       retries: 10
@@ -18,44 +22,50 @@ services:
   redis:
     image: redis:7-alpine
     ports:
-      - "6381:6379"
+      - "127.0.0.1:6381:6379"
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
       interval: 5s
       timeout: 3s
       retries: 10
 
-  minio:
-    image: minio/minio:latest
-    command: server /data --console-address ":9001"
+  # S3-compatible — substitui MinIO (arquivado).
+  garage:
+    image: dxflrs/garage:v2.3.0
+    profiles: ["local"]
+    restart: unless-stopped
+    command:
+      [
+        "/garage",
+        "-c",
+        "/etc/garage/garage.toml",
+        "server",
+        "--single-node",
+        "--default-bucket",
+      ]
     environment:
-      MINIO_ROOT_USER: minioadmin
-      MINIO_ROOT_PASSWORD: minioadmin
+      GARAGE_DEFAULT_BUCKET: ${S3_BUCKET:-corujinha-media}
+      # Access key: "GK" + 30 hex. Secret: 64 hex.
+      GARAGE_DEFAULT_ACCESS_KEY: ${S3_ACCESS_KEY:?Defina S3_ACCESS_KEY no .env}
+      GARAGE_DEFAULT_SECRET_KEY: ${S3_SECRET_KEY:?Defina S3_SECRET_KEY no .env}
+      # 32 bytes hex (64 chars). Gera com: openssl rand -hex 32
+      GARAGE_RPC_SECRET: ${GARAGE_RPC_SECRET:?Defina GARAGE_RPC_SECRET no .env}
     ports:
-      - "9012:9000"
-      - "9013:9001"
+      - "127.0.0.1:3900:3900"
+      - "127.0.0.1:3902:3902"
     volumes:
-      - minio_data:/data
-
-  minio-init:
-    image: minio/mc:latest
-    depends_on:
-      - minio
-    entrypoint: >
-      /bin/sh -c "
-      sleep 3;
-      mc alias set local http://minio:9000 minioadmin minioadmin;
-      mc mb -p local/corujinha-media || true;
-      mc anonymous set download local/corujinha-media;
-      exit 0;
-      "
+      - ./docker/garage.toml:/etc/garage/garage.toml:ro
+      - garage_meta:/var/lib/garage/meta
+      - garage_data:/var/lib/garage/data
 
   mailpit:
-    image: axllent/mailpit:latest
+    image: axllent/mailpit:v1.24.1
+    profiles: ["local"]
     ports:
-      - "1026:1025"
-      - "8026:8025"
+      - "127.0.0.1:1026:1025"
+      - "127.0.0.1:8026:8025"
 
 volumes:
   postgres_data:
-  minio_data:
+  garage_meta:
+  garage_data:

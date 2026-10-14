@@ -203,24 +203,28 @@ model GalleryImage {
 }
 
 model ContactMessage {
-  id         String        @id @default(cuid())
-  name       String
-  email      String
-  phone      String?
-  message    String
-  kind       ContactKind   @default(GENERAL)
-  subject    String?
-  schoolYear String?
-  location   String?
-  status     ContactStatus @default(NEW)
-  readAt     DateTime?
-  adminNotes String?
-  createdAt  DateTime      @default(now())
-  updatedAt  DateTime      @updatedAt
+  id             String        @id @default(cuid())
+  name           String
+  email          String
+  phone          String?
+  message        String
+  kind           ContactKind   @default(GENERAL)
+  subject        String?
+  schoolYear     String?
+  location       String?
+  status         ContactStatus @default(NEW)
+  readAt         DateTime?
+  adminNotes     String?
+  privacyConsent Boolean       @default(false)
+  consentAt      DateTime?
+  erasedAt       DateTime?
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
 
   @@index([status, createdAt])
   @@index([readAt, createdAt])
   @@index([kind, createdAt])
+  @@index([erasedAt])
 }
 
 model SiteSettings {

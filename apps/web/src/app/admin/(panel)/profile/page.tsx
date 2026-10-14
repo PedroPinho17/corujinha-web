@@ -19,6 +19,7 @@ type Me = {
 export default function AdminProfilePage() {
   const [me, setMe] = useState<Me | null>(null);
   const [name, setName] = useState("");
+  const [currentPassword, setCurrentPassword] = useState("");
   const [password, setPassword] = useState("");
   const [msg, setMsg] = useState("");
 
@@ -49,11 +50,16 @@ export default function AdminProfilePage() {
   async function savePassword(e: React.FormEvent) {
     e.preventDefault();
     setMsg("");
+    if (password.length < 12) {
+      setMsg("A nova password deve ter pelo menos 12 caracteres.");
+      return;
+    }
     try {
-      await adminFetch("/api/me/change-password", {
+      await adminFetch("/api/admin/me/change-password", {
         method: "POST",
-        body: JSON.stringify({ password }),
+        body: JSON.stringify({ currentPassword, newPassword: password }),
       });
+      setCurrentPassword("");
       setPassword("");
       await authClient.getSession({ query: { disableCookieCache: true } });
       setMsg("Password atualizada");
@@ -95,13 +101,25 @@ export default function AdminProfilePage() {
       >
         <h2 className="text-base font-bold text-slate-800">Alterar password</h2>
         <div>
+          <Label>Password actual</Label>
+          <Input
+            type="password"
+            minLength={12}
+            value={currentPassword}
+            onChange={(e) => setCurrentPassword(e.target.value)}
+            required
+            autoComplete="current-password"
+          />
+        </div>
+        <div>
           <Label>Nova password</Label>
           <Input
             type="password"
-            minLength={8}
+            minLength={12}
             value={password}
             onChange={(e) => setPassword(e.target.value)}
             required
+            autoComplete="new-password"
           />
         </div>
         <Button type="submit">Atualizar password</Button>

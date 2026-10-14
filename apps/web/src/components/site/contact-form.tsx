@@ -31,6 +31,13 @@ export function ContactForm({
     const schoolYear = String(fd.get("schoolYear") || "");
     const location = String(fd.get("location") || "");
     const freeMessage = String(fd.get("message") || "").trim();
+    const privacyConsent = fd.get("privacyConsent") === "on";
+
+    if (!privacyConsent) {
+      setStatus("err");
+      setLoading(false);
+      return;
+    }
 
     const message =
       mode === "ENROLLMENT"
@@ -56,6 +63,8 @@ export function ContactForm({
           subject: mode === "ENROLLMENT" ? subject || undefined : undefined,
           schoolYear: mode === "ENROLLMENT" ? schoolYear || undefined : undefined,
           location: mode === "ENROLLMENT" ? location || undefined : undefined,
+          website: fd.get("website") || undefined,
+          privacyConsent: true,
         }),
       });
       setOkMessage(res.message || "Enviado com sucesso!");
@@ -85,6 +94,21 @@ export function ContactForm({
 
   return (
     <form onSubmit={onSubmit} className="grid gap-3">
+      {/* Honeypot — hidden from humans */}
+      <div
+        aria-hidden="true"
+        className="absolute -left-[9999px] h-0 w-0 overflow-hidden opacity-0"
+      >
+        <label htmlFor="website">Website</label>
+        <input
+          id="website"
+          name="website"
+          type="text"
+          tabIndex={-1}
+          autoComplete="off"
+        />
+      </div>
+
       <div
         className="grid grid-cols-2 gap-1 rounded-xl bg-white/70 p-1 ring-1 ring-ink/10"
         role="tablist"
@@ -195,12 +219,24 @@ export function ContactForm({
         />
       </div>
 
+      <label className="flex items-start gap-2 text-sm text-ink/80">
+        <input
+          type="checkbox"
+          name="privacyConsent"
+          required
+          className="mt-1"
+        />
+        <span>
+          Aceito o tratamento dos meus dados para responder a este pedido (RGPD).
+        </span>
+      </label>
+
       <Button type="submit" disabled={loading}>
         {loading ? "A enviar..." : mode === "ENROLLMENT" ? "Pedir inscrição" : "Enviar mensagem"}
       </Button>
       {status === "err" && (
         <p className="text-sm text-orange" role="alert">
-          Erro ao enviar. Tente novamente.
+          Erro ao enviar. Verifique o consentimento e tente novamente.
         </p>
       )}
     </form>

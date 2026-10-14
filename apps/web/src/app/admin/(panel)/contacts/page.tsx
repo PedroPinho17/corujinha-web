@@ -94,6 +94,48 @@ export default function AdminContactsPage() {
     }
   }
 
+  async function exportGdpr(id: string) {
+    setSaving(true);
+    try {
+      const res = await fetch(`/api/admin/contacts/${id}/gdpr-export`, {
+        credentials: "include",
+      });
+      if (!res.ok) throw new Error(await res.text());
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `gdpr-export-contact-${id}.json`;
+      a.click();
+      URL.revokeObjectURL(url);
+      setToast("Exportação RGPD descarregada");
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Erro na exportação RGPD");
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  async function eraseGdpr(id: string) {
+    if (!window.confirm("Apagar dados pessoais deste contacto (RGPD)? Esta acção não se desfaz.")) {
+      return;
+    }
+    setSaving(true);
+    try {
+      await adminFetch(`/api/admin/contacts/${id}/gdpr-erase`, {
+        method: "POST",
+        body: JSON.stringify({ confirm: true }),
+      });
+      setRows((prev) => prev.filter((r) => r.id !== id));
+      setSelected(null);
+      setToast("Dados apagados (RGPD)");
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Erro ao apagar (RGPD)");
+    } finally {
+      setSaving(false);
+    }
+  }
+
   const unread = rows.filter((r) => !r.readAt).length;
 
   return (
@@ -304,6 +346,25 @@ export default function AdminContactsPage() {
                 onClick={() => markRead(selected.id, !selected.readAt)}
               >
                 {selected.readAt ? "Marcar não lido" : "Marcar como lido"}
+              </Button>
+              <Button
+                type="button"
+                size="sm"
+                variant="outline"
+                disabled={saving}
+                onClick={() => exportGdpr(selected.id)}
+              >
+                Exportar RGPD
+              </Button>
+              <Button
+                type="button"
+                size="sm"
+                variant="outline"
+                disabled={saving}
+                className="text-rose-600"
+                onClick={() => eraseGdpr(selected.id)}
+              >
+                Apagar RGPD
               </Button>
             </div>
 

@@ -1,0 +1,115 @@
+name: CI
+
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+
+env:
+  NODE_VERSION: "22"
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: corujinha
+          POSTGRES_PASSWORD: corujinha
+          POSTGRES_DB: corujinha
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+      redis:
+        image: redis:7-alpine
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    env:
+      DATABASE_URL: postgresql://corujinha:corujinha@localhost:5432/corujinha?schema=public
+      REDIS_URL: redis://localhost:6379
+      BETTER_AUTH_SECRET: ci-test-secret-with-at-least-32-characters
+      BETTER_AUTH_URL: http://localhost:3000
+      NEXT_PUBLIC_APP_URL: http://localhost:3000
+      NEXT_PUBLIC_API_URL: http://localhost:3000
+      INTERNAL_API_URL: http://localhost:3001
+      ADMIN_EMAIL: admin@corujinha.local
+      ADMIN_PASSWORD: CiAdminPass12!
+      ADMIN_NAME: CI Admin
+      CONTACT_NOTIFY_TO: notify@corujinha.local
+      SMTP_HOST: localhost
+      SMTP_PORT: "1025"
+      SMTP_FROM: noreply@corujinha.local
+      S3_ENDPOINT: http://localhost:3900
+      S3_PUBLIC_URL: http://corujinha-media.web.garage.localhost:3902
+      S3_REGION: garage
+      S3_ACCESS_KEY: GKabcdef0123456789abcdef01234567
+      S3_SECRET_KEY: "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
+      S3_BUCKET: corujinha-media
+      S3_FORCE_PATH_STYLE: "true"
+      S3_CORS_ORIGINS: http://localhost:3000
+      NEXT_PUBLIC_S3_PUBLIC_URL: http://corujinha-media.web.garage.localhost:3902
+      NEXT_PUBLIC_S3_BUCKET: corujinha-media
+      NODE_ENV: test
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm db:generate
+      - run: pnpm --filter @corujinha/shared build
+      - run: pnpm --filter @corujinha/database build
+      - run: pnpm db:deploy
+      - run: pnpm db:seed
+      - name: Typecheck API
+        run: pnpm --filter @corujinha/api typecheck
+      - name: Typecheck Web
+        run: pnpm --filter web exec tsc --noEmit
+      - name: Test API
+        run: pnpm --filter @corujinha/api test
+      - name: Build API
+        run: pnpm --filter @corujinha/api build
+      - name: Build Web
+        run: pnpm --filter web build
+        env:
+          NEXT_TELEMETRY_DISABLED: "1"
+  docker:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build API image
+        run: |
+          set -euo pipefail
+          for i in 1 2 3; do
+            docker build -f apps/api/Dockerfile -t corujinha-api:ci . && exit 0
+            echo "API docker build failed (attempt $i), retrying..."
+            sleep $((i * 5))
+          done
+          exit 1
+      - name: Build Web image
+        run: |
+          set -euo pipefail
+          for i in 1 2 3; do
+            docker build \
+              -f apps/web/Dockerfile \
+              --build-arg NEXT_PUBLIC_APP_URL=http://localhost:3000 \
+              --build-arg NEXT_PUBLIC_API_URL=same-origin \
+              --build-arg NEXT_PUBLIC_S3_PUBLIC_URL=http://corujinha-media.web.garage.localhost:3902 \
+              --build-arg NEXT_PUBLIC_S3_BUCKET=corujinha-media \
+              -t corujinha-web:ci . && exit 0
+            echo "Web docker build failed (attempt $i), retrying..."
+            sleep $((i * 5))
+          done
+          exit 1

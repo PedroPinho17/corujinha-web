@@ -1,31 +1,49 @@
-import { config as loadEnv } from "dotenv";
-import { resolve } from "path";
 import { betterAuth } from "better-auth";
 import { prismaAdapter } from "better-auth/adapters/prisma";
 import { passkey } from "@better-auth/passkey";
 import { prisma } from "@corujinha/database";
+import { resolveAuthSecret } from "../env";
+import { authEmailPassword } from "./auth.config";
 
-loadEnv({ path: resolve(process.cwd(), "../../.env") });
-loadEnv({ path: resolve(process.cwd(), ".env") });
+export { authEmailPassword } from "./auth.config";
 
 const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000";
 const authUrl = process.env.BETTER_AUTH_URL ?? appUrl;
 const rpID = process.env.WEBAUTHN_RP_ID ?? "localhost";
+const isProd = process.env.NODE_ENV === "production";
 
+/** Local hosts browsers treat as different origins (localhost ≠ 127.0.0.1). */
+const localOrigins = [
+  appUrl,
+  authUrl,
+  "http://localhost:3000",
+  "http://localhost:3001",
+  "http://127.0.0.1:3000",
+  "http://127.0.0.1:3001",
+  "http://[::1]:3000",
+  "http://[::1]:3001",
+];
+
+const trustedOrigins = isProd
+  ? [...new Set([appUrl, authUrl].filter(Boolean))]
+  : [...new Set(localOrigins.filter(Boolean))];
+
+/**
+ * Better Auth — registo público desactivado (contas só via seed / admin).
+ * Papel por omissão EDITOR só aplica a contas criadas por admin (sign-up fechado).
+ */
 export const auth = betterAuth({
   appName: "Corujinha",
   database: prismaAdapter(prisma, { provider: "postgresql" }),
-  secret: process.env.BETTER_AUTH_SECRET,
+  secret: resolveAuthSecret(),
   baseURL: authUrl,
   basePath: "/api/auth",
-  trustedOrigins: [appUrl, authUrl, "http://localhost:3000", "http://localhost:3001"],
+  trustedOrigins,
   emailAndPassword: {
-    enabled: true,
-    minPasswordLength: 8,
+    ...authEmailPassword,
     revokeSessionsOnPasswordReset: true,
   },
   session: {
-    // Avoid stale mustChangePassword / role after profile updates
     cookieCache: {
       enabled: false,
     },
@@ -33,7 +51,7 @@ export const auth = betterAuth({
   advanced: {
     defaultCookieAttributes: {
       sameSite: "lax",
-      secure: process.env.NODE_ENV === "production",
+      secure: isProd && process.env.ALLOW_INSECURE_S3 !== "true",
       path: "/",
     },
   },

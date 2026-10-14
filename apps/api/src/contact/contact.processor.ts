@@ -6,6 +6,15 @@ import { MailService } from "../mail/mail.service";
 
 export const CONTACT_QUEUE = "contact-email";
 
+function escapeHtml(value: string): string {
+  return value
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
+}
+
 @Processor(CONTACT_QUEUE)
 export class ContactProcessor extends WorkerHost {
   private readonly logger = new Logger(ContactProcessor.name);
@@ -21,10 +30,22 @@ export class ContactProcessor extends WorkerHost {
     const contact = await this.prisma.contactMessage.findUnique({
       where: { id: job.data.contactId },
     });
-    if (!contact) return;
+    if (!contact || contact.erasedAt) return;
 
-    const to = process.env.CONTACT_NOTIFY_TO ?? "pedro0409romariz@gmail.com";
+    const to = process.env.CONTACT_NOTIFY_TO?.trim();
+    if (!to) {
+      throw new Error("CONTACT_NOTIFY_TO não está definido — aviso de contacto não enviado.");
+    }
+
     const isEnrollment = contact.kind === "ENROLLMENT";
+    const name = escapeHtml(contact.name);
+    const email = escapeHtml(contact.email);
+    const phone = escapeHtml(contact.phone ?? "-");
+    const subject = contact.subject ? escapeHtml(contact.subject) : null;
+    const schoolYear = contact.schoolYear ? escapeHtml(contact.schoolYear) : null;
+    const location = contact.location ? escapeHtml(contact.location) : null;
+    const messageHtml = escapeHtml(contact.message).replace(/\n/g, "<br/>");
+
     try {
       await this.mail.send({
         to,
@@ -40,19 +61,21 @@ export class ContactProcessor extends WorkerHost {
           contact.subject ? `Disciplina: ${contact.subject}` : null,
           contact.schoolYear ? `Ano: ${contact.schoolYear}` : null,
           contact.location ? `Polo: ${contact.location}` : null,
+          `Consentimento privacidade: ${contact.privacyConsent ? "sim" : "não"}`,
           "",
           contact.message,
         ]
           .filter(Boolean)
           .join("\n"),
         html: `<p><strong>Tipo:</strong> ${isEnrollment ? "Inscrição" : "Mensagem"}</p>
-          <p><strong>Nome:</strong> ${contact.name}</p>
-          <p><strong>Email:</strong> ${contact.email}</p>
-          <p><strong>Telefone:</strong> ${contact.phone ?? "-"}</p>
-          ${contact.subject ? `<p><strong>Disciplina:</strong> ${contact.subject}</p>` : ""}
-          ${contact.schoolYear ? `<p><strong>Ano:</strong> ${contact.schoolYear}</p>` : ""}
-          ${contact.location ? `<p><strong>Polo:</strong> ${contact.location}</p>` : ""}
-          <p>${contact.message.replace(/\n/g, "<br/>")}</p>`,
+          <p><strong>Nome:</strong> ${name}</p>
+          <p><strong>Email:</strong> ${email}</p>
+          <p><strong>Telefone:</strong> ${phone}</p>
+          ${subject ? `<p><strong>Disciplina:</strong> ${subject}</p>` : ""}
+          ${schoolYear ? `<p><strong>Ano:</strong> ${schoolYear}</p>` : ""}
+          ${location ? `<p><strong>Polo:</strong> ${location}</p>` : ""}
+          <p><strong>Consentimento:</strong> ${contact.privacyConsent ? "sim" : "não"}</p>
+          <p>${messageHtml}</p>`,
       });
       await this.prisma.contactMessage.update({
         where: { id: contact.id },

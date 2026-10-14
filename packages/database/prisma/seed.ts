@@ -1,19 +1,37 @@
 import { config as loadEnv } from "dotenv";
+import { existsSync } from "node:fs";
 import { resolve } from "path";
 import { PrismaClient, UserRole } from "@prisma/client";
 import { hashPassword } from "better-auth/crypto";
 import { DEFAULT_SITE_CONTENT } from "@corujinha/shared";
 
-loadEnv({ path: resolve(__dirname, "../../../.env") });
-loadEnv({ path: resolve(process.cwd(), "../../.env") });
-loadEnv({ path: resolve(process.cwd(), ".env") });
+for (const path of [
+  resolve(__dirname, "../../../.env"),
+  resolve(process.cwd(), "../../.env"),
+  resolve(process.cwd(), ".env"),
+]) {
+  if (existsSync(path)) loadEnv({ path });
+}
 
 const prisma = new PrismaClient();
 
 async function main() {
-  const email = process.env.ADMIN_EMAIL ?? "admin@corujinha.local";
-  const password = process.env.ADMIN_PASSWORD ?? "Admin123!";
-  const name = process.env.ADMIN_NAME ?? "Admin Corujinha";
+  const email = process.env.ADMIN_EMAIL?.trim();
+  const password = process.env.ADMIN_PASSWORD?.trim();
+  const name = process.env.ADMIN_NAME?.trim() || "Admin Corujinha";
+
+  if (!email) {
+    throw new Error("Defina ADMIN_EMAIL no .env antes de correr o seed.");
+  }
+  if (!password || password.length < 12) {
+    throw new Error(
+      "Defina ADMIN_PASSWORD no .env (mín. 12 caracteres). Não há password por omissão.",
+    );
+  }
+  if (/admin123/i.test(password) || password === "password" || password === "12345678") {
+    throw new Error("ADMIN_PASSWORD demasiado fraca / conhecida — escolha outra.");
+  }
+
   const passwordHash = await hashPassword(password);
 
   let admin = await prisma.user.findUnique({ where: { email } });
@@ -24,7 +42,7 @@ async function main() {
         name,
         emailVerified: true,
         role: UserRole.ADMIN,
-        mustChangePassword: false,
+        mustChangePassword: true,
         accounts: {
           create: {
             accountId: email,
@@ -37,7 +55,7 @@ async function main() {
   } else {
     await prisma.user.update({
       where: { id: admin.id },
-      data: { name, role: UserRole.ADMIN },
+      data: { name, role: UserRole.ADMIN, mustChangePassword: true },
     });
     const existingAccount = await prisma.account.findFirst({
       where: { userId: admin.id, providerId: "credential" },

@@ -23,3 +23,23 @@ export async function adminFetch<T = unknown>(
 ): Promise<T> {
   return apiFetch<T>(path, init);
 }
+
+export async function uploadImage(file: File, folder = "uploads") {
+  const contentType = file.type || "image/jpeg";
+  const { key, uploadUrl, publicUrl } = await adminFetch<{
+    key: string;
+    uploadUrl: string;
+    publicUrl: string;
+  }>("/api/admin/media/presign", {
+    method: "POST",
+    body: JSON.stringify({ contentType, folder }),
+  });
+  const put = await fetch(uploadUrl, {
+    method: "PUT",
+    headers: { "Content-Type": contentType },
+    body: file,
+  });
+  if (!put.ok) throw new Error("Upload failed");
+  return { key, publicUrl };
+}
+

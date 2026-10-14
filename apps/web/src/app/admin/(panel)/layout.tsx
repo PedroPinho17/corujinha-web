@@ -74,7 +74,6 @@ export default function AdminPanelLayout({ children }: { children: React.ReactNo
   const [mobileOpen, setMobileOpen] = useState(false);
   const [mustChange, setMustChange] = useState<boolean | null>(null);
   const [role, setRole] = useState<"ADMIN" | "EDITOR" | null>(null);
-  const isForcePassword = pathname === "/admin/change-password";
 
   useEffect(() => {
     if (isPending) return;
@@ -88,29 +87,30 @@ export default function AdminPanelLayout({ children }: { children: React.ReactNo
     adminFetch<{ user: { mustChangePassword: boolean; role?: string } | null }>("/api/me")
       .then((res) => {
         if (cancelled) return;
-        setMustChange(Boolean(res.user?.mustChangePassword));
+        const needsChange = Boolean(res.user?.mustChangePassword);
+        setMustChange(needsChange);
         setRole(res.user?.role === "ADMIN" ? "ADMIN" : "EDITOR");
+        if (needsChange) {
+          router.replace("/admin/change-password");
+        }
       })
       .catch(() => {
         if (cancelled) return;
-        setMustChange(
-          Boolean((session.user as { mustChangePassword?: boolean }).mustChangePassword),
+        const needsChange = Boolean(
+          (session.user as { mustChangePassword?: boolean }).mustChangePassword,
         );
+        setMustChange(needsChange);
         setRole(
           (session.user as { role?: string }).role === "ADMIN" ? "ADMIN" : "EDITOR",
         );
+        if (needsChange) {
+          router.replace("/admin/change-password");
+        }
       });
     return () => {
       cancelled = true;
     };
   }, [session, isPending, router, pathname]);
-
-  useEffect(() => {
-    if (mustChange === null) return;
-    if (mustChange && !isForcePassword) {
-      router.replace("/admin/change-password");
-    }
-  }, [mustChange, isForcePassword, router]);
 
   useEffect(() => {
     if (role === "EDITOR" && pathname.startsWith("/admin/users")) {
@@ -131,10 +131,6 @@ export default function AdminPanelLayout({ children }: { children: React.ReactNo
         A carregar backoffice…
       </div>
     );
-  }
-
-  if (mustChange && isForcePassword) {
-    return <div className="min-h-screen bg-[#f6f7fb]">{children}</div>;
   }
 
   if (mustChange) {

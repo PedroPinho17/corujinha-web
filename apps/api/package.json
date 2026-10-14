@@ -7,6 +7,8 @@
     "build": "nest build",
     "start": "node dist/main.js",
     "start:prod": "node dist/main.js",
+    "typecheck": "tsc --noEmit -p tsconfig.json",
+    "test": "vitest run",
     "lint": "echo ok"
   },
   "dependencies": {
@@ -27,6 +29,8 @@
     "class-validator": "^0.14.2",
     "deepl-node": "^1.17.3",
     "dotenv": "^17.4.2",
+    "express": "^5.1.0",
+    "helmet": "^8.1.0",
     "ioredis": "^5.6.1",
     "nodemailer": "^7.0.5",
     "reflect-metadata": "^0.2.2",
@@ -39,6 +43,7 @@
     "@types/multer": "^1.4.13",
     "@types/node": "^22.15.32",
     "@types/nodemailer": "^6.4.17",
-    "typescript": "^5.8.3"
+    "typescript": "^5.8.3",
+    "vitest": "4.1.11"
   }
 }
