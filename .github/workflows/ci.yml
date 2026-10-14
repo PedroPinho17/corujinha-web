@@ -68,11 +68,14 @@ jobs:
           node-version: ${{ env.NODE_VERSION }}
           cache: pnpm
       - run: pnpm install --frozen-lockfile
+      # Prisma/seed usam env do job; .env local não existe no runner.
       - run: pnpm db:generate
       - run: pnpm --filter @corujinha/shared build
       - run: pnpm --filter @corujinha/database build
-      - run: pnpm db:deploy
-      - run: pnpm db:seed
+      - name: Migrate + seed
+        run: |
+          pnpm db:deploy
+          pnpm db:seed
       - name: Typecheck API
         run: pnpm --filter @corujinha/api typecheck
       - name: Typecheck Web
