@@ -1,0 +1,19 @@
+# Overlay CI: publica API/Web/Garage-web no host e aponta S3 para o Garage do compose.
+# Não usar em produção real (R2/S3 externos).
+services:
+  api:
+    environment:
+      S3_ENDPOINT: http://garage:3900
+      S3_PUBLIC_URL: http://corujinha-media.web.garage.localhost:3902
+      S3_FORCE_PATH_STYLE: "true"
+      S3_ENABLE_WEBSITE: "true"
+      S3_CORS_ORIGINS: http://localhost:3000,http://127.0.0.1:3000
+      ALLOW_INSECURE_S3: "true"
+    ports:
+      - "127.0.0.1:3001:3001"
+    depends_on:
+      garage:
+        condition: service_started
+  web:
+    ports:
+      - "127.0.0.1:3000:3000"

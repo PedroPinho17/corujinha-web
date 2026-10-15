@@ -227,7 +227,11 @@ export function ContactForm({
           className="mt-1"
         />
         <span>
-          Aceito o tratamento dos meus dados para responder a este pedido (RGPD).
+          Aceito o tratamento dos meus dados para responder a este pedido, nos termos da{" "}
+          <a href="/privacidade" className="underline hover:text-pink" target="_blank" rel="noreferrer">
+            política de privacidade
+          </a>
+          .
         </span>
       </label>
 

@@ -115,6 +115,7 @@ export function SiteFooter({
     { label: "Equipa", href: "/equipa" },
     { label: "Notícias", href: "/noticias" },
     { label: "Contacto", href: "/#contact" },
+    { label: "Privacidade", href: "/privacidade" },
   ];
 
   return (

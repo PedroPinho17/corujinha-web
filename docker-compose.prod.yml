@@ -1,0 +1,57 @@
+# Corujinha — deploy (Coolify / VPS) e base para CI smoke.
+# Uso: docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d --build
+#
+# S3/R2: valores vêm do .env (não forçar Garage aqui).
+# Para smoke no CI: acrescentar docker-compose.ci-smoke.yml (override S3 → Garage).
+
+services:
+  postgres:
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:?POSTGRES_USER obrigatorio}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD obrigatorio}
+      POSTGRES_DB: ${POSTGRES_DB:-corujinha}
+
+  api:
+    build:
+      context: .
+      dockerfile: apps/api/Dockerfile
+    container_name: corujinha-api
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      NODE_ENV: production
+      POSTGRES_USER: ${POSTGRES_USER:?POSTGRES_USER obrigatorio}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD obrigatorio}
+      POSTGRES_DB: ${POSTGRES_DB:-corujinha}
+      POSTGRES_HOST: postgres
+      REDIS_HOST: redis
+      S3_PUBLIC_URL: ${S3_PUBLIC_URL:?Defina S3_PUBLIC_URL no .env}
+      ALLOW_INSECURE_S3: ${ALLOW_INSECURE_S3:-false}
+    expose:
+      - "3001"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_started
+
+  web:
+    build:
+      context: .
+      dockerfile: apps/web/Dockerfile
+      args:
+        NEXT_PUBLIC_APP_URL: ${NEXT_PUBLIC_APP_URL:-http://localhost:3000}
+        NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-same-origin}
+        NEXT_PUBLIC_S3_PUBLIC_URL: ${NEXT_PUBLIC_S3_PUBLIC_URL:-}
+        NEXT_PUBLIC_S3_BUCKET: ${S3_BUCKET:-corujinha-media}
+        NEXT_PUBLIC_S3_PUBLIC_INCLUDE_BUCKET: ${NEXT_PUBLIC_S3_PUBLIC_INCLUDE_BUCKET:-}
+        INTERNAL_API_URL: http://api:3001
+    container_name: corujinha-web
+    restart: unless-stopped
+    environment:
+      NODE_ENV: production
+      INTERNAL_API_URL: http://api:3001
+    expose:
+      - "3000"
+    depends_on:
+      - api
