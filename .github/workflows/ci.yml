@@ -271,6 +271,7 @@ jobs:
           NEXT_PUBLIC_APP_URL: http://localhost:3000
         run: |
           set -euo pipefail
+          pnpm --filter @corujinha/shared build
           pnpm db:generate
           pnpm db:seed
 
