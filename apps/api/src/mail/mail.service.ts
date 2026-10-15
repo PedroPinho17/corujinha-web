@@ -1,18 +1,18 @@
 import { Injectable, Logger } from "@nestjs/common";
-import nodemailer from "nodemailer";
+import { createTransport, type Transporter } from "nodemailer";
 import { smtpSecure } from "./smtp-secure";
 
 @Injectable()
 export class MailService {
   private readonly logger = new Logger(MailService.name);
-  private transporter: nodemailer.Transporter | null = null;
+  private transporter: Transporter | null = null;
 
   private getTransporter() {
     if (this.transporter) return this.transporter;
     const host = process.env.SMTP_HOST;
     if (!host) return null;
     const port = Number(process.env.SMTP_PORT ?? 587);
-    this.transporter = nodemailer.createTransport({
+    this.transporter = createTransport({
       host,
       port,
       secure: smtpSecure(port),
