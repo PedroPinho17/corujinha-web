@@ -12,12 +12,14 @@ export default defineConfig({
         "src/**/*.spec.ts",
         "src/main.ts",
         "src/**/*.module.ts",
+        "src/test/**",
+        // Better Auth wiring — coberto via auth.config + guards mockados.
+        "src/auth/auth.ts",
       ],
-      // Medição activa; subir limiar à medida que a suite cresce (meta VH: 70%).
       thresholds: {
-        lines: 8,
-        functions: 8,
-        statements: 8,
+        lines: 70,
+        functions: 70,
+        statements: 70,
       },
     },
   },
