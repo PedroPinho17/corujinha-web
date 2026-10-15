@@ -3,17 +3,9 @@ import { Logger } from "@nestjs/common";
 import { Job } from "bullmq";
 import { PrismaService } from "../prisma/prisma.service";
 import { MailService } from "../mail/mail.service";
+import { escapeHtml } from "../common/escape-html";
 
 export const CONTACT_QUEUE = "contact-email";
-
-function escapeHtml(value: string): string {
-  return value
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;")
-    .replace(/"/g, "&quot;")
-    .replace(/'/g, "&#39;");
-}
 
 @Processor(CONTACT_QUEUE)
 export class ContactProcessor extends WorkerHost {

@@ -9,6 +9,22 @@ env:
   NODE_VERSION: "22"
 
 jobs:
+  audit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Dependency vuln scan (Trivy HIGH/CRITICAL)
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25
+        with:
+          scan-type: fs
+          scan-ref: pnpm-lock.yaml
+          scanners: vuln
+          severity: HIGH,CRITICAL
+          exit-code: "1"
+          ignore-unfixed: true
+          trivyignores: .trivyignore
+          format: table
+
   test:
     runs-on: ubuntu-latest
     services:
@@ -45,7 +61,7 @@ jobs:
       ADMIN_EMAIL: admin@corujinha.local
       ADMIN_PASSWORD: CiAdminPass12!
       ADMIN_NAME: CI Admin
-      CONTACT_NOTIFY_TO: notify@corujinha.local
+      CONTACT_NOTIFY_TO: notify@ninhodacoruja.pt
       SMTP_HOST: localhost
       SMTP_PORT: "1025"
       SMTP_FROM: noreply@corujinha.local
@@ -68,7 +84,6 @@ jobs:
           node-version: ${{ env.NODE_VERSION }}
           cache: pnpm
       - run: pnpm install --frozen-lockfile
-      # Prisma/seed usam env do job; .env local não existe no runner.
       - run: pnpm db:generate
       - run: pnpm --filter @corujinha/shared build
       - run: pnpm --filter @corujinha/database build
@@ -76,6 +91,10 @@ jobs:
         run: |
           pnpm db:deploy
           pnpm db:seed
+      - name: Lint API
+        run: pnpm --filter @corujinha/api lint
+      - name: Lint Web
+        run: pnpm --filter web lint
       - name: Typecheck API
         run: pnpm --filter @corujinha/api typecheck
       - name: Typecheck Web
@@ -88,6 +107,7 @@ jobs:
         run: pnpm --filter web build
         env:
           NEXT_TELEMETRY_DISABLED: "1"
+
   docker:
     runs-on: ubuntu-latest
     steps:
@@ -116,3 +136,258 @@ jobs:
             sleep $((i * 5))
           done
           exit 1
+
+  compose-smoke:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: pnpm
+
+      - name: Write CI .env from .env.example
+        run: |
+          set -euo pipefail
+          cp .env.example .env
+          python3 - <<'PY'
+          import re
+          import secrets
+          from pathlib import Path
+
+          access = "GK" + secrets.token_hex(15)
+          secret = secrets.token_hex(32)
+          rpc = secrets.token_hex(32)
+          admin_pw = "CiComposeAdmin12!"
+          notify = "notify@ninhodacoruja.pt"
+
+          assigns = {
+            "BETTER_AUTH_SECRET": "ci-compose-secret-with-at-least-32-characters",
+            "ADMIN_PASSWORD": admin_pw,
+            "CONTACT_NOTIFY_TO": notify,
+            "SMTP_HOST": "smtp.example.invalid",
+            "NEXT_PUBLIC_API_URL": "same-origin",
+            "S3_ENDPOINT": "http://garage:3900",
+            "S3_PUBLIC_URL": "http://corujinha-media.web.garage.localhost:3902",
+            "NEXT_PUBLIC_S3_PUBLIC_URL": "http://corujinha-media.web.garage.localhost:3902",
+            "S3_ACCESS_KEY": access,
+            "S3_SECRET_KEY": secret,
+            "GARAGE_RPC_SECRET": rpc,
+          }
+          text = Path(".env").read_text(encoding="utf-8")
+          for key, value in assigns.items():
+            pattern = re.compile(rf"^{re.escape(key)}=.*$", re.MULTILINE)
+            if not pattern.search(text):
+              raise SystemExit(f"assignment em falta no .env.example: {key}")
+            text = pattern.sub(f"{key}={value}", text, count=1)
+          if not re.search(r"^ALLOW_INSECURE_S3=", text, re.MULTILINE):
+              text += "\nALLOW_INSECURE_S3=true\n"
+          Path(".env").write_text(text, encoding="utf-8")
+          for key in ("S3_ACCESS_KEY", "S3_SECRET_KEY", "GARAGE_RPC_SECRET"):
+            m = re.search(rf"^{key}=(.+)$", text, re.MULTILINE)
+            if not m or not m.group(1).strip():
+              raise SystemExit(f"{key} ficou vazio após geração CI")
+          print("CI .env derived from .env.example OK (random Garage keys)")
+          PY
+
+      - name: Install deps (seed + smoke helpers)
+        run: pnpm install --frozen-lockfile
+
+      - name: Build and start stack
+        env:
+          COMPOSE_PROFILES: local
+        run: |
+          docker compose \
+            -f docker-compose.yml \
+            -f docker-compose.prod.yml \
+            -f docker-compose.ci-smoke.yml \
+            up -d --build
+
+      - name: Wait for Garage S3
+        env:
+          COMPOSE_PROFILES: local
+        run: |
+          for i in $(seq 1 40); do
+            code=$(curl -sS -o /dev/null -w '%{http_code}' http://127.0.0.1:3900/ || echo 000)
+            if echo "$code" | grep -Eq '^[12345][0-9][0-9]$'; then
+              echo "Garage S3 port open (HTTP $code)"
+              exit 0
+            fi
+            sleep 2
+          done
+          docker compose \
+            -f docker-compose.yml \
+            -f docker-compose.prod.yml \
+            -f docker-compose.ci-smoke.yml \
+            logs garage || true
+          exit 1
+
+      - name: Wait for API health
+        env:
+          COMPOSE_PROFILES: local
+        run: |
+          for i in $(seq 1 60); do
+            if curl -sf http://127.0.0.1:3001/api/health >/dev/null; then
+              echo "API healthy"
+              exit 0
+            fi
+            sleep 3
+          done
+          docker compose \
+            -f docker-compose.yml \
+            -f docker-compose.prod.yml \
+            -f docker-compose.ci-smoke.yml \
+            logs api web postgres redis garage || true
+          exit 1
+
+      - name: Wait for Web
+        env:
+          COMPOSE_PROFILES: local
+        run: |
+          for i in $(seq 1 60); do
+            if curl -sf http://127.0.0.1:3000/ >/dev/null; then
+              echo "Web healthy"
+              exit 0
+            fi
+            sleep 3
+          done
+          docker compose \
+            -f docker-compose.yml \
+            -f docker-compose.prod.yml \
+            -f docker-compose.ci-smoke.yml \
+            logs web api || true
+          exit 1
+
+      - name: Seed admin for media smoke
+        env:
+          DATABASE_URL: postgresql://corujinha:corujinha@127.0.0.1:5434/corujinha?schema=public
+          ADMIN_EMAIL: admin@corujinha.local
+          ADMIN_PASSWORD: CiComposeAdmin12!
+          ADMIN_NAME: CI Compose Admin
+          BETTER_AUTH_SECRET: ci-compose-secret-with-at-least-32-characters
+          BETTER_AUTH_URL: http://localhost:3000
+          NEXT_PUBLIC_APP_URL: http://localhost:3000
+        run: |
+          set -euo pipefail
+          pnpm db:generate
+          pnpm db:seed
+
+      - name: API smoke (health, signup closed, contact)
+        env:
+          COMPOSE_PROFILES: local
+        run: |
+          set -euo pipefail
+          curl -sf http://127.0.0.1:3001/api/health | tee /tmp/cj-health.json
+          grep -q '"status":"ok"' /tmp/cj-health.json
+
+          code=$(curl -sS -o /tmp/cj-signup.json -w '%{http_code}' \
+            -X POST http://127.0.0.1:3001/api/auth/sign-up/email \
+            -H 'content-type: application/json' \
+            -d '{"email":"smoke@example.com","password":"SmokePass12!!","name":"Smoke"}')
+          echo "sign-up HTTP=$code"
+          cat /tmp/cj-signup.json || true
+          test "$code" = "400" -o "$code" = "403" -o "$code" = "422"
+
+          code=$(curl -sS -o /tmp/cj-contacts-admin.json -w '%{http_code}' \
+            http://127.0.0.1:3001/api/admin/contacts)
+          echo "admin contacts HTTP=$code"
+          test "$code" = "401"
+
+          code=$(curl -sS -o /tmp/cj-contact.json -w '%{http_code}' \
+            -X POST http://127.0.0.1:3001/api/public/contact \
+            -H 'content-type: application/json' \
+            -d '{"name":"Smoke User","email":"smoke.contact@ninhodacoruja.pt","phone":"912345678","message":"CI smoke contact","privacyConsent":true,"website":""}')
+          echo "contact HTTP=$code"
+          cat /tmp/cj-contact.json || true
+          test "$code" = "201" -o "$code" = "200"
+          echo "API smoke OK"
+
+      - name: Media upload smoke (presign → PUT → GET)
+        env:
+          COMPOSE_PROFILES: local
+        run: |
+          set -euo pipefail
+          COOKIE_JAR=/tmp/cj-smoke-cookies.txt
+          rm -f "$COOKIE_JAR"
+
+          code=$(curl -sS -c "$COOKIE_JAR" -b "$COOKIE_JAR" -o /tmp/cj-signin.json -w '%{http_code}' \
+            -X POST http://127.0.0.1:3001/api/auth/sign-in/email \
+            -H 'content-type: application/json' \
+            -d '{"email":"admin@corujinha.local","password":"CiComposeAdmin12!"}')
+          echo "sign-in HTTP=$code"
+          cat /tmp/cj-signin.json || true
+          test "$code" = "200"
+
+          NEW_PW='CiComposeAdmin99!'
+          code=$(curl -sS -c "$COOKIE_JAR" -b "$COOKIE_JAR" -o /tmp/cj-chpw.json -w '%{http_code}' \
+            -X POST http://127.0.0.1:3001/api/admin/me/change-password \
+            -H 'content-type: application/json' \
+            -d "{\"currentPassword\":\"CiComposeAdmin12!\",\"newPassword\":\"${NEW_PW}\"}")
+          echo "change-password HTTP=$code"
+          cat /tmp/cj-chpw.json || true
+          test "$code" = "200" -o "$code" = "201"
+
+          rm -f "$COOKIE_JAR"
+          code=$(curl -sS -c "$COOKIE_JAR" -b "$COOKIE_JAR" -o /tmp/cj-signin2.json -w '%{http_code}' \
+            -X POST http://127.0.0.1:3001/api/auth/sign-in/email \
+            -H 'content-type: application/json' \
+            -d "{\"email\":\"admin@corujinha.local\",\"password\":\"${NEW_PW}\"}")
+          echo "re-sign-in HTTP=$code"
+          cat /tmp/cj-signin2.json || true
+          test "$code" = "200"
+
+          code=$(curl -sS -c "$COOKIE_JAR" -b "$COOKIE_JAR" -o /tmp/cj-presign.json -w '%{http_code}' \
+            -X POST http://127.0.0.1:3001/api/admin/media/presign \
+            -H 'content-type: application/json' \
+            -d '{"contentType":"image/png","folder":"gallery"}')
+          echo "presign HTTP=$code"
+          cat /tmp/cj-presign.json
+          test "$code" = "201" -o "$code" = "200"
+
+          UPLOAD_URL=$(python3 -c 'import json; print(json.load(open("/tmp/cj-presign.json"))["uploadUrl"])')
+          KEY=$(python3 -c 'import json; print(json.load(open("/tmp/cj-presign.json"))["key"])')
+          echo "key=$KEY"
+
+          NETWORK=$(docker inspect -f '{{range $k, $_ := .NetworkSettings.Networks}}{{$k}}{{end}}' corujinha-api | head -n1)
+          test -n "$NETWORK"
+          printf '\x89PNG\r\n\x1a\n\x00\x00\x00\rIHDR\x00\x00\x00\x01\x00\x00\x00\x01\x08\x02\x00\x00\x00\x90wS\xde\x00\x00\x00\x0cIDATx\x9cc\xf8\x0f\x00\x00\x01\x01\x00\x05\x18\xd8N\x00\x00\x00\x00IEND\xaeB`\x82' > /tmp/cj-smoke.png
+
+          put_code=$(docker run --rm --network "$NETWORK" -v /tmp/cj-smoke.png:/smoke.png:ro curlimages/curl:8.12.1 \
+            -sS -o /dev/null -w '%{http_code}' \
+            -X PUT -H 'Content-Type: image/png' --data-binary @/smoke.png \
+            "$UPLOAD_URL" || echo 000)
+          echo "PUT HTTP=$put_code"
+          test "$put_code" = "200"
+
+          get_code=$(curl -sS -o /tmp/cj-get.png -w '%{http_code}' \
+            -H 'Host: corujinha-media.web.garage.localhost' \
+            "http://127.0.0.1:3902/${KEY}")
+          echo "GET website HTTP=$get_code"
+          test "$get_code" = "200"
+          test -s /tmp/cj-get.png
+          echo "Media upload smoke OK"
+
+      - name: Web smoke
+        env:
+          COMPOSE_PROFILES: local
+        run: |
+          set -euo pipefail
+          code=$(curl -sS -o /tmp/web-home.html -w '%{http_code}' -L http://127.0.0.1:3000/)
+          test "$code" = "200"
+          grep -qiE 'Corujinha|Apoio|Contact' /tmp/web-home.html
+          curl -sf http://127.0.0.1:3000/admin/login >/dev/null
+          curl -sf http://127.0.0.1:3000/privacidade >/dev/null
+          echo "Web smoke OK"
+
+      - name: Teardown
+        if: always()
+        env:
+          COMPOSE_PROFILES: local
+        run: |
+          docker compose \
+            -f docker-compose.yml \
+            -f docker-compose.prod.yml \
+            -f docker-compose.ci-smoke.yml \
+            down -v

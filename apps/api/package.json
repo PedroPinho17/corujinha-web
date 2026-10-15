@@ -8,8 +8,8 @@
     "start": "node dist/main.js",
     "start:prod": "node dist/main.js",
     "typecheck": "tsc --noEmit -p tsconfig.json",
-    "test": "vitest run",
-    "lint": "echo ok"
+    "test": "vitest run --coverage",
+    "lint": "eslint \"src/**/*.ts\""
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.840.0",
@@ -43,7 +43,10 @@
     "@types/multer": "^1.4.13",
     "@types/node": "^22.15.32",
     "@types/nodemailer": "^6.4.17",
+    "@vitest/coverage-v8": "4.1.11",
+    "eslint": "^9.36.0",
     "typescript": "^5.8.3",
+    "typescript-eslint": "^8.44.0",
     "vitest": "4.1.11"
   }
 }

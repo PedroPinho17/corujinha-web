@@ -1,0 +1,2 @@
+# Sem CVEs sem patch a ignorar neste momento.
+# Se o Trivy reportar FixedVersion vazio sem correção disponível, documentar aqui com data.
