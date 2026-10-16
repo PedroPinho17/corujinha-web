@@ -37,13 +37,15 @@
       "axios": "1.20.0",
       "adm-zip": "0.6.1",
       "proxy-addr": "2.0.8",
-      "postcss": "8.5.18",
+      "postcss": "8.5.30",
       "sharp": "0.35.5",
-      "multer": "2.3.0",
+      "multer": "2.4.0",
       "nodemailer": "10.0.9",
-      "fast-uri": "3.1.7",
-      "brace-expansion": "2.1.6",
-      "deepmerge-ts": "8.0.0"
+      "fast-uri": "3.1.8",
+      "brace-expansion": "2.1.7",
+      "deepmerge-ts": "8.0.0",
+      "qs": "6.16.1",
+      "next": "15.5.28"
     }
   }
 }

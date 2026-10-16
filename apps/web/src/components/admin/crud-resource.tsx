@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -54,7 +54,7 @@ export function CrudResourcePage({
     window.setTimeout(() => setToast(""), 3500);
   }
 
-  async function load() {
+  const load = useCallback(async () => {
     setLoading(true);
     setError("");
     try {
@@ -66,11 +66,11 @@ export function CrudResourcePage({
     } finally {
       setLoading(false);
     }
-  }
+  }, [endpoint]);
 
   useEffect(() => {
     load().catch(() => undefined);
-  }, [endpoint]);
+  }, [load]);
 
   function startCreate() {
     setEditing(null);
@@ -82,20 +82,23 @@ export function CrudResourcePage({
     setShowForm(true);
   }
 
-  function startEdit(row: Row) {
-    setEditing(row);
-    const base: Record<string, string | boolean> = {
-      [nameField]: String(row[nameField] ?? ""),
-      [bodyField]: String(row[bodyField] ?? ""),
-    };
-    for (const f of extraFields) {
-      base[f.key] = f.type === "checkbox" ? Boolean(row[f.key]) : String(row[f.key] ?? "");
-    }
-    setForm(base);
-    setTranslations({});
-    setShowTranslate(false);
-    setShowForm(true);
-  }
+  const startEdit = useCallback(
+    (row: Row) => {
+      setEditing(row);
+      const base: Record<string, string | boolean> = {
+        [nameField]: String(row[nameField] ?? ""),
+        [bodyField]: String(row[bodyField] ?? ""),
+      };
+      for (const f of extraFields) {
+        base[f.key] = f.type === "checkbox" ? Boolean(row[f.key]) : String(row[f.key] ?? "");
+      }
+      setForm(base);
+      setTranslations({});
+      setShowTranslate(false);
+      setShowForm(true);
+    },
+    [nameField, bodyField, extraFields],
+  );
 
   function cancelForm() {
     setShowForm(false);
@@ -133,39 +136,45 @@ export function CrudResourcePage({
     }
   }
 
-  async function toggleRow(id: string) {
-    setTogglingId(id);
-    try {
-      await adminFetch(`${endpoint}/${id}/toggle`, { method: "PATCH" });
-      await load();
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Erro ao alternar estado");
-    } finally {
-      setTogglingId(null);
-    }
-  }
+  const toggleRow = useCallback(
+    async (id: string) => {
+      setTogglingId(id);
+      try {
+        await adminFetch(`${endpoint}/${id}/toggle`, { method: "PATCH" });
+        await load();
+      } catch (err) {
+        setError(err instanceof Error ? err.message : "Erro ao alternar estado");
+      } finally {
+        setTogglingId(null);
+      }
+    },
+    [endpoint, load],
+  );
 
-  async function move(id: string, direction: -1 | 1) {
-    const idx = rows.findIndex((r) => r.id === id);
-    if (idx < 0) return;
-    const swap = idx + direction;
-    if (swap < 0 || swap >= rows.length) return;
-    const next = [...rows];
-    const tmp = next[idx];
-    next[idx] = next[swap];
-    next[swap] = tmp;
-    setRows(next);
-    try {
-      await adminFetch(`${endpoint}/reorder`, {
-        method: "POST",
-        body: JSON.stringify({ ids: next.map((r) => r.id) }),
-      });
-      await load();
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Erro ao reordenar");
-      await load();
-    }
-  }
+  const move = useCallback(
+    async (id: string, direction: -1 | 1) => {
+      const idx = rows.findIndex((r) => r.id === id);
+      if (idx < 0) return;
+      const swap = idx + direction;
+      if (swap < 0 || swap >= rows.length) return;
+      const next = [...rows];
+      const tmp = next[idx];
+      next[idx] = next[swap];
+      next[swap] = tmp;
+      setRows(next);
+      try {
+        await adminFetch(`${endpoint}/reorder`, {
+          method: "POST",
+          body: JSON.stringify({ ids: next.map((r) => r.id) }),
+        });
+        await load();
+      } catch (err) {
+        setError(err instanceof Error ? err.message : "Erro ao reordenar");
+        await load();
+      }
+    },
+    [rows, endpoint, load],
+  );
 
   async function confirmRemove() {
     if (!pendingDelete) return;
@@ -301,7 +310,7 @@ export function CrudResourcePage({
     );
 
     return cols;
-  }, [imageField, nameField, bodyField, togglingId]);
+  }, [imageField, nameField, bodyField, togglingId, move, startEdit, toggleRow]);
 
   return (
     <div className="space-y-4">
