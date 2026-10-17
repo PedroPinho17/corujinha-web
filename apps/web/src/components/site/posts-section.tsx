@@ -34,7 +34,7 @@ function PostImage({ post, className }: { post: PostItem; className?: string }) 
   return (
     <div
       className={cn(
-        "flex h-full w-full items-center justify-center bg-gradient-to-br from-pink-100 via-orange-50 to-blue-100",
+        "flex h-full w-full items-center justify-center bg-gradient-to-br from-pink-100 via-orange-50 to-purple-100",
         className,
       )}
     >
@@ -197,9 +197,9 @@ export function PostsSection({
 
   return (
     <section className="relative overflow-hidden py-20 md:py-24">
-      <div className="pointer-events-none absolute inset-0 bg-gradient-to-br from-blue-50/80 via-pink-50/50 to-orange-50/80" />
+      <div className="pointer-events-none absolute inset-0 bg-gradient-to-br from-purple-50/80 via-pink-50/50 to-orange-50/80" />
       <div className="pointer-events-none absolute -left-24 top-20 h-72 w-72 rounded-full bg-pink/5 blur-3xl" />
-      <div className="pointer-events-none absolute -right-24 bottom-10 h-72 w-72 rounded-full bg-blue/5 blur-3xl" />
+      <div className="pointer-events-none absolute -right-24 bottom-10 h-72 w-72 rounded-full bg-purple/5 blur-3xl" />
 
       <div className="relative mx-auto max-w-7xl px-4">
         <SectionHeaderBlock />
@@ -220,9 +220,9 @@ export function PostsSection({
           <div className="text-center">
             <Link
               href="/noticias"
-              className="inline-flex items-center gap-2 rounded-2xl bg-gradient-to-r from-blue via-pink to-pink px-8 py-3.5 text-base font-semibold text-white shadow-lg shadow-pink/20 transition hover:scale-[1.03] hover:shadow-xl hover:shadow-pink/30"
+              className="inline-flex items-center gap-2 rounded-2xl bg-pink px-8 py-3.5 text-base font-semibold text-white shadow-lg shadow-pink/20 transition hover:scale-[1.03] hover:bg-pink-dark hover:shadow-xl hover:shadow-pink/30"
             >
-              Ver Todas as Novidades
+              Ver todas as novidades
               <ArrowRight className="h-5 w-5" />
             </Link>
           </div>
@@ -235,7 +235,7 @@ export function PostsSection({
 export function PostsPageSection({ posts }: { posts: PostItem[] }) {
   return (
     <section className="relative overflow-hidden py-16 md:py-24">
-      <div className="pointer-events-none absolute inset-0 bg-gradient-to-br from-blue-50/80 via-pink-50/50 to-orange-50/80" />
+      <div className="pointer-events-none absolute inset-0 bg-gradient-to-br from-purple-50/80 via-pink-50/50 to-orange-50/80" />
       <div className="relative mx-auto max-w-5xl px-4">
         <SectionHeaderBlock large />
 
@@ -259,9 +259,9 @@ export function PostsPageSection({ posts }: { posts: PostItem[] }) {
 function SectionHeaderBlock({ large }: { large?: boolean }) {
   return (
     <div className="mb-12 text-center md:mb-14">
-      <Badge variant="blue" className="mb-5 shadow-sm">
+      <Badge variant="pink" className="mb-5 shadow-sm">
         <Megaphone className="h-4 w-4" />
-        Novidades e Anúncios
+        Novidades e anúncios
       </Badge>
       <h2
         className={cn(

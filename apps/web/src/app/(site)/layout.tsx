@@ -29,6 +29,7 @@ export default async function SiteLayout({ children }: { children: React.ReactNo
         tagline={content.footer.tagline}
         phone={settings?.contactPhone ?? content.contact.phone}
         email={settings?.contactEmail ?? content.contact.emailSecondary}
+        whatsapp={process.env.NEXT_PUBLIC_WHATSAPP_PHONE ?? settings?.contactPhone ?? content.contact.phone}
         links={content.footer.quickLinks}
       />
     </div>
