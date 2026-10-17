@@ -7,14 +7,14 @@ const badgeVariants = cva(
   {
     variants: {
       variant: {
-        blue: "bg-blue-100 text-blue",
+        blue: "bg-purple-100 text-purple",
         pink: "bg-pink text-white",
         orange: "bg-orange/10 text-orange",
         outline: "border border-ink/10 bg-white text-ink",
       },
     },
     defaultVariants: {
-      variant: "blue",
+      variant: "pink",
     },
   },
 );

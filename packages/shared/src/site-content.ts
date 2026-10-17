@@ -321,7 +321,7 @@ export const DEFAULT_SITE_CONTENT: SiteContent = {
       { label: "Sobre", href: "/about" },
       { label: "Galeria", href: "/galeria" },
       { label: "Equipa", href: "/equipa" },
-      { label: "Notícias", href: "/noticias" },
+      { label: "Novidades", href: "/noticias" },
       { label: "Contacto", href: "/#contact" },
     ],
   },

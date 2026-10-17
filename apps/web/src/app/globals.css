@@ -5,9 +5,10 @@
   --pink-dark: #be185d;
   --orange: #ea580c;
   --orange-dark: #c2410c;
-  --blue: #2563eb;
+  --purple: #7c3aed;
+  --blue: #7c3aed; /* alias legado → roxo da marca */
   --ink: #111827;
-  --muted: #4b5563;
+  --muted: #374151;
   --paper: #ffffff;
   --blush: #fdf2f8;
   --peach: #fff7ed;
@@ -18,6 +19,7 @@
   --color-pink-dark: var(--pink-dark);
   --color-orange: var(--orange);
   --color-orange-dark: var(--orange-dark);
+  --color-purple: var(--purple);
   --color-blue: var(--blue);
   --color-ink: var(--ink);
   --color-muted: var(--muted);
