@@ -297,21 +297,21 @@ export const DEFAULT_SITE_CONTENT: SiteContent = {
     testimonials: [
       {
         quote:
-          "O acompanhamento é próximo e a minha filha ganhou confiança nas aulas. Sentimos sempre disponibilidade para falar.",
-        author: "Ana M.",
-        role: "Mãe — Lobão",
+          "Local que inspira confiança, com pessoas responsáveis e motivadas pelo que fazem, onde as crianças podem estar em segurança, estudar e conviver. Recomendo 5⭐️⭐️⭐️⭐️⭐️",
+        author: "Sandra Gomes",
+        role: "no Google",
       },
       {
         quote:
-          "A preparação para os exames fez a diferença. Ambiente acolhedor e professores atentos.",
-        author: "Ricardo S.",
-        role: "Pai — São João de Ver",
+          "Grande empresa, bom atendimento, exelente como tratam as crianças, os meus filhos adoram ir para lá. Parabens pelo vosso exelente trabalho ♥️",
+        author: "Renata Moreira Moreira",
+        role: "no Google",
       },
       {
         quote:
-          "Desde as férias até ao apoio semanal, a Corujinha tornou-se parte da rotina da nossa família.",
-        author: "Carla P.",
-        role: "Mãe",
+          "Uma sala de estudos de excelência. Cheia de carinho, atenção, cuidado, um ambiente bom e sempre disponivel. As crianças adoram!",
+        author: "Alzira",
+        role: "no Google",
       },
     ],
   },
@@ -326,6 +326,14 @@ export const DEFAULT_SITE_CONTENT: SiteContent = {
     ],
   },
 };
+
+const PLACEHOLDER_TESTIMONIAL_AUTHORS = new Set(["Ana M.", "Ricardo S.", "Carla P."]);
+
+function resolveTestimonials(fromDb?: Testimonial[] | null): Testimonial[] {
+  const list = fromDb ?? DEFAULT_SITE_CONTENT.social.testimonials;
+  const stillPlaceholder = list.some((t) => PLACEHOLDER_TESTIMONIAL_AUTHORS.has(t.author));
+  return stillPlaceholder ? DEFAULT_SITE_CONTENT.social.testimonials : list;
+}
 
 /** Deep-merge partial CMS content with defaults so new fields never break old DB JSON. */
 export function mergeSiteContent(partial?: Partial<SiteContent> | null): SiteContent {
@@ -363,7 +371,7 @@ export function mergeSiteContent(partial?: Partial<SiteContent> | null): SiteCon
       ...DEFAULT_SITE_CONTENT.social,
       ...p.social,
       faq: p.social?.faq ?? DEFAULT_SITE_CONTENT.social.faq,
-      testimonials: p.social?.testimonials ?? DEFAULT_SITE_CONTENT.social.testimonials,
+      testimonials: resolveTestimonials(p.social?.testimonials),
     },
     footer: {
       ...DEFAULT_SITE_CONTENT.footer,

@@ -92,6 +92,28 @@ async function main() {
       where: { id: settings.id },
       data: { content: DEFAULT_SITE_CONTENT as object },
     });
+  } else {
+    // Replace placeholder testimonials (Ana M. / Ricardo S. / Carla P.) with real Google reviews.
+    const content = settings.content as {
+      social?: { testimonials?: { author?: string }[] };
+    };
+    const authors = (content.social?.testimonials ?? []).map((t) => t.author ?? "");
+    const hasPlaceholders = authors.some((a) =>
+      ["Ana M.", "Ricardo S.", "Carla P."].includes(a),
+    );
+    if (hasPlaceholders) {
+      const next = {
+        ...(content as object),
+        social: {
+          ...(content.social ?? {}),
+          testimonials: DEFAULT_SITE_CONTENT.social.testimonials,
+        },
+      };
+      await prisma.siteSettings.update({
+        where: { id: settings.id },
+        data: { content: next as object },
+      });
+    }
   }
 
   if ((await prisma.teamMember.count()) === 0) {

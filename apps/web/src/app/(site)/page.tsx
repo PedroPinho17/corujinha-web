@@ -580,7 +580,13 @@ export default async function HomePage() {
                       className="flex h-11 w-11 items-center justify-center rounded-full bg-gradient-to-br from-pink to-orange text-sm font-bold text-white"
                       aria-hidden
                     >
-                      {t.author.charAt(0)}
+                      {t.author
+                        .split(/\s+/)
+                        .filter(Boolean)
+                        .slice(0, 2)
+                        .map((w) => w[0])
+                        .join("")
+                        .toUpperCase()}
                     </span>
                     <div>
                       <cite className="not-italic font-semibold text-ink">{t.author}</cite>
