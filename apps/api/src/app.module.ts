@@ -18,6 +18,7 @@ import { GalleryModule } from "./gallery/gallery.module";
 import { DashboardModule } from "./dashboard/dashboard.module";
 import { UsersModule } from "./users/users.module";
 import { SettingsModule } from "./settings/settings.module";
+import { GooglePlacesModule } from "./google-places/google-places.module";
 
 @Module({
   imports: [
@@ -44,6 +45,7 @@ import { SettingsModule } from "./settings/settings.module";
     DashboardModule,
     UsersModule,
     SettingsModule,
+    GooglePlacesModule,
   ],
 })
 export class AppModule {}
