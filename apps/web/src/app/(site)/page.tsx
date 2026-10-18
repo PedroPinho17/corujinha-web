@@ -43,6 +43,52 @@ async function getSettings() {
   }
 }
 
+type GooglePlaceSummary = {
+  rating: number;
+  userRatingCount: number;
+  googleMapsUri: string;
+  ratingLabel?: string;
+  reviewCountLabel?: string;
+  attribution?: string;
+};
+
+async function getGooglePlaceSummary(): Promise<GooglePlaceSummary | null> {
+  try {
+    const res = await fetch(`${api}/api/public/google-place`, { next: { revalidate: 86_400 } });
+    if (res.ok) {
+      const data = (await res.json()) as Partial<GooglePlaceSummary> | null;
+      if (
+        data &&
+        typeof data.rating === "number" &&
+        typeof data.userRatingCount === "number" &&
+        typeof data.googleMapsUri === "string"
+      ) {
+        return data as GooglePlaceSummary;
+      }
+    }
+  } catch {
+    /* API em baixo — fallback abaixo */
+  }
+
+  const ratingRaw = process.env.NEXT_PUBLIC_GOOGLE_RATING?.trim();
+  const countRaw = process.env.NEXT_PUBLIC_GOOGLE_REVIEW_COUNT?.trim();
+  if (!ratingRaw || !countRaw) return null;
+  const rating = Number(ratingRaw);
+  const userRatingCount = Number(countRaw);
+  if (!Number.isFinite(rating) || !Number.isFinite(userRatingCount)) return null;
+
+  return {
+    rating,
+    userRatingCount,
+    googleMapsUri:
+      process.env.NEXT_PUBLIC_GOOGLE_PLACE_URL?.trim() ||
+      "https://www.google.com/maps/place/Corujinha/@40.9678744,-8.4903562,17z/data=!3m1!4b1!4m6!3m5!1s0xd247f83484b6231:0x9c3013157ecde0bd!8m2!3d40.9678744!4d-8.4903562!16s%2Fg%2F11kc28q8g1",
+    ratingLabel: rating.toFixed(1).replace(".", ","),
+    reviewCountLabel: userRatingCount === 1 ? "1 avaliação" : `${userRatingCount} avaliações`,
+    attribution: "Avaliações do Google",
+  };
+}
+
 type BrandTone = "pink" | "orange" | "purple";
 
 function brandTone(raw: "pink" | "orange" | "blue"): BrandTone {
@@ -133,7 +179,11 @@ function GradientWord({ children }: { children: ReactNode }) {
 }
 
 export default async function HomePage() {
-  const [data, settings] = await Promise.all([getHome(), getSettings()]);
+  const [data, settings, googlePlace] = await Promise.all([
+    getHome(),
+    getSettings(),
+    getGooglePlaceSummary(),
+  ]);
   const content = mergeSiteContent(settings?.content as SiteContent | null);
   const team = (data?.team ?? []) as TeamItem[];
   const posts = (data?.posts ?? []) as PostItem[];
@@ -149,10 +199,20 @@ export default async function HomePage() {
   const phone = settings?.contactPhone ?? contact.phone;
 
   const googlePlaceUrl =
-    process.env.NEXT_PUBLIC_GOOGLE_PLACE_URL ??
+    googlePlace?.googleMapsUri ||
+    process.env.NEXT_PUBLIC_GOOGLE_PLACE_URL ||
     "https://www.google.com/maps/place/Corujinha/@40.9678744,-8.4903562,17z/data=!3m1!4b1!4m6!3m5!1s0xd247f83484b6231:0x9c3013157ecde0bd!8m2!3d40.9678744!4d-8.4903562!16s%2Fg%2F11kc28q8g1";
-  const googleRating = process.env.NEXT_PUBLIC_GOOGLE_RATING?.trim() || null;
-  const googleReviewCount = process.env.NEXT_PUBLIC_GOOGLE_REVIEW_COUNT?.trim() || null;
+  const googleRatingLabel =
+    googlePlace?.ratingLabel ??
+    (googlePlace ? googlePlace.rating.toFixed(1).replace(".", ",") : null);
+  const googleReviewCountLabel =
+    googlePlace?.reviewCountLabel ??
+    (googlePlace
+      ? googlePlace.userRatingCount === 1
+        ? "1 avaliação"
+        : `${googlePlace.userRatingCount} avaliações`
+      : null);
+  const googleAttribution = googlePlace?.attribution ?? "Avaliações do Google";
 
   // Hero = 1.ª foto; pré-visualização começa na 2.ª para não repetir a mesma imagem
   const heroItem = gallery[0] ?? null;
@@ -561,12 +621,30 @@ export default async function HomePage() {
               <h2 className="font-display text-3xl font-bold md:text-4xl">
                 {social.testimonialsTitle} <GradientWord>as famílias</GradientWord>
               </h2>
-              {googleRating && googleReviewCount ? (
-                <p className="mt-3 flex items-center justify-center gap-2 text-muted">
-                  <Star className="h-4 w-4 fill-orange text-orange" aria-hidden />
-                  <span className="font-semibold text-ink">{googleRating}</span>
-                  no Google · {googleReviewCount} avaliações
-                </p>
+              {googleRatingLabel && googleReviewCountLabel ? (
+                <div className="mt-3 space-y-1">
+                  <p className="flex flex-wrap items-center justify-center gap-x-2 gap-y-1 text-muted">
+                    <Star className="h-4 w-4 fill-orange text-orange" aria-hidden />
+                    <a
+                      href={googlePlaceUrl}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="font-semibold text-ink transition hover:text-pink"
+                    >
+                      {googleRatingLabel}
+                    </a>
+                    <span aria-hidden>·</span>
+                    <a
+                      href={googlePlaceUrl}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="hover:text-pink"
+                    >
+                      {googleReviewCountLabel} no Google
+                    </a>
+                  </p>
+                  <p className="text-xs text-muted/80">{googleAttribution}</p>
+                </div>
               ) : social.testimonialsSubtitle ? (
                 <p className="mx-auto mt-3 max-w-2xl text-muted">{social.testimonialsSubtitle}</p>
               ) : null}

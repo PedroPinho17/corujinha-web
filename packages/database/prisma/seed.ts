@@ -94,7 +94,7 @@ async function main() {
     });
   } else {
     // Replace placeholder testimonials (Ana M. / Ricardo S. / Carla P.) with real Google reviews.
-    // Also strip trailing "Recomendo 5⭐…" from Sandra (stars already shown on the card).
+    // Strip trailing "5⭐…" from Sandra but keep «Recomendo.» (stars already shown on the card).
     const content = settings.content as {
       social?: { testimonials?: { author?: string; quote?: string }[] };
     };
@@ -104,17 +104,28 @@ async function main() {
       ["Ana M.", "Ricardo S.", "Carla P."].includes(a),
     );
     const starSuffix = /\s*Recomendo\s*5⭐️?(?:⭐️?){0,4}\s*$/u;
-    const needsStarTrim = testimonials.some(
-      (t) => t.author === "Sandra Gomes" && starSuffix.test(t.quote ?? ""),
-    );
-    if (hasPlaceholders || needsStarTrim) {
+    const missingRecomendo =
+      /\s*estudar e conviver\.?\s*$/u;
+    const needsSandraFix = testimonials.some((t) => {
+      if (t.author !== "Sandra Gomes" || !t.quote) return false;
+      return starSuffix.test(t.quote) || (missingRecomendo.test(t.quote) && !/Recomendo/i.test(t.quote));
+    });
+    if (hasPlaceholders || needsSandraFix) {
       const nextTestimonials = hasPlaceholders
         ? DEFAULT_SITE_CONTENT.social.testimonials
-        : testimonials.map((t) =>
-            t.author === "Sandra Gomes" && t.quote
-              ? { ...t, quote: t.quote.replace(starSuffix, "").trimEnd() }
-              : t,
-          );
+        : testimonials.map((t) => {
+            if (t.author !== "Sandra Gomes" || !t.quote) return t;
+            if (starSuffix.test(t.quote)) {
+              return { ...t, quote: t.quote.replace(starSuffix, " Recomendo.").trimEnd() };
+            }
+            if (missingRecomendo.test(t.quote) && !/Recomendo/i.test(t.quote)) {
+              return {
+                ...t,
+                quote: t.quote.replace(missingRecomendo, " estudar e conviver. Recomendo."),
+              };
+            }
+            return t;
+          });
       const next = {
         ...(content as object),
         social: {
