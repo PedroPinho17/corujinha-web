@@ -16,13 +16,13 @@ async function getSettings() {
 const toneCard = {
   pink: "from-pink-50 to-pink-100",
   orange: "from-orange-50 to-orange-100",
-  blue: "from-blue-50 to-blue-100",
+  blue: "from-purple-50 to-purple-100",
 } as const;
 
 const toneDot = {
   pink: "bg-pink",
   orange: "bg-orange",
-  blue: "bg-blue",
+  blue: "bg-purple",
 } as const;
 
 export default async function AboutPage() {

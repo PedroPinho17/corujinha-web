@@ -297,7 +297,7 @@ export const DEFAULT_SITE_CONTENT: SiteContent = {
     testimonials: [
       {
         quote:
-          "Local que inspira confiança, com pessoas responsáveis e motivadas pelo que fazem, onde as crianças podem estar em segurança, estudar e conviver. Recomendo 5⭐️⭐️⭐️⭐️⭐️",
+          "Local que inspira confiança, com pessoas responsáveis e motivadas pelo que fazem, onde as crianças podem estar em segurança, estudar e conviver.",
         author: "Sandra Gomes",
         role: "no Google",
       },
