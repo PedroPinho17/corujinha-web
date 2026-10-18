@@ -150,12 +150,14 @@ export default async function HomePage() {
 
   const googlePlaceUrl =
     process.env.NEXT_PUBLIC_GOOGLE_PLACE_URL ??
-    "https://www.google.com/maps/search/?api=1&query=Corujinha+Centro+de+Apoio+Escolar+Lob%C3%A3o";
+    "https://www.google.com/maps/place/Corujinha/@40.9678744,-8.4903562,17z/data=!3m1!4b1!4m6!3m5!1s0xd247f83484b6231:0x9c3013157ecde0bd!8m2!3d40.9678744!4d-8.4903562!16s%2Fg%2F11kc28q8g1";
   const googleRating = process.env.NEXT_PUBLIC_GOOGLE_RATING?.trim() || null;
   const googleReviewCount = process.env.NEXT_PUBLIC_GOOGLE_REVIEW_COUNT?.trim() || null;
 
-  const heroPhoto = gallery[0] ? mediaUrl(gallery[0].imageKey) : null;
-  const galleryPreview = gallery.slice(0, 6);
+  // Hero = 1.ª foto; pré-visualização começa na 2.ª para não repetir a mesma imagem
+  const heroItem = gallery[0] ?? null;
+  const heroPhoto = heroItem ? mediaUrl(heroItem.imageKey) : null;
+  const galleryPreview = gallery.length > 1 ? gallery.slice(1, 7) : gallery.slice(0, 6);
 
   const newsItems: NewsItem[] = [
     ...posts.map((p) => ({
@@ -209,8 +211,8 @@ export default async function HomePage() {
   return (
     <>
       {/* Hero + cartões flutuantes */}
-      <section id="home" className="relative overflow-hidden bg-gradient-to-b from-pink-50 via-white to-white">
-        <div className="mx-auto max-w-6xl px-4 pb-8 pt-12 md:pb-4 md:pt-16">
+      <section id="home" className="relative bg-gradient-to-b from-pink-50 via-white to-white">
+        <div className="mx-auto max-w-6xl px-4 pb-8 pt-12 md:pb-14 md:pt-16">
           <div className="grid items-center gap-10 md:grid-cols-2 md:gap-14">
             <div className="space-y-6 animate-rise">
               <h1 className="font-display text-4xl font-bold leading-[1.15] text-ink md:text-5xl lg:text-6xl">
@@ -243,7 +245,7 @@ export default async function HomePage() {
                   // eslint-disable-next-line @next/next/no-img-element
                   <img
                     src={heroPhoto}
-                    alt={gallery[0]?.alt || "Centro Corujinha — espaço e atividades"}
+                    alt={heroItem?.alt || "Centro Corujinha — espaço e atividades"}
                     className="aspect-[4/3] w-full rounded-[1.5rem] object-cover"
                   />
                 ) : (
@@ -264,7 +266,7 @@ export default async function HomePage() {
           </div>
 
           {/* Cartões a flutuar sob o hero */}
-          <div className="relative z-10 mt-10 grid gap-4 md:-mb-10 md:mt-14 md:grid-cols-3 md:gap-5">
+          <div className="relative z-10 mt-10 grid gap-4 md:mt-14 md:grid-cols-3 md:gap-5">
             {hero.features.map((f, i) => {
               const Icon = featureIcons[i] ?? BookOpen;
               const tone = brandTone(f.tone);

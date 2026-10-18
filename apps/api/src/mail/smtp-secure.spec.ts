@@ -1,7 +1,11 @@
-import { afterEach, describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { smtpSecure } from "./smtp-secure";
 
 describe("smtpSecure", () => {
+  beforeEach(() => {
+    delete process.env.SMTP_SECURE;
+  });
+
   afterEach(() => {
     delete process.env.SMTP_SECURE;
   });
