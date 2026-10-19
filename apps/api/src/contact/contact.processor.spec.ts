@@ -50,6 +50,7 @@ describe("ContactProcessor", () => {
   });
 
   it("sends GENERAL and ENROLLMENT mail and marks SENT", async () => {
+    process.env.NEXT_PUBLIC_APP_URL = "https://corujinha.example";
     const base = {
       id: "1",
       erasedAt: null,
@@ -69,15 +70,48 @@ describe("ContactProcessor", () => {
     expect(mail.send).toHaveBeenCalledWith(
       expect.objectContaining({ subject: expect.stringContaining("Contacto") }),
     );
+    const generalHtml = mail.send.mock.calls[0][0].html as string;
+    expect(generalHtml).toContain("https://corujinha.example/logo.webp");
+    expect(generalHtml).toContain("Centro de Apoio Escolar Corujinha");
+    expect(generalHtml).toContain("Nova mensagem de contacto");
+    expect(generalHtml).toContain("Ana");
 
     prisma.contactMessage.findUnique.mockResolvedValue({ ...base, kind: "ENROLLMENT" });
     await processor.process({ data: { contactId: "1" } } as never);
     expect(mail.send).toHaveBeenCalledWith(
       expect.objectContaining({ subject: expect.stringContaining("inscrição") }),
     );
+    const enrollHtml = mail.send.mock.calls[1][0].html as string;
+    expect(enrollHtml).toContain("/logo.webp");
+    expect(enrollHtml).toContain("Pedido de inscrição");
     expect(prisma.contactMessage.update).toHaveBeenCalledWith(
       expect.objectContaining({ data: { status: "SENT" } }),
     );
+  });
+
+  it("escapes user content in branded HTML body", async () => {
+    process.env.NEXT_PUBLIC_APP_URL = "https://corujinha.example";
+    prisma.contactMessage.findUnique.mockResolvedValue({
+      id: "1",
+      erasedAt: null,
+      kind: "GENERAL",
+      name: `<img src=x onerror=alert(1)>`,
+      email: "a@b.com",
+      phone: null,
+      message: `ola <b>mundo</b>`,
+      privacyConsent: true,
+      subject: null,
+      schoolYear: null,
+      location: null,
+    });
+    mail.send.mockResolvedValue(undefined);
+    prisma.contactMessage.update.mockResolvedValue({});
+    await processor.process({ data: { contactId: "1" } } as never);
+    const html = mail.send.mock.calls[0][0].html as string;
+    expect(html).not.toContain("<img src=x");
+    expect(html).toContain("&lt;img");
+    expect(html).toContain("&lt;b&gt;mundo&lt;/b&gt;");
+    expect(html).toContain("Centro de Apoio Escolar Corujinha");
   });
 
   it("marks FAILED and rethrows on mail error", async () => {

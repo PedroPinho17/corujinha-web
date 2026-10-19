@@ -1,5 +1,6 @@
 import Image from "next/image";
 import { DEFAULT_SITE_CONTENT, type SiteContent } from "@/lib/site-content";
+import { mediaUrl } from "@/lib/utils";
 
 const api = process.env.INTERNAL_API_URL ?? "http://localhost:3001";
 
@@ -52,7 +53,7 @@ export default async function AboutPage() {
             <div className="relative">
               <div className="absolute inset-0 rotate-3 rounded-2xl bg-gradient-to-br from-pink-400 to-orange-400" />
               <Image
-                src={about.founderImagePath || "/Vera.webp"}
+                src={mediaUrl(about.founderImagePath) || "/Vera.webp"}
                 alt={about.founderName}
                 width={480}
                 height={560}

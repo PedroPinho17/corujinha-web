@@ -6,11 +6,13 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { adminFetch } from "@/lib/admin-api";
 
+type UserRole = "ADMIN" | "EDITOR";
+
 type User = {
   id: string;
   name: string;
   email: string;
-  role: string;
+  role: UserRole | string;
   mustChangePassword: boolean;
 };
 
@@ -19,7 +21,9 @@ export default function AdminUsersPage() {
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [role, setRole] = useState<UserRole>("EDITOR");
   const [error, setError] = useState("");
+  const [saving, setSaving] = useState(false);
 
   async function load() {
     setRows(await adminFetch<User[]>("/api/admin/users"));
@@ -31,65 +35,144 @@ export default function AdminUsersPage() {
 
   async function create(e: React.FormEvent) {
     e.preventDefault();
-    await adminFetch("/api/admin/users", {
-      method: "POST",
-      body: JSON.stringify({ name, email, password, role: "EDITOR", mustChangePassword: true }),
-    });
-    setName("");
-    setEmail("");
-    setPassword("");
-    await load();
+    setSaving(true);
+    setError("");
+    try {
+      await adminFetch("/api/admin/users", {
+        method: "POST",
+        body: JSON.stringify({
+          name,
+          email,
+          password,
+          role,
+          mustChangePassword: true,
+        }),
+      });
+      setName("");
+      setEmail("");
+      setPassword("");
+      setRole("EDITOR");
+      await load();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Erro ao criar utilizador");
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  async function setUserRole(id: string, nextRole: UserRole) {
+    const user = rows.find((r) => r.id === id);
+    if (!user) return;
+    setError("");
+    try {
+      await adminFetch(`/api/admin/users/${id}`, {
+        method: "PUT",
+        body: JSON.stringify({
+          name: user.name,
+          email: user.email,
+          role: nextRole,
+          mustChangePassword: user.mustChangePassword,
+        }),
+      });
+      await load();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Erro ao atualizar papel");
+    }
   }
 
   async function remove(id: string) {
     if (!confirm("Apagar utilizador?")) return;
-    await adminFetch(`/api/admin/users/${id}`, { method: "DELETE" });
-    await load();
+    setError("");
+    try {
+      await adminFetch(`/api/admin/users/${id}`, { method: "DELETE" });
+      await load();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Erro ao apagar");
+    }
   }
 
   return (
-    <div>
-      <h1 className="font-display text-3xl text-sky-deep">Utilizadores</h1>
-      {error && <p className="mt-2 text-sm text-coral">{error}</p>}
-      <form onSubmit={create} className="mt-8 max-w-xl space-y-3 rounded-2xl bg-white p-5 ring-1 ring-ink/5">
-        <div>
-          <Label>Nome</Label>
-          <Input value={name} onChange={(e) => setName(e.target.value)} required />
+    <div className="max-w-3xl space-y-6">
+      <div>
+        <h1 className="text-2xl font-bold text-slate-900">Utilizadores</h1>
+        <p className="mt-1 text-sm text-slate-500">
+          Cria editores ou administradores do backoffice. A password inicial deve ter pelo menos 12
+          caracteres.
+        </p>
+      </div>
+      {error && <p className="text-sm text-red-600">{error}</p>}
+
+      <form
+        onSubmit={create}
+        className="space-y-4 rounded-2xl bg-white p-5 shadow-sm ring-1 ring-slate-100"
+      >
+        <h2 className="text-base font-semibold text-slate-800">Novo utilizador</h2>
+        <div className="grid gap-3 sm:grid-cols-2">
+          <div>
+            <Label>Nome</Label>
+            <Input value={name} onChange={(e) => setName(e.target.value)} required />
+          </div>
+          <div>
+            <Label>Email</Label>
+            <Input type="email" value={email} onChange={(e) => setEmail(e.target.value)} required />
+          </div>
+          <div>
+            <Label>Password inicial</Label>
+            <Input
+              type="password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              minLength={12}
+              required
+            />
+          </div>
+          <div>
+            <Label htmlFor="role">Papel</Label>
+            <select
+              id="role"
+              value={role}
+              onChange={(e) => setRole(e.target.value as UserRole)}
+              className="flex h-10 w-full rounded-md border border-slate-200 bg-white px-3 text-sm text-slate-800 outline-none focus:border-pink-400 focus:ring-2 focus:ring-pink-100"
+            >
+              <option value="EDITOR">Editor — gere conteúdo</option>
+              <option value="ADMIN">Admin — acesso total (utilizadores)</option>
+            </select>
+          </div>
         </div>
-        <div>
-          <Label>Email</Label>
-          <Input type="email" value={email} onChange={(e) => setEmail(e.target.value)} required />
-        </div>
-        <div>
-          <Label>Password inicial</Label>
-          <Input
-            type="password"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            minLength={8}
-            required
-          />
-        </div>
-        <Button type="submit">Criar EDITOR</Button>
+        <Button type="submit" disabled={saving}>
+          {saving ? "A criar…" : role === "ADMIN" ? "Criar administrador" : "Criar editor"}
+        </Button>
       </form>
-      <ul className="mt-8 space-y-2">
+
+      <ul className="space-y-2">
         {rows.map((u) => (
           <li
             key={u.id}
-            className="flex items-center justify-between rounded-xl bg-white px-4 py-3 ring-1 ring-ink/5"
+            className="flex flex-wrap items-center justify-between gap-3 rounded-xl bg-white px-4 py-3 shadow-sm ring-1 ring-slate-100"
           >
-            <div>
-              <p className="font-medium">
-                {u.name} · {u.email}
+            <div className="min-w-0">
+              <p className="font-medium text-slate-900">
+                {u.name} · <span className="font-normal text-slate-600">{u.email}</span>
               </p>
-              <p className="text-xs text-muted">
-                {u.role}
-                {u.mustChangePassword ? " · deve mudar password" : ""}
+              <p className="mt-0.5 text-xs text-slate-500">
+                {u.mustChangePassword ? "Deve mudar a password no próximo login · " : null}
+                Papel atual: <strong>{u.role}</strong>
               </p>
             </div>
-            <Button size="sm" variant="outline" onClick={() => remove(u.id)}>
-              Apagar
-            </Button>
+            <div className="flex flex-wrap items-center gap-2">
+              <select
+                aria-label={`Papel de ${u.name}`}
+                value={u.role === "ADMIN" ? "ADMIN" : "EDITOR"}
+                onChange={(e) => void setUserRole(u.id, e.target.value as UserRole)}
+                className="h-9 rounded-md border border-slate-200 bg-white px-2 text-xs font-medium text-slate-700 outline-none focus:border-pink-400"
+              >
+                <option value="EDITOR">Editor</option>
+                <option value="ADMIN">Admin</option>
+              </select>
+              <Button size="sm" variant="outline" onClick={() => void remove(u.id)}>
+                Apagar
+              </Button>
+            </div>
           </li>
         ))}
       </ul>

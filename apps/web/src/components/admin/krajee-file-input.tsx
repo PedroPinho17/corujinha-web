@@ -15,6 +15,8 @@ type Props = {
   optional?: boolean;
   hint?: string;
   className?: string;
+  /** Larger preview area (e.g. site hero / founder). */
+  size?: "default" | "large";
 };
 
 /**
@@ -30,7 +32,9 @@ export function KrajeeFileInput({
   optional = true,
   hint,
   className,
+  size = "default",
 }: Props) {
+  const tall = size === "large";
   const inputId = useId();
   const inputRef = useRef<HTMLInputElement>(null);
   const [previewName, setPreviewName] = useState<string | null>(null);
@@ -124,10 +128,18 @@ export function KrajeeFileInput({
       {!displayUrl && !isPdf ? (
         <label
           htmlFor={inputId}
-          className="group flex min-h-[7.5rem] w-full cursor-pointer flex-col items-center justify-center gap-2 rounded-md border border-dashed border-slate-300 bg-slate-50/50 px-4 py-10 text-center transition hover:border-pink-400 hover:bg-pink-50/40"
+          className={cn(
+            "group flex w-full cursor-pointer flex-col items-center justify-center gap-2 border border-dashed border-slate-300 bg-slate-50/50 px-4 text-center transition hover:border-pink-400 hover:bg-pink-50/40",
+            tall ? "min-h-[14rem] rounded-2xl py-12" : "min-h-[7.5rem] rounded-xl py-10",
+          )}
         >
-          <ImagePlus className="h-7 w-7 text-slate-400 transition group-hover:text-pink-600" />
-          <span className="text-sm text-slate-600">
+          <ImagePlus
+            className={cn(
+              "text-slate-400 transition group-hover:text-pink-600",
+              tall ? "h-9 w-9" : "h-7 w-7",
+            )}
+          />
+          <span className="text-sm font-medium text-slate-600">
             {allowPdf ? "Escolher ficheiro" : "Escolher imagem"}
           </span>
           <span className="text-[11px] text-slate-400">
@@ -135,8 +147,18 @@ export function KrajeeFileInput({
           </span>
         </label>
       ) : (
-        <div className="overflow-hidden rounded-md border border-slate-200 bg-white">
-          <div className="relative flex min-h-[7.5rem] w-full items-center justify-center bg-slate-50">
+        <div
+          className={cn(
+            "overflow-hidden border border-slate-200 bg-white shadow-sm",
+            tall ? "rounded-2xl" : "rounded-xl",
+          )}
+        >
+          <div
+            className={cn(
+              "relative flex w-full items-center justify-center bg-gradient-to-br from-slate-50 to-pink-50/30",
+              tall ? "min-h-[14rem]" : "min-h-[7.5rem]",
+            )}
+          >
             {isPdf || (!displayUrl && value) ? (
               <div className="flex flex-col items-center gap-2 p-6 text-slate-600">
                 <FileText className="h-10 w-10 text-slate-400" />
@@ -147,7 +169,10 @@ export function KrajeeFileInput({
               <img
                 src={displayUrl!}
                 alt={previewName ?? "Preview"}
-                className="max-h-44 max-w-full object-contain p-3"
+                className={cn(
+                  "max-w-full object-contain p-4",
+                  tall ? "max-h-56" : "max-h-44",
+                )}
                 onError={() => {
                   if (!localPreview) setRemoteBroken(true);
                 }}
@@ -160,16 +185,16 @@ export function KrajeeFileInput({
             )}
           </div>
 
-          <div className="flex items-center gap-2 border-t border-slate-100 px-2.5 py-2">
+          <div className="flex items-center gap-2 border-t border-slate-100 px-3 py-2.5">
             <div className="min-w-0 flex-1">
-              <p className="truncate text-xs text-slate-600">{meta}</p>
+              <p className="truncate text-xs font-medium text-slate-600">{meta}</p>
               {previewSize ? (
                 <p className="text-[11px] text-slate-400">{previewSize}</p>
               ) : null}
             </div>
             <button
               type="button"
-              className="inline-flex h-8 items-center gap-1.5 rounded px-2 text-xs text-slate-600 transition hover:bg-slate-100 disabled:opacity-50"
+              className="inline-flex h-8 items-center gap-1.5 rounded-lg px-2.5 text-xs font-medium text-slate-600 transition hover:bg-slate-100 disabled:opacity-50"
               onClick={() => inputRef.current?.click()}
               disabled={uploading}
             >
@@ -178,7 +203,7 @@ export function KrajeeFileInput({
             </button>
             <button
               type="button"
-              className="inline-flex h-8 w-8 items-center justify-center rounded text-slate-400 transition hover:bg-red-50 hover:text-red-700 disabled:opacity-50"
+              className="inline-flex h-8 w-8 items-center justify-center rounded-lg text-slate-400 transition hover:bg-red-50 hover:text-red-700 disabled:opacity-50"
               onClick={clear}
               disabled={uploading}
               aria-label="Remover"

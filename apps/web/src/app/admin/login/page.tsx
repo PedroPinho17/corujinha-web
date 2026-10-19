@@ -1,6 +1,7 @@
 "use client";
 
 import Image from "next/image";
+import Link from "next/link";
 import { useState } from "react";
 import { authClient } from "@/lib/auth-client";
 import { adminFetch } from "@/lib/admin-api";
@@ -61,7 +62,7 @@ export default function AdminLoginPage() {
         className="w-full max-w-md rounded-2xl border border-slate-100 bg-white p-8 shadow-lg"
       >
         <div className="mb-6 flex flex-col items-center text-center">
-          <Image src="/logo1.webp" alt="Corujinha" width={80} height={80} className="h-16 w-16 object-contain" />
+          <Image src="/logo.webp" alt="Corujinha" width={80} height={80} className="h-16 w-16 object-contain" />
           <h1 className="mt-3 text-2xl font-bold text-slate-800">Backoffice Corujinha</h1>
           <p className="text-sm text-slate-500">Entre para gerir o conteúdo</p>
         </div>
@@ -77,7 +78,15 @@ export default function AdminLoginPage() {
             />
           </div>
           <div>
-            <Label htmlFor="password">Password</Label>
+            <div className="mb-1 flex items-center justify-between gap-2">
+              <Label htmlFor="password">Password</Label>
+              <Link
+                href="/admin/forgot-password"
+                className="text-xs font-medium text-pink hover:underline"
+              >
+                Esqueci-me da password
+              </Link>
+            </div>
             <Input
               id="password"
               type="password"

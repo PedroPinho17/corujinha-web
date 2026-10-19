@@ -6,7 +6,9 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { adminFetch } from "@/lib/admin-api";
+import { KrajeeFileInput } from "@/components/admin/krajee-file-input";
 import { mergeSiteContent, type SiteContent, type ServiceCard } from "@/lib/site-content";
+import { mediaUrl } from "@/lib/utils";
 
 type Settings = {
   brandingName: string;
@@ -151,9 +153,58 @@ export default function AdminSiteContentPage() {
           </div>
         </section>
 
+        {/* Imagens principais */}
+        <section className="space-y-4 rounded-2xl bg-white p-5 shadow-sm ring-1 ring-slate-100">
+          <div>
+            <h2 className="text-lg font-semibold">Imagens principais</h2>
+            <p className="text-sm text-slate-500">
+              Logótipo do topo na home e fotografia da fundadora. Pré-visualiza e guarda com o resto do conteúdo.
+            </p>
+          </div>
+          <div className="grid gap-5 md:grid-cols-2">
+            <div className="space-y-2 rounded-2xl bg-slate-50/80 p-4 ring-1 ring-slate-100">
+              <p className="text-xs font-bold uppercase tracking-wide text-pink-600">Topo (Hero)</p>
+              <KrajeeFileInput
+                label="Imagem do topo"
+                folder="site"
+                size="large"
+                value={c.hero.logoPath}
+                hint="Aparece no quadro à direita do título. Se removeres, volta a /logo.webp."
+                onChange={(key) =>
+                  setContent({
+                    ...c,
+                    hero: { ...c.hero, logoPath: key || "/logo.webp" },
+                  })
+                }
+              />
+            </div>
+            <div className="space-y-2 rounded-2xl bg-slate-50/80 p-4 ring-1 ring-slate-100">
+              <p className="text-xs font-bold uppercase tracking-wide text-orange-600">Fundadora</p>
+              <KrajeeFileInput
+                label="Fotografia da fundadora"
+                folder="site"
+                size="large"
+                value={c.about.founderImagePath}
+                hint="Usada na home e em Sobre. Se removeres, volta a /Vera.webp."
+                onChange={(key) =>
+                  setContent({
+                    ...c,
+                    about: { ...c.about, founderImagePath: key || "/Vera.webp" },
+                  })
+                }
+              />
+            </div>
+          </div>
+        </section>
+
         {/* Hero */}
-        <section className="space-y-3 rounded-2xl bg-white p-5 shadow-sm ring-1 ring-slate-100">
-          <h2 className="text-lg font-semibold">Hero</h2>
+        <section className="space-y-4 rounded-2xl bg-white p-5 shadow-sm ring-1 ring-slate-100">
+          <div>
+            <h2 className="text-lg font-semibold">Topo da página inicial (Hero)</h2>
+            <p className="text-sm text-slate-500">
+              Textos do destaque — a imagem configura-se acima, em Imagens principais.
+            </p>
+          </div>
           <div className="grid gap-3 md:grid-cols-2">
             <div>
               <Label>Título (antes)</Label>
@@ -313,8 +364,13 @@ export default function AdminSiteContentPage() {
         </section>
 
         {/* About */}
-        <section className="space-y-3 rounded-2xl bg-white p-5 shadow-sm ring-1 ring-slate-100">
-          <h2 className="text-lg font-semibold">About / Fundadora</h2>
+        <section className="space-y-4 rounded-2xl bg-white p-5 shadow-sm ring-1 ring-slate-100">
+          <div>
+            <h2 className="text-lg font-semibold">About / Fundadora</h2>
+            <p className="text-sm text-slate-500">
+              Textos da fundadora — a fotografia configura-se acima, em Imagens principais.
+            </p>
+          </div>
           <div className="grid gap-3 md:grid-cols-2">
             <div>
               <Label>Título secção</Label>
@@ -702,7 +758,21 @@ export default function AdminSiteContentPage() {
                 {c.hero.ctaSecondary}
               </span>
             </div>
-            <ul className="mt-4 space-y-1 border-t border-pink-100 pt-3 text-xs text-slate-500">
+            <div className="mt-4 grid grid-cols-2 gap-2 border-t border-pink-100 pt-3">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src={mediaUrl(c.hero.logoPath) || "/logo.webp"}
+                alt="Topo"
+                className="h-16 w-full rounded-xl bg-white object-contain p-1 ring-1 ring-pink-100"
+              />
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src={mediaUrl(c.about.founderImagePath) || "/Vera.webp"}
+                alt="Fundadora"
+                className="h-16 w-full rounded-xl bg-white object-cover ring-1 ring-pink-100"
+              />
+            </div>
+            <ul className="mt-3 space-y-1 text-xs text-slate-500">
               <li>
                 <strong>Serviços:</strong> {c.services.cards.map((x) => x.title).join(", ")}
               </li>

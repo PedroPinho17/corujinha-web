@@ -7,7 +7,7 @@ export function cn(...inputs: ClassValue[]) {
 
 export function mediaUrl(key?: string | null) {
   if (!key) return null;
-  if (key.startsWith("http")) return key;
+  if (key.startsWith("http") || key.startsWith("/")) return key;
   const base =
     process.env.NEXT_PUBLIC_S3_PUBLIC_URL ??
     "http://corujinha-media.web.garage.localhost:3902";

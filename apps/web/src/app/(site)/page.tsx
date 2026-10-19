@@ -178,6 +178,24 @@ function GradientWord({ children }: { children: ReactNode }) {
   );
 }
 
+function galleryAlbumLabel(album?: string | null) {
+  if (!album?.trim()) return null;
+  const key = album.trim().toLowerCase();
+  const map: Record<string, string> = {
+    activities: "Atividades",
+    activity: "Atividades",
+    caldas: "Lobão",
+    lobao: "Lobão",
+    lobão: "Lobão",
+    "sao-joao": "São João de Ver",
+    "são joão de ver": "São João de Ver",
+    homepage: "Geral",
+    salas: "Salas",
+    sala: "Salas",
+  };
+  return map[key] ?? album.trim().replace(/[-_]/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
+}
+
 export default async function HomePage() {
   const [data, settings, googlePlace] = await Promise.all([
     getHome(),
@@ -214,10 +232,10 @@ export default async function HomePage() {
       : null);
   const googleAttribution = googlePlace?.attribution ?? "Avaliações do Google";
 
-  // Hero = 1.ª foto; pré-visualização começa na 2.ª para não repetir a mesma imagem
-  const heroItem = gallery[0] ?? null;
-  const heroPhoto = heroItem ? mediaUrl(heroItem.imageKey) : null;
-  const galleryPreview = gallery.length > 1 ? gallery.slice(1, 7) : gallery.slice(0, 6);
+  // Topo = imagem/logo configurável no backoffice (não a 1.ª foto da galeria)
+  const heroLogo = mediaUrl(hero.logoPath) || "/logo.webp";
+  const founderPhoto = mediaUrl(about.founderImagePath) || "/Vera.webp";
+  const galleryPreview = gallery.slice(0, 6);
 
   const newsItems: NewsItem[] = [
     ...posts.map((p) => ({
@@ -301,26 +319,17 @@ export default async function HomePage() {
 
             <div className="relative animate-rise-delay">
               <div className="overflow-hidden rounded-[2rem] border-2 border-dashed border-pink/50 bg-white p-3 shadow-[0_20px_60px_rgba(219,39,119,0.12)]">
-                {heroPhoto ? (
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img
-                    src={heroPhoto}
-                    alt={heroItem?.alt || "Centro Corujinha — espaço e atividades"}
-                    className="aspect-[4/3] w-full rounded-[1.5rem] object-cover"
+                <div className="flex aspect-[4/3] flex-col items-center justify-center gap-3 rounded-[1.5rem] bg-gradient-to-br from-pink-50 via-white to-orange-50 px-6 text-center">
+                  <Image
+                    src={heroLogo}
+                    alt="Logótipo Corujinha"
+                    width={280}
+                    height={280}
+                    className="h-auto w-full max-w-[240px] object-contain"
+                    priority
                   />
-                ) : (
-                  <div className="flex aspect-[4/3] flex-col items-center justify-center gap-3 rounded-[1.5rem] bg-gradient-to-br from-pink-50 via-white to-orange-50 px-6 text-center">
-                    <Image
-                      src={hero.logoPath || "/logo1.webp"}
-                      alt="Logótipo Corujinha"
-                      width={280}
-                      height={280}
-                      className="h-auto w-full max-w-[220px] object-contain"
-                      priority
-                    />
-                    <p className="text-sm font-medium text-muted">Educação com carinho</p>
-                  </div>
-                )}
+                  <p className="text-sm font-medium text-muted">Educação com carinho</p>
+                </div>
               </div>
             </div>
           </div>
@@ -404,7 +413,7 @@ export default async function HomePage() {
             <div className="relative mx-auto w-full max-w-md md:mx-0">
               <div className="absolute -inset-2 rounded-[2rem] bg-gradient-to-br from-pink-300/40 to-purple-300/40 blur-sm" />
               <Image
-                src={about.founderImagePath || "/Vera.webp"}
+                src={founderPhoto}
                 alt={`Fotografia de ${about.founderName}, fundadora da Corujinha`}
                 width={480}
                 height={600}
@@ -471,65 +480,71 @@ export default async function HomePage() {
       </section>
 
       {/* Galeria */}
-      <section className="bg-white py-16 md:py-20">
+      <section className="bg-gradient-to-b from-blush/40 via-white to-white py-16 md:py-20">
         <div className="mx-auto max-w-6xl px-4">
           <div className="mb-10 text-center">
             <h2 className="font-display text-4xl font-bold md:text-5xl">
               Galeria de <GradientWord>Momentos</GradientWord>
             </h2>
+            <p className="mx-auto mt-3 max-w-xl text-muted">
+              Do estudo às atividades — o dia a dia da Corujinha em imagens.
+            </p>
           </div>
-          {/* 1 grande + 5: no desktop preenche 3 colunas sem buraco na última fila */}
-          <div className="grid grid-cols-2 gap-3 md:grid-cols-3 md:gap-4">
+          <div className="grid grid-cols-2 gap-3 sm:gap-4 md:grid-cols-3 md:gap-5">
             {(galleryPreview.length
               ? galleryPreview
               : Array.from({ length: 6 }, (_, i) => ({
                   id: `ph-${i}`,
                   imageKey: "",
-                  alt: null,
-                  album: ["Sala", "Atividades", "Estudo", "Férias", "Equipa", "Espaço"][i],
+                  alt: null as string | null,
+                  album: ["Salas", "Atividades", "Estudo", "Férias", "Equipa", "Espaço"][i],
                 }))
-            ).map((g, i) => {
-              const src = g.imageKey ? mediaUrl(g.imageKey) : null;
-              const featured = i === 0;
-              return (
-                <div
-                  key={g.id}
-                  className={`group relative overflow-hidden rounded-2xl shadow-md ${
-                    featured
-                      ? "aspect-[4/3] md:col-span-2 md:row-span-2 md:aspect-auto md:min-h-[280px]"
-                      : "aspect-[4/3]"
-                  }`}
-                >
-                  {src ? (
-                    // eslint-disable-next-line @next/next/no-img-element
-                    <img
-                      src={src}
-                      alt={g.alt || `Fotografia da galeria Corujinha${g.album ? ` — ${g.album}` : ""}`}
-                      className="h-full w-full object-cover transition duration-500 group-hover:scale-105"
-                    />
-                  ) : (
-                    <div
-                      className={`flex h-full min-h-[120px] flex-col items-center justify-center bg-gradient-to-br p-4 text-center ${galleryPastels[i % galleryPastels.length]}`}
-                    >
-                      <Sun className="mb-2 h-6 w-6 text-ink/30" aria-hidden />
-                      <p className="text-xs font-semibold text-ink/50">{g.album || "Momento"}</p>
+            )
+              .slice(0, 6)
+              .map((g, i) => {
+                const src = g.imageKey ? mediaUrl(g.imageKey) : null;
+                const albumLabel = galleryAlbumLabel(g.album);
+                return (
+                  <Link
+                    key={g.id}
+                    href="/galeria"
+                    className="group relative block overflow-hidden rounded-2xl bg-white ring-1 ring-ink/[0.06] transition hover:-translate-y-0.5 hover:shadow-[0_16px_40px_rgba(219,39,119,0.12)]"
+                  >
+                    <div className="aspect-[4/3] overflow-hidden">
+                      {src ? (
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img
+                          src={src}
+                          alt={
+                            g.alt ||
+                            `Fotografia da galeria Corujinha${albumLabel ? ` — ${albumLabel}` : ""}`
+                          }
+                          className="h-full w-full object-cover transition duration-500 group-hover:scale-[1.03]"
+                        />
+                      ) : (
+                        <div
+                          className={`flex h-full flex-col items-center justify-center bg-gradient-to-br p-4 text-center ${galleryPastels[i % galleryPastels.length]}`}
+                        >
+                          <Sun className="mb-2 h-6 w-6 text-ink/30" aria-hidden />
+                          <p className="text-xs font-semibold text-ink/50">{albumLabel || "Momento"}</p>
+                        </div>
+                      )}
                     </div>
-                  )}
-                  {g.album && src && (
-                    <span className="absolute left-3 top-3 rounded-full bg-white/90 px-2.5 py-1 text-[10px] font-bold uppercase tracking-wide text-pink backdrop-blur-sm">
-                      {g.album}
-                    </span>
-                  )}
-                </div>
-              );
-            })}
+                    {albumLabel ? (
+                      <div className="pointer-events-none absolute inset-x-0 bottom-0 bg-gradient-to-t from-ink/55 to-transparent px-3 pb-2.5 pt-8 opacity-0 transition group-hover:opacity-100">
+                        <p className="text-xs font-semibold text-white">{albumLabel}</p>
+                      </div>
+                    ) : null}
+                  </Link>
+                );
+              })}
           </div>
-          <div className="mt-8 text-center">
+          <div className="mt-10 text-center">
             <Link
               href="/galeria"
-              className="inline-flex rounded-full border-2 border-pink bg-white px-7 py-2.5 text-sm font-semibold text-pink transition hover:bg-pink-50"
+              className="inline-flex rounded-full bg-pink px-8 py-3 text-sm font-semibold text-white shadow-md shadow-pink/20 transition hover:bg-pink-dark"
             >
-              Ver galeria
+              Ver galeria completa
             </Link>
           </div>
         </div>

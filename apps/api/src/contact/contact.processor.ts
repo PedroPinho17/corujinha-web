@@ -3,6 +3,7 @@ import { Logger } from "@nestjs/common";
 import { Job } from "bullmq";
 import { PrismaService } from "../prisma/prisma.service";
 import { MailService } from "../mail/mail.service";
+import { renderEmailHtml } from "../mail/email-layout";
 import { escapeHtml } from "../common/escape-html";
 
 export const CONTACT_QUEUE = "contact-email";
@@ -59,15 +60,21 @@ export class ContactProcessor extends WorkerHost {
         ]
           .filter(Boolean)
           .join("\n"),
-        html: `<p><strong>Tipo:</strong> ${isEnrollment ? "Inscrição" : "Mensagem"}</p>
-          <p><strong>Nome:</strong> ${name}</p>
-          <p><strong>Email:</strong> ${email}</p>
-          <p><strong>Telefone:</strong> ${phone}</p>
-          ${subject ? `<p><strong>Disciplina:</strong> ${subject}</p>` : ""}
-          ${schoolYear ? `<p><strong>Ano:</strong> ${schoolYear}</p>` : ""}
-          ${location ? `<p><strong>Polo:</strong> ${location}</p>` : ""}
-          <p><strong>Consentimento:</strong> ${contact.privacyConsent ? "sim" : "não"}</p>
-          <p>${messageHtml}</p>`,
+        html: renderEmailHtml({
+          title: isEnrollment ? "Pedido de inscrição" : "Nova mensagem de contacto",
+          preheader: `${contact.name} — ${contact.email}`,
+          bodyHtml: `<table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="font-size:14px;line-height:1.6;color:#374151;">
+            <tr><td style="padding:4px 0;"><strong>Tipo:</strong> ${isEnrollment ? "Inscrição" : "Mensagem"}</td></tr>
+            <tr><td style="padding:4px 0;"><strong>Nome:</strong> ${name}</td></tr>
+            <tr><td style="padding:4px 0;"><strong>Email:</strong> ${email}</td></tr>
+            <tr><td style="padding:4px 0;"><strong>Telefone:</strong> ${phone}</td></tr>
+            ${subject ? `<tr><td style="padding:4px 0;"><strong>Disciplina:</strong> ${subject}</td></tr>` : ""}
+            ${schoolYear ? `<tr><td style="padding:4px 0;"><strong>Ano:</strong> ${schoolYear}</td></tr>` : ""}
+            ${location ? `<tr><td style="padding:4px 0;"><strong>Polo:</strong> ${location}</td></tr>` : ""}
+            <tr><td style="padding:4px 0;"><strong>Consentimento:</strong> ${contact.privacyConsent ? "sim" : "não"}</td></tr>
+          </table>
+          <p style="margin:20px 0 0;padding:16px;background:#fdf2f8;border-radius:12px;">${messageHtml}</p>`,
+        }),
       });
       await this.prisma.contactMessage.update({
         where: { id: contact.id },
