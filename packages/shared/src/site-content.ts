@@ -117,7 +117,7 @@ export const DEFAULT_SITE_CONTENT: SiteContent = {
     ctaSecondary: "Saiba Mais",
     badgeValue: "+500",
     badgeLabel: "Crianças Apoiadas",
-    logoPath: "/logo1.webp",
+    logoPath: "/logo.webp",
     features: [
       {
         title: "Explicações",
@@ -335,11 +335,24 @@ function resolveTestimonials(fromDb?: Testimonial[] | null): Testimonial[] {
   return stillPlaceholder ? DEFAULT_SITE_CONTENT.social.testimonials : list;
 }
 
+/** Legacy CMS paths that pointed at the old owl file name. */
+function normalizeLogoPath(path?: string | null): string {
+  if (!path || path === "/logo1.webp" || path === "logo1.webp") {
+    return DEFAULT_SITE_CONTENT.hero.logoPath;
+  }
+  return path;
+}
+
 /** Deep-merge partial CMS content with defaults so new fields never break old DB JSON. */
 export function mergeSiteContent(partial?: Partial<SiteContent> | null): SiteContent {
   const p = partial ?? {};
+  const heroMerged = {
+    ...DEFAULT_SITE_CONTENT.hero,
+    ...p.hero,
+    features: p.hero?.features ?? DEFAULT_SITE_CONTENT.hero.features,
+  };
   return {
-    hero: { ...DEFAULT_SITE_CONTENT.hero, ...p.hero, features: p.hero?.features ?? DEFAULT_SITE_CONTENT.hero.features },
+    hero: { ...heroMerged, logoPath: normalizeLogoPath(heroMerged.logoPath) },
     services: {
       ...DEFAULT_SITE_CONTENT.services,
       ...p.services,

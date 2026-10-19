@@ -1,9 +1,9 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-const { sendMail, createTransport } = vi.hoisted(() => {
-  const sendMail = vi.fn().mockResolvedValue({});
-  const createTransport = vi.fn(() => ({ sendMail }));
-  return { sendMail, createTransport };
+const { sendMailMock, createTransport } = vi.hoisted(() => {
+  const sendMailMock = vi.fn().mockResolvedValue({});
+  const createTransport = vi.fn(() => ({ sendMail: sendMailMock }));
+  return { sendMailMock, createTransport };
 });
 
 vi.mock("nodemailer", () => ({
@@ -13,11 +13,13 @@ vi.mock("nodemailer", () => ({
 describe("MailService", () => {
   const prev = { ...process.env };
 
-  beforeEach(() => {
+  beforeEach(async () => {
     vi.clearAllMocks();
     vi.resetModules();
     process.env = { ...prev };
     delete process.env.SMTP_HOST;
+    const { resetMailTransporterForTests } = await import("./send-mail");
+    resetMailTransporterForTests();
   });
 
   afterEach(() => {
@@ -37,6 +39,8 @@ describe("MailService", () => {
     process.env.SMTP_USER = "u";
     process.env.SMTP_PASS = "p";
     process.env.SMTP_FROM = "from@example.com";
+    const { resetMailTransporterForTests } = await import("./send-mail");
+    resetMailTransporterForTests();
     const { MailService } = await import("./mail.service");
     const svc = new MailService();
     await svc.send({
@@ -47,10 +51,9 @@ describe("MailService", () => {
       replyTo: "r@b.com",
     });
     expect(createTransport).toHaveBeenCalled();
-    expect(sendMail).toHaveBeenCalledWith(
+    expect(sendMailMock).toHaveBeenCalledWith(
       expect.objectContaining({ to: "a@b.com", from: "from@example.com" }),
     );
-    // reuse transporter
     await svc.send({ to: "c@d.com", subject: "S2", text: "t" });
     expect(createTransport).toHaveBeenCalledTimes(1);
   });

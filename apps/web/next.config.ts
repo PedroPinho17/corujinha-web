@@ -17,6 +17,8 @@ const nextConfig: NextConfig = {
   images: {
     remotePatterns: [
       { protocol: "http", hostname: "localhost", port: "9012" },
+      { protocol: "http", hostname: "corujinha-media.web.garage.localhost", port: "3902" },
+      { protocol: "http", hostname: "127.0.0.1", port: "3902" },
       { protocol: "https", hostname: "**" },
     ],
   },

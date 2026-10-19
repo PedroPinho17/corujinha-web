@@ -15,3 +15,26 @@
 .admin-backoffice .admin-profile-link span {
   text-decoration: none !important;
 }
+
+/* Thin sidebar scrollbar */
+.admin-backoffice .admin-sidebar-nav {
+  scrollbar-width: thin;
+  scrollbar-color: #e2e8f0 transparent;
+}
+
+.admin-backoffice .admin-sidebar-nav::-webkit-scrollbar {
+  width: 6px;
+}
+
+.admin-backoffice .admin-sidebar-nav::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.admin-backoffice .admin-sidebar-nav::-webkit-scrollbar-thumb {
+  background: #e2e8f0;
+  border-radius: 999px;
+}
+
+.admin-backoffice .admin-sidebar-nav::-webkit-scrollbar-thumb:hover {
+  background: #cbd5e1;
+}
