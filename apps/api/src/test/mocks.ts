@@ -16,7 +16,9 @@ export function mockPrisma(modelExtras: Record<string, unknown> = {}) {
     findUniqueOrThrow: vi.fn().mockResolvedValue({ id: "1", published: true }),
     findFirst: vi.fn().mockResolvedValue(null),
     create: vi.fn().mockResolvedValue({ id: "1" }),
+    createMany: vi.fn().mockResolvedValue({ count: 0 }),
     update: vi.fn().mockResolvedValue({ id: "1" }),
+    updateMany: vi.fn().mockResolvedValue({ count: 0 }),
     delete: vi.fn().mockResolvedValue({ id: "1" }),
     count: vi.fn().mockResolvedValue(0),
     aggregate: vi.fn().mockResolvedValue({ _max: { sortOrder: 0 } }),
@@ -25,6 +27,7 @@ export function mockPrisma(modelExtras: Record<string, unknown> = {}) {
   return {
     teamMember: model(),
     galleryImage: model(),
+    center: model(),
     post: model(),
     entity: model(),
     formation: model(),

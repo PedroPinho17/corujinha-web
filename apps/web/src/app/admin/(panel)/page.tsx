@@ -41,6 +41,7 @@ const shortcuts = [
   { href: "/admin/site", label: "Editar conteúdo do site" },
   { href: "/admin/posts", label: "Nova notícia" },
   { href: "/admin/gallery", label: "Galeria" },
+  { href: "/admin/centers", label: "Centros" },
   { href: "/", label: "Ver site público", external: true },
 ];
 

@@ -9,6 +9,7 @@ import {
   Put,
   UseGuards,
 } from "@nestjs/common";
+import { Transform } from "class-transformer";
 import {
   IsArray,
   IsBoolean,
@@ -39,8 +40,10 @@ class PostDto {
   @IsString()
   phone?: string;
 
+  /** Empty string from the admin form must not fail @IsEmail. */
   @IsOptional()
-  @IsEmail()
+  @Transform(({ value }) => (value === "" || value === null ? undefined : value))
+  @IsEmail({}, { message: "Email inválido" })
   email?: string;
 
   @IsOptional()

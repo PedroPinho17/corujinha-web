@@ -38,6 +38,11 @@ export class ContactProcessor extends WorkerHost {
     const schoolYear = contact.schoolYear ? escapeHtml(contact.schoolYear) : null;
     const location = contact.location ? escapeHtml(contact.location) : null;
     const messageHtml = escapeHtml(contact.message).replace(/\n/g, "<br/>");
+    const site =
+      (process.env.NEXT_PUBLIC_APP_URL ?? process.env.BETTER_AUTH_URL ?? "http://localhost:3000").replace(
+        /\/$/,
+        "",
+      );
 
     try {
       await this.mail.send({
@@ -76,6 +81,42 @@ export class ContactProcessor extends WorkerHost {
           <p style="margin:20px 0 0;padding:16px;background:#fdf2f8;border-radius:12px;">${messageHtml}</p>`,
         }),
       });
+
+      // Confirmação para a família (não bloqueia o aviso à equipa se falhar)
+      try {
+        await this.mail.send({
+          to: contact.email,
+          subject: isEnrollment
+            ? "Recebemos o seu pedido de inscrição — Corujinha"
+            : "Recebemos a sua mensagem — Corujinha",
+          text: [
+            `Olá ${contact.name},`,
+            "",
+            isEnrollment
+              ? "Obrigado pelo pedido de inscrição na Corujinha. A nossa equipa vai analisar a disponibilidade e entrar em contacto consigo em breve."
+              : "Obrigado pela sua mensagem. A nossa equipa vai responder o mais depressa possível.",
+            "",
+            "Com carinho,",
+            "Centro de Apoio Escolar Corujinha",
+            site,
+          ].join("\n"),
+          html: renderEmailHtml({
+            title: isEnrollment ? "Pedido recebido" : "Mensagem recebida",
+            preheader: "A Corujinha já recebeu o seu contacto",
+            bodyHtml: `<p>Olá <strong>${name}</strong>,</p>
+<p>${
+              isEnrollment
+                ? "Obrigado pelo pedido de inscrição na Corujinha. A nossa equipa vai analisar a disponibilidade e entrar em contacto consigo em breve."
+                : "Obrigado pela sua mensagem. A nossa equipa vai responder o mais depressa possível."
+            }</p>
+<p style="margin:20px 0 0;color:#6b7280;font-size:14px;">Se não enviou este pedido, pode ignorar este email.</p>`,
+            cta: { label: "Visitar o site", href: site },
+          }),
+        });
+      } catch (confirmErr) {
+        this.logger.warn(`Confirmação à família falhou (${contact.email}): ${String(confirmErr)}`);
+      }
+
       await this.prisma.contactMessage.update({
         where: { id: contact.id },
         data: { status: "SENT" },

@@ -12,6 +12,7 @@ import {
   Images,
   KeyRound,
   LayoutDashboard,
+  MapPin,
   Newspaper,
   PanelTop,
   Settings,
@@ -39,6 +40,7 @@ const contentNav: NavItem[] = [
   { href: "/admin/formations", label: "Formações", icon: GraduationCap },
   { href: "/admin/protocols", label: "Protocolos", icon: FileText },
   { href: "/admin/gallery", label: "Galeria", icon: Images },
+  { href: "/admin/centers", label: "Centros", icon: MapPin },
   { href: "/admin/site", label: "Conteúdo do Site", icon: PanelTop },
   { href: "/admin/contacts", label: "Contactos", icon: Contact },
 ];

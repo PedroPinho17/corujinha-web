@@ -67,9 +67,18 @@ export default function AdminSiteContentPage() {
     setSaving(true);
     setMsg("");
     try {
+      // ValidationPipe rejecta campos do Prisma (id/createdAt/updatedAt)
+      const { id: _id, createdAt: _c, updatedAt: _u, ...payload } = settings as Settings & {
+        id?: string;
+        createdAt?: string;
+        updatedAt?: string;
+      };
+      void _id;
+      void _c;
+      void _u;
       const updated = await adminFetch<Settings>("/api/admin/settings", {
         method: "PUT",
-        body: JSON.stringify(settings),
+        body: JSON.stringify(payload),
       });
       setSettings({
         ...updated,
@@ -77,7 +86,8 @@ export default function AdminSiteContentPage() {
       });
       setMsg("Guardado com sucesso");
     } catch (e) {
-      setMsg(e instanceof Error ? e.message : "Erro ao guardar");
+      const raw = e instanceof Error ? e.message : "Erro ao guardar";
+      setMsg(raw.includes("statusCode") ? "Não foi possível guardar. Verifique os campos e tente de novo." : raw);
     } finally {
       setSaving(false);
     }
@@ -163,7 +173,7 @@ export default function AdminSiteContentPage() {
           </div>
           <div className="grid gap-5 md:grid-cols-2">
             <div className="space-y-2 rounded-2xl bg-slate-50/80 p-4 ring-1 ring-slate-100">
-              <p className="text-xs font-bold uppercase tracking-wide text-pink-600">Topo (Hero)</p>
+              <p className="text-xs font-bold uppercase tracking-wide text-pink-600">Topo da home</p>
               <KrajeeFileInput
                 label="Imagem do topo"
                 folder="site"
@@ -197,66 +207,66 @@ export default function AdminSiteContentPage() {
           </div>
         </section>
 
-        {/* Hero */}
+        {/* Topo da home */}
         <section className="space-y-4 rounded-2xl bg-white p-5 shadow-sm ring-1 ring-slate-100">
           <div>
-            <h2 className="text-lg font-semibold">Topo da página inicial (Hero)</h2>
+            <h2 className="text-lg font-semibold">Topo da página inicial</h2>
             <p className="text-sm text-slate-500">
               Textos do destaque — a imagem configura-se acima, em Imagens principais.
             </p>
           </div>
           <div className="grid gap-3 md:grid-cols-2">
             <div>
-              <Label>Título (antes)</Label>
+              <Label>Início do título</Label>
               <Input
                 value={c.hero.titleBefore}
                 onChange={(e) => setContent({ ...c, hero: { ...c.hero, titleBefore: e.target.value } })}
               />
             </div>
             <div>
-              <Label>Palavra rosa</Label>
+              <Label>Palavra em destaque (rosa)</Label>
               <Input
                 value={c.hero.titlePink}
                 onChange={(e) => setContent({ ...c, hero: { ...c.hero, titlePink: e.target.value } })}
               />
             </div>
             <div>
-              <Label>Meio (ex.: &quot;e&quot;)</Label>
+              <Label>Palavra do meio (ex.: &quot;e&quot;)</Label>
               <Input
                 value={c.hero.titleMid}
                 onChange={(e) => setContent({ ...c, hero: { ...c.hero, titleMid: e.target.value } })}
               />
             </div>
             <div>
-              <Label>Palavra laranja</Label>
+              <Label>Palavra em destaque (laranja)</Label>
               <Input
                 value={c.hero.titleOrange}
                 onChange={(e) => setContent({ ...c, hero: { ...c.hero, titleOrange: e.target.value } })}
               />
             </div>
             <div>
-              <Label>CTA principal</Label>
+              <Label>Botão principal</Label>
               <Input
                 value={c.hero.ctaPrimary}
                 onChange={(e) => setContent({ ...c, hero: { ...c.hero, ctaPrimary: e.target.value } })}
               />
             </div>
             <div>
-              <Label>CTA secundário</Label>
+              <Label>Botão secundário</Label>
               <Input
                 value={c.hero.ctaSecondary}
                 onChange={(e) => setContent({ ...c, hero: { ...c.hero, ctaSecondary: e.target.value } })}
               />
             </div>
             <div>
-              <Label>Badge valor</Label>
+              <Label>Número do destaque (ex.: +500)</Label>
               <Input
                 value={c.hero.badgeValue}
                 onChange={(e) => setContent({ ...c, hero: { ...c.hero, badgeValue: e.target.value } })}
               />
             </div>
             <div>
-              <Label>Badge texto</Label>
+              <Label>Texto do destaque (ex.: Crianças apoiadas)</Label>
               <Input
                 value={c.hero.badgeLabel}
                 onChange={(e) => setContent({ ...c, hero: { ...c.hero, badgeLabel: e.target.value } })}
@@ -264,31 +274,53 @@ export default function AdminSiteContentPage() {
             </div>
           </div>
           <div>
-            <Label>Subtítulo</Label>
+            <Label>Texto de apoio</Label>
             <Textarea
               value={c.hero.subtitle}
               onChange={(e) => setContent({ ...c, hero: { ...c.hero, subtitle: e.target.value } })}
             />
           </div>
-          <div>
-            <Label>Destaques do hero (formato: título | descrição | pink/orange/blue)</Label>
-            <Textarea
-              rows={4}
-              value={c.hero.features.map((f) => `${f.title} | ${f.description} | ${f.tone}`).join("\n")}
-              onChange={(e) =>
-                setContent({
-                  ...c,
-                  hero: {
-                    ...c.hero,
-                    features: fromLines(e.target.value).map((line) => {
-                      const [title, description, tone] = line.split("|").map((s) => s.trim());
-                      const t = tone === "orange" || tone === "blue" ? tone : "pink";
-                      return { title: title || "", description: description || "", tone: t };
-                    }),
-                  },
-                })
-              }
-            />
+          <div className="space-y-3">
+            <Label>Cartões de destaque no topo</Label>
+            {c.hero.features.map((f, i) => (
+              <div key={i} className="grid gap-2 rounded-xl border border-slate-100 bg-slate-50/50 p-3 md:grid-cols-3">
+                <Input
+                  value={f.title}
+                  placeholder="Título"
+                  onChange={(e) => {
+                    const features = c.hero.features.map((x, idx) =>
+                      idx === i ? { ...x, title: e.target.value } : x,
+                    );
+                    setContent({ ...c, hero: { ...c.hero, features } });
+                  }}
+                />
+                <Input
+                  value={f.description}
+                  placeholder="Descrição"
+                  onChange={(e) => {
+                    const features = c.hero.features.map((x, idx) =>
+                      idx === i ? { ...x, description: e.target.value } : x,
+                    );
+                    setContent({ ...c, hero: { ...c.hero, features } });
+                  }}
+                />
+                <select
+                  className="flex h-10 w-full rounded-md border border-slate-200 bg-white px-3 text-sm"
+                  value={f.tone}
+                  onChange={(e) => {
+                    const tone = e.target.value as "pink" | "orange" | "blue";
+                    const features = c.hero.features.map((x, idx) =>
+                      idx === i ? { ...x, tone } : x,
+                    );
+                    setContent({ ...c, hero: { ...c.hero, features } });
+                  }}
+                >
+                  <option value="pink">Rosa</option>
+                  <option value="orange">Laranja</option>
+                  <option value="blue">Azul</option>
+                </select>
+              </div>
+            ))}
           </div>
         </section>
 
@@ -661,75 +693,217 @@ export default function AdminSiteContentPage() {
               />
             </div>
           </div>
-          <div>
-            <Label>FAQ (pergunta || resposta)</Label>
-            <Textarea
-              rows={6}
-              value={c.social.faq.map((f) => `${f.question} || ${f.answer}`).join("\n")}
-              onChange={(e) =>
-                setContent({
-                  ...c,
-                  social: {
-                    ...c.social,
-                    faq: fromLines(e.target.value).map((line) => {
-                      const [question, ...rest] = line.split("||");
-                      return { question: (question ?? "").trim(), answer: rest.join("||").trim() };
-                    }),
-                  },
-                })
-              }
-            />
+          <div className="space-y-3">
+            <div className="flex items-center justify-between gap-2">
+              <Label>Perguntas frequentes</Label>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() =>
+                  setContent({
+                    ...c,
+                    social: {
+                      ...c.social,
+                      faq: [...c.social.faq, { question: "", answer: "" }],
+                    },
+                  })
+                }
+              >
+                + Pergunta
+              </Button>
+            </div>
+            {c.social.faq.map((f, i) => (
+              <div key={i} className="space-y-2 rounded-xl border border-slate-100 bg-slate-50/50 p-3">
+                <div className="flex items-center justify-between">
+                  <p className="text-xs font-bold uppercase text-slate-400">Pergunta {i + 1}</p>
+                  <button
+                    type="button"
+                    className="text-xs font-semibold text-rose-600 hover:underline"
+                    onClick={() =>
+                      setContent({
+                        ...c,
+                        social: {
+                          ...c.social,
+                          faq: c.social.faq.filter((_, idx) => idx !== i),
+                        },
+                      })
+                    }
+                  >
+                    Remover
+                  </button>
+                </div>
+                <Input
+                  value={f.question}
+                  placeholder="Pergunta"
+                  onChange={(e) => {
+                    const faq = c.social.faq.map((x, idx) =>
+                      idx === i ? { ...x, question: e.target.value } : x,
+                    );
+                    setContent({ ...c, social: { ...c.social, faq } });
+                  }}
+                />
+                <Textarea
+                  value={f.answer}
+                  placeholder="Resposta"
+                  rows={2}
+                  onChange={(e) => {
+                    const faq = c.social.faq.map((x, idx) =>
+                      idx === i ? { ...x, answer: e.target.value } : x,
+                    );
+                    setContent({ ...c, social: { ...c.social, faq } });
+                  }}
+                />
+              </div>
+            ))}
           </div>
-          <div>
-            <Label>Testemunhos (citação || autor || papel)</Label>
-            <Textarea
-              rows={5}
-              value={c.social.testimonials
-                .map((t) => `${t.quote} || ${t.author} || ${t.role}`)
-                .join("\n")}
-              onChange={(e) =>
-                setContent({
-                  ...c,
-                  social: {
-                    ...c.social,
-                    testimonials: fromLines(e.target.value).map((line) => {
-                      const parts = line.split("||").map((p) => p.trim());
-                      return { quote: parts[0] ?? "", author: parts[1] ?? "", role: parts[2] ?? "" };
-                    }),
-                  },
-                })
-              }
-            />
+          <div className="space-y-3">
+            <div className="flex items-center justify-between gap-2">
+              <Label>Testemunhos</Label>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() =>
+                  setContent({
+                    ...c,
+                    social: {
+                      ...c.social,
+                      testimonials: [...c.social.testimonials, { quote: "", author: "", role: "" }],
+                    },
+                  })
+                }
+              >
+                + Testemunho
+              </Button>
+            </div>
+            {c.social.testimonials.map((t, i) => (
+              <div key={i} className="space-y-2 rounded-xl border border-slate-100 bg-slate-50/50 p-3">
+                <div className="flex items-center justify-between">
+                  <p className="text-xs font-bold uppercase text-slate-400">Testemunho {i + 1}</p>
+                  <button
+                    type="button"
+                    className="text-xs font-semibold text-rose-600 hover:underline"
+                    onClick={() =>
+                      setContent({
+                        ...c,
+                        social: {
+                          ...c.social,
+                          testimonials: c.social.testimonials.filter((_, idx) => idx !== i),
+                        },
+                      })
+                    }
+                  >
+                    Remover
+                  </button>
+                </div>
+                <Textarea
+                  value={t.quote}
+                  placeholder="Citação"
+                  rows={2}
+                  onChange={(e) => {
+                    const testimonials = c.social.testimonials.map((x, idx) =>
+                      idx === i ? { ...x, quote: e.target.value } : x,
+                    );
+                    setContent({ ...c, social: { ...c.social, testimonials } });
+                  }}
+                />
+                <div className="grid gap-2 md:grid-cols-2">
+                  <Input
+                    value={t.author}
+                    placeholder="Nome"
+                    onChange={(e) => {
+                      const testimonials = c.social.testimonials.map((x, idx) =>
+                        idx === i ? { ...x, author: e.target.value } : x,
+                      );
+                      setContent({ ...c, social: { ...c.social, testimonials } });
+                    }}
+                  />
+                  <Input
+                    value={t.role}
+                    placeholder="Papel (ex.: no Google)"
+                    onChange={(e) => {
+                      const testimonials = c.social.testimonials.map((x, idx) =>
+                        idx === i ? { ...x, role: e.target.value } : x,
+                      );
+                      setContent({ ...c, social: { ...c.social, testimonials } });
+                    }}
+                  />
+                </div>
+              </div>
+            ))}
           </div>
         </section>
 
-        {/* Footer */}
+        {/* Rodapé */}
         <section className="space-y-3 rounded-2xl bg-white p-5 shadow-sm ring-1 ring-slate-100">
-          <h2 className="text-lg font-semibold">Footer</h2>
+          <h2 className="text-lg font-semibold">Rodapé do site</h2>
           <div>
-            <Label>Tagline</Label>
+            <Label>Frase do rodapé</Label>
             <Textarea
               value={c.footer.tagline}
               onChange={(e) => setContent({ ...c, footer: { ...c.footer, tagline: e.target.value } })}
             />
           </div>
-          <div>
-            <Label>Links rápidos (label | href)</Label>
-            <Textarea
-              value={c.footer.quickLinks.map((l) => `${l.label} | ${l.href}`).join("\n")}
-              onChange={(e) =>
-                setContent({
-                  ...c,
-                  footer: {
-                    ...c.footer,
-                    quickLinks: fromLines(e.target.value).map((line) => {
-                      const [label, href] = line.split("|").map((s) => s.trim());
-                      return { label: label || "", href: href || "/" };
-                    }),
-                  },
-                })
-              }
-            />
+          <div className="space-y-3">
+            <div className="flex items-center justify-between gap-2">
+              <Label>Ligações rápidas</Label>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() =>
+                  setContent({
+                    ...c,
+                    footer: {
+                      ...c.footer,
+                      quickLinks: [...c.footer.quickLinks, { label: "", href: "/" }],
+                    },
+                  })
+                }
+              >
+                + Ligação
+              </Button>
+            </div>
+            {c.footer.quickLinks.map((l, i) => (
+              <div key={i} className="grid gap-2 rounded-xl border border-slate-100 bg-slate-50/50 p-3 md:grid-cols-[1fr_1fr_auto]">
+                <Input
+                  value={l.label}
+                  placeholder="Texto (ex.: Sobre)"
+                  onChange={(e) => {
+                    const quickLinks = c.footer.quickLinks.map((x, idx) =>
+                      idx === i ? { ...x, label: e.target.value } : x,
+                    );
+                    setContent({ ...c, footer: { ...c.footer, quickLinks } });
+                  }}
+                />
+                <Input
+                  value={l.href}
+                  placeholder="Caminho (ex.: /about)"
+                  onChange={(e) => {
+                    const quickLinks = c.footer.quickLinks.map((x, idx) =>
+                      idx === i ? { ...x, href: e.target.value } : x,
+                    );
+                    setContent({ ...c, footer: { ...c.footer, quickLinks } });
+                  }}
+                />
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() =>
+                    setContent({
+                      ...c,
+                      footer: {
+                        ...c.footer,
+                        quickLinks: c.footer.quickLinks.filter((_, idx) => idx !== i),
+                      },
+                    })
+                  }
+                >
+                  Remover
+                </Button>
+              </div>
+            ))}
           </div>
         </section>
 

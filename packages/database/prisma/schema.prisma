@@ -189,17 +189,45 @@ model SchoolProtocol {
   @@index([active, sortOrder])
 }
 
+/// Physical Corujinha centres / polos (Lobão, São João de Ver, Sanguedo, …).
+model Center {
+  id          String         @id @default(cuid())
+  /// URL/filter key, e.g. "lobao", "sao-joao-de-ver", "sanguedo"
+  slug        String         @unique
+  name        String
+  /// Shown in badges / short labels; defaults to name when empty
+  shortName   String?
+  address     String?
+  city        String?
+  postalCode  String?
+  phone       String?
+  email       String?
+  isPrimary   Boolean        @default(false)
+  sortOrder   Int            @default(0)
+  published   Boolean        @default(true)
+  createdAt   DateTime       @default(now())
+  updatedAt   DateTime       @updatedAt
+  gallery     GalleryImage[]
+
+  @@index([published, sortOrder])
+}
+
 model GalleryImage {
   id        String   @id @default(cuid())
   imageKey  String
   alt       String?
+  /// Thematic or legacy filter key (activities, homepage, or center slug)
   album     String?
+  centerId  String?
+  center    Center?  @relation(fields: [centerId], references: [id], onDelete: SetNull)
   sortOrder Int      @default(0)
   published Boolean  @default(true)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
   @@index([published, sortOrder])
+  @@index([centerId])
+  @@index([album])
 }
 
 model ContactMessage {

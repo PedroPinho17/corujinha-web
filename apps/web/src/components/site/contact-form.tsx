@@ -26,7 +26,8 @@ export function ContactForm({
     e.preventDefault();
     setLoading(true);
     setStatus("idle");
-    const fd = new FormData(e.currentTarget);
+    const form = e.currentTarget;
+    const fd = new FormData(form);
     const subject = String(fd.get("subject") || "");
     const schoolYear = String(fd.get("schoolYear") || "");
     const location = String(fd.get("location") || "");
@@ -69,7 +70,7 @@ export function ContactForm({
       });
       setOkMessage(res.message || "Enviado com sucesso!");
       setStatus("ok");
-      e.currentTarget.reset();
+      form.reset();
     } catch {
       setStatus("err");
     } finally {
