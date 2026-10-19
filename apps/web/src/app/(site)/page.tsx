@@ -518,12 +518,13 @@ export default async function HomePage() {
                   imageKey: "",
                   alt: null as string | null,
                   album: ["Salas", "Atividades", "Estudo", "Férias", "Equipa", "Espaço"][i],
+                  center: null as GalleryItem["center"],
                 }))
             )
               .slice(0, 6)
               .map((g, i) => {
                 const src = g.imageKey ? mediaUrl(g.imageKey) : null;
-                const albumLabel = galleryAlbumLabel(g.album, g.center);
+                const albumLabel = galleryAlbumLabel(g.album, "center" in g ? g.center : null);
                 return (
                   <Link
                     key={g.id}
