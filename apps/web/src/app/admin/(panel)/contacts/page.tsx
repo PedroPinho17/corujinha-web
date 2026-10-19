@@ -188,7 +188,9 @@ export default function AdminContactsPage() {
                   <th className="px-4 py-3 font-bold">Nome</th>
                   <th className="px-4 py-3 font-bold">Pedido</th>
                   <th className="px-4 py-3 font-bold">Estado</th>
-                  <th className="px-4 py-3 text-right font-bold">Ações</th>
+                  <th className="sticky right-0 z-[1] bg-white px-4 py-3 text-right font-bold shadow-[-6px_0_8px_-6px_rgba(15,23,42,0.12)]">
+                    Ações
+                  </th>
                 </tr>
               </thead>
               <tbody>
@@ -243,11 +245,11 @@ export default function AdminContactsPage() {
                         {statusLabel[c.status] ?? c.status}
                       </span>
                     </td>
-                    <td className="px-4 py-3 text-right">
-                      <div className="flex justify-end gap-2">
+                    <td className="sticky right-0 z-[1] bg-inherit px-4 py-3 text-right shadow-[-6px_0_8px_-6px_rgba(15,23,42,0.12)]">
+                      <div className="flex flex-col items-stretch justify-end gap-1 sm:flex-row sm:items-center sm:gap-2">
                         <button
                           type="button"
-                          className="text-xs font-bold text-indigo-500 hover:underline"
+                          className="rounded-lg border border-slate-200 bg-white px-2.5 py-1 text-xs font-bold text-indigo-600 hover:bg-indigo-50"
                           onClick={() => open(c)}
                         >
                           Abrir
@@ -258,7 +260,7 @@ export default function AdminContactsPage() {
                               ? "Re: Pedido de inscrição — Corujinha"
                               : "Re: Contacto — Corujinha",
                           )}`}
-                          className="text-xs font-bold text-pink-600 hover:underline"
+                          className="rounded-lg border border-pink-100 bg-pink-50 px-2.5 py-1 text-center text-xs font-bold text-pink-700 hover:bg-pink-100"
                         >
                           Responder
                         </a>

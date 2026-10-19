@@ -1,3 +1,27 @@
+function friendlyHttpError(status: number, text: string): string {
+  if (status === 429) return "Demasiados pedidos. Aguarde um pouco e tente novamente.";
+  if (status === 401 || status === 403) return "Sessão expirada ou sem permissão. Entre novamente.";
+  try {
+    const parsed = JSON.parse(text) as { message?: string | string[] };
+    const msg = Array.isArray(parsed.message) ? parsed.message.join("; ") : parsed.message;
+    if (msg) {
+      const lower = msg.toLowerCase();
+      if (lower.includes("email must be an email") || lower.includes("email inválido")) {
+        return "O email indicado não é válido. Deixe o campo vazio se não precisar.";
+      }
+      if (lower.includes("should not exist") || lower.includes("property") || lower.includes("whitelist")) {
+        return "Dados inválidos ao guardar. Atualize a página e tente novamente.";
+      }
+      if (lower.includes("internal server error")) return "Erro no servidor. Tente novamente dentro de momentos.";
+      return msg;
+    }
+  } catch {
+    /* not JSON */
+  }
+  if (status === 400) return "Pedido inválido. Verifique os campos e tente novamente.";
+  return text || `Erro HTTP ${status}`;
+}
+
 export async function apiFetch<T = unknown>(
   path: string,
   init?: RequestInit,
@@ -12,7 +36,7 @@ export async function apiFetch<T = unknown>(
   });
   if (!res.ok) {
     const text = await res.text();
-    throw new Error(text || `HTTP ${res.status}`);
+    throw new Error(friendlyHttpError(res.status, text));
   }
   return res.json() as Promise<T>;
 }

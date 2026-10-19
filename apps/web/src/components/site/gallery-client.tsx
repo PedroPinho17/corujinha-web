@@ -1,27 +1,72 @@
 "use client";
 
-import { useEffect, useId, useRef, useState } from "react";
+import { useEffect, useId, useMemo, useRef, useState } from "react";
 import { mediaUrl } from "@/lib/utils";
 
-type Item = { id: string; imageKey: string; alt?: string; album?: string };
+type Center = {
+  id: string;
+  slug: string;
+  name: string;
+  shortName?: string | null;
+};
 
-const filters = [
-  { id: "all", label: "Todas" },
-  { id: "caldas", label: "Lobão" },
-  { id: "sao-joao", label: "São João de Ver" },
+type Item = {
+  id: string;
+  imageKey: string;
+  alt?: string;
+  album?: string;
+  center?: Center | null;
+};
+
+const THEME_FILTERS = [
   { id: "activities", label: "Atividades" },
   { id: "homepage", label: "Geral" },
 ];
 
-export function GalleryClient({ items }: { items: Item[] }) {
+const LEGACY_ALBUM: Record<string, string> = {
+  caldas: "lobao",
+  lobão: "lobao",
+  "sao-joao": "sao-joao-de-ver",
+};
+
+function itemFilterKey(item: Item) {
+  if (item.center?.slug) return item.center.slug;
+  const album = (item.album || "").toLowerCase();
+  return LEGACY_ALBUM[album] ?? album;
+}
+
+export function GalleryClient({
+  items,
+  centers = [],
+}: {
+  items: Item[];
+  centers?: Center[];
+}) {
   const [filter, setFilter] = useState("all");
   const [active, setActive] = useState<Item | null>(null);
   const closeRef = useRef<HTMLButtonElement>(null);
   const lastFocus = useRef<HTMLElement | null>(null);
   const dialogTitleId = useId();
 
+  const filters = useMemo(() => {
+    const fromCenters = centers.map((c) => ({
+      id: c.slug,
+      label: c.shortName || c.name,
+    }));
+    // Fallback if API empty (legacy hard-coded trio)
+    const centerFilters =
+      fromCenters.length > 0
+        ? fromCenters
+        : [
+            { id: "lobao", label: "Lobão" },
+            { id: "sao-joao-de-ver", label: "São João de Ver" },
+            { id: "sanguedo", label: "Sanguedo" },
+          ];
+    return [{ id: "all", label: "Todas" }, ...centerFilters, ...THEME_FILTERS];
+  }, [centers]);
+
   const visible =
-    filter === "all" ? items : items.filter((i) => (i.album || "").toLowerCase() === filter);
+    filter === "all" ? items : items.filter((i) => itemFilterKey(i) === filter);
 
   useEffect(() => {
     if (!active) return;
@@ -100,8 +145,8 @@ export function GalleryClient({ items }: { items: Item[] }) {
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
             src={mediaUrl(active.imageKey) ?? undefined}
-            alt={active.alt ?? ""}
-            className="max-h-[90vh] max-w-full rounded-xl object-contain"
+            alt={active.alt ?? "Galeria"}
+            className="max-h-[85vh] max-w-full rounded-xl object-contain"
             onClick={(e) => e.stopPropagation()}
           />
         </div>

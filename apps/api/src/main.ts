@@ -41,17 +41,23 @@ async function bootstrap() {
   });
 
   const expressApp = app.getHttpAdapter().getInstance();
-  const authLimiter = new SlidingWindowRateLimiter(20, 15 * 60 * 1000);
+  /** 5 tentativas de login / 15 min por IP — bloqueia força bruta no backoffice. */
+  const authLimiter = new SlidingWindowRateLimiter(5, 15 * 60 * 1000);
   const authHandler = toNodeHandler(auth);
   expressApp.use((req: Request, res: Response, next: () => void) => {
     if (!req.path.startsWith("/api/auth")) return next();
     if (
       req.method === "POST" &&
-      (req.path.includes("sign-in") || req.path.includes("sign-up"))
+      (req.path.includes("sign-in") ||
+        req.path.includes("sign-up") ||
+        req.path.includes("forget-password") ||
+        req.path.includes("request-password-reset"))
     ) {
       const ip = clientIp(req);
       if (!authLimiter.allow(`auth:${ip}`)) {
-        res.status(429).json({ message: "Demasiados pedidos. Tenta mais tarde." });
+        res.status(429).json({
+          message: "Demasiadas tentativas. Aguarde alguns minutos e tente novamente.",
+        });
         return;
       }
     }

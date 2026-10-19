@@ -26,7 +26,7 @@ export function CrudResourcePage({
   title: string;
   endpoint: string;
   nameField?: "name" | "title" | "schoolName";
-  bodyField?: "description" | "content";
+  bodyField?: "description" | "content" | "address";
   extraFields?: {
     key: string;
     label: string;
@@ -285,21 +285,23 @@ export function CrudResourcePage({
       {
         id: "actions",
         header: "Ações",
-        headerClassName: "text-center",
-        className: "text-center",
+        headerClassName:
+          "sticky right-0 z-[1] bg-white text-center shadow-[-6px_0_8px_-6px_rgba(15,23,42,0.12)]",
+        className:
+          "sticky right-0 z-[1] bg-white text-center shadow-[-6px_0_8px_-6px_rgba(15,23,42,0.12)]",
         sortable: false,
         cell: (r) => (
-          <div className="flex justify-center gap-1">
+          <div className="flex flex-col items-stretch justify-center gap-1 sm:flex-row sm:items-center">
             <button
               type="button"
-              className="inline-flex h-8 items-center rounded border border-slate-300 bg-sky-50 px-2.5 text-xs font-semibold text-sky-700 hover:bg-sky-100"
+              className="inline-flex h-8 items-center justify-center rounded border border-slate-300 bg-sky-50 px-2.5 text-xs font-semibold text-sky-700 hover:bg-sky-100"
               onClick={() => startEdit(r)}
             >
               Editar
             </button>
             <button
               type="button"
-              className="inline-flex h-8 items-center rounded border border-rose-200 bg-rose-50 px-2.5 text-xs font-semibold text-rose-700 hover:bg-rose-100"
+              className="inline-flex h-8 items-center justify-center rounded border border-rose-200 bg-rose-50 px-2.5 text-xs font-semibold text-rose-700 hover:bg-rose-100"
               onClick={() => setPendingDelete(r.id)}
             >
               Eliminar
@@ -370,7 +372,7 @@ export function CrudResourcePage({
               />
             </div>
             <div>
-              <Label>Descrição (PT)</Label>
+              <Label>{bodyField === "address" ? "Morada" : "Descrição (PT)"}</Label>
               <Textarea
                 value={String(form[bodyField] ?? "")}
                 onChange={(e) => setForm({ ...form, [bodyField]: e.target.value })}

@@ -203,6 +203,41 @@ async function main() {
     });
   }
 
+  if ((await prisma.center.count()) === 0) {
+    await prisma.center.createMany({
+      data: [
+        {
+          slug: "lobao",
+          name: "Centro Lobão",
+          shortName: "Lobão",
+          address: "R. Namorados 566",
+          city: "Lobão",
+          postalCode: "4505-444",
+          isPrimary: true,
+          sortOrder: 1,
+        },
+        {
+          slug: "sao-joao-de-ver",
+          name: "Centro São João de Ver",
+          shortName: "São João de Ver",
+          address: "Av. Dr. Francisco Sá Carneiro 1192 Loja H",
+          city: "São João de Ver",
+          postalCode: "4520-617",
+          isPrimary: false,
+          sortOrder: 2,
+        },
+        {
+          slug: "sanguedo",
+          name: "Centro Sanguedo",
+          shortName: "Sanguedo",
+          city: "Sanguedo",
+          isPrimary: false,
+          sortOrder: 3,
+        },
+      ],
+    });
+  }
+
   console.log("Seed complete. Admin:", email);
 }
 

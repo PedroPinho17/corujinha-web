@@ -15,6 +15,7 @@ import { EntitiesModule } from "./entities/entities.module";
 import { FormationsModule } from "./formations/formations.module";
 import { ProtocolsModule } from "./protocols/protocols.module";
 import { GalleryModule } from "./gallery/gallery.module";
+import { CentersModule } from "./centers/centers.module";
 import { DashboardModule } from "./dashboard/dashboard.module";
 import { UsersModule } from "./users/users.module";
 import { SettingsModule } from "./settings/settings.module";
@@ -42,6 +43,7 @@ import { GooglePlacesModule } from "./google-places/google-places.module";
     FormationsModule,
     ProtocolsModule,
     GalleryModule,
+    CentersModule,
     DashboardModule,
     UsersModule,
     SettingsModule,
@@ -49,3 +51,4 @@ import { GooglePlacesModule } from "./google-places/google-places.module";
   ],
 })
 export class AppModule {}
+

@@ -75,15 +75,48 @@ describe("ContactProcessor", () => {
     expect(generalHtml).toContain("Centro de Apoio Escolar Corujinha");
     expect(generalHtml).toContain("Nova mensagem de contacto");
     expect(generalHtml).toContain("Ana");
+    // 2.ª chamada = confirmação à família
+    expect(mail.send.mock.calls[1][0]).toEqual(
+      expect.objectContaining({
+        to: "ana@example.com",
+        subject: expect.stringContaining("Recebemos"),
+      }),
+    );
 
+    mail.send.mockClear();
     prisma.contactMessage.findUnique.mockResolvedValue({ ...base, kind: "ENROLLMENT" });
     await processor.process({ data: { contactId: "1" } } as never);
     expect(mail.send).toHaveBeenCalledWith(
       expect.objectContaining({ subject: expect.stringContaining("inscrição") }),
     );
-    const enrollHtml = mail.send.mock.calls[1][0].html as string;
+    const enrollHtml = mail.send.mock.calls[0][0].html as string;
     expect(enrollHtml).toContain("/logo.webp");
     expect(enrollHtml).toContain("Pedido de inscrição");
+    expect(mail.send.mock.calls[1][0].to).toBe("ana@example.com");
+    expect(prisma.contactMessage.update).toHaveBeenCalledWith(
+      expect.objectContaining({ data: { status: "SENT" } }),
+    );
+  });
+
+  it("still marks SENT if family confirmation fails", async () => {
+    prisma.contactMessage.findUnique.mockResolvedValue({
+      id: "1",
+      erasedAt: null,
+      kind: "GENERAL",
+      name: "Ana",
+      email: "ana@example.com",
+      phone: null,
+      message: "ola",
+      privacyConsent: true,
+      subject: null,
+      schoolYear: null,
+      location: null,
+    });
+    mail.send
+      .mockResolvedValueOnce(undefined)
+      .mockRejectedValueOnce(new Error("family smtp"));
+    prisma.contactMessage.update.mockResolvedValue({});
+    await processor.process({ data: { contactId: "1" } } as never);
     expect(prisma.contactMessage.update).toHaveBeenCalledWith(
       expect.objectContaining({ data: { status: "SENT" } }),
     );

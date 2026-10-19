@@ -242,7 +242,7 @@ export const DEFAULT_SITE_CONTENT: SiteContent = {
     addressMainLines: ["R. Namorados 566", "4505-444 Lobão"],
     addressSecondaryLabel: "Centro São João de Ver",
     addressSecondaryLines: ["Av. Dr. Francisco Sá Carneiro 1192 Loja H", "4520-617 São João de Ver"],
-    locations: ["Lobão", "São João de Ver"],
+    locations: ["Lobão", "São João de Ver", "Sanguedo"],
     hoursLines: [
       "Segunda a Sexta: 14h00 – 19h30",
       "Sábados: sob marcação",
@@ -279,7 +279,7 @@ export const DEFAULT_SITE_CONTENT: SiteContent = {
       {
         question: "Quais os polos e horários?",
         answer:
-          "Temos centros em Lobão e São João de Ver. O horário das aulas é personalizado — tipicamente à tarde durante a semana.",
+          "Temos centros em Lobão (principal), São João de Ver e Sanguedo. O horário das aulas é personalizado — tipicamente à tarde durante a semana.",
       },
       {
         question: "Até que ano dão apoio?",

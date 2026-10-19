@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -8,23 +8,31 @@ import { KrajeeFileInput } from "@/components/admin/krajee-file-input";
 import { adminFetch } from "@/lib/admin-api";
 import { mediaUrl } from "@/lib/utils";
 
+type Center = {
+  id: string;
+  slug: string;
+  name: string;
+  shortName?: string | null;
+};
+
 type Item = {
   id: string;
   imageKey: string;
   alt?: string | null;
   album?: string | null;
+  centerId?: string | null;
+  center?: Center | null;
   published?: boolean;
 };
 
-const ALBUMS = [
-  { value: "caldas", label: "Lobão" },
-  { value: "sao-joao", label: "São João de Ver" },
+const THEME_ALBUMS = [
   { value: "activities", label: "Atividades" },
   { value: "homepage", label: "Geral" },
 ];
 
 export default function AdminGalleryPage() {
   const [rows, setRows] = useState<Item[]>([]);
+  const [centers, setCenters] = useState<Center[]>([]);
   const [imageKey, setImageKey] = useState("");
   const [alt, setAlt] = useState("");
   const [album, setAlbum] = useState("homepage");
@@ -33,10 +41,27 @@ export default function AdminGalleryPage() {
   const [toast, setToast] = useState("");
   const [pendingDelete, setPendingDelete] = useState<string | null>(null);
 
+  const albumOptions = useMemo(() => {
+    const fromCenters = centers.map((c) => ({
+      value: c.slug,
+      label: c.shortName || c.name,
+      centerId: c.id,
+    }));
+    return [...fromCenters, ...THEME_ALBUMS.map((a) => ({ ...a, centerId: null as string | null }))];
+  }, [centers]);
+
   async function load() {
     setError("");
     try {
-      setRows(await adminFetch<Item[]>("/api/admin/gallery"));
+      const [gallery, ctrs] = await Promise.all([
+        adminFetch<Item[]>("/api/admin/gallery"),
+        adminFetch<Center[]>("/api/admin/centers"),
+      ]);
+      setRows(gallery);
+      setCenters(ctrs.filter((c) => true));
+      if (ctrs[0] && album === "homepage") {
+        // keep homepage default for new uploads
+      }
     } catch (e) {
       setError(e instanceof Error ? e.message : "Erro ao carregar");
     }
@@ -44,15 +69,22 @@ export default function AdminGalleryPage() {
 
   useEffect(() => {
     load().catch(() => undefined);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   async function create(e: React.FormEvent) {
     e.preventDefault();
     setError("");
     try {
+      const opt = albumOptions.find((a) => a.value === album);
       await adminFetch("/api/admin/gallery", {
         method: "POST",
-        body: JSON.stringify({ imageKey, alt, album }),
+        body: JSON.stringify({
+          imageKey,
+          alt,
+          album,
+          centerId: opt?.centerId ?? null,
+        }),
       });
       setImageKey("");
       setAlt("");
@@ -76,6 +108,13 @@ export default function AdminGalleryPage() {
     } catch (err) {
       setError(err instanceof Error ? err.message : "Erro ao apagar");
     }
+  }
+
+  function albumLabel(item: Item) {
+    if (item.center?.shortName || item.center?.name) {
+      return item.center.shortName || item.center.name;
+    }
+    return albumOptions.find((a) => a.value === item.album)?.label ?? item.album;
   }
 
   return (
@@ -127,18 +166,30 @@ export default function AdminGalleryPage() {
             <Input value={alt} onChange={(e) => setAlt(e.target.value)} placeholder="Descrição da imagem" />
           </div>
           <div>
-            <Label>Álbum (filtro no site)</Label>
+            <Label>Álbum / centro (filtro no site)</Label>
             <select
               className="flex h-10 w-full rounded-md border border-slate-200 bg-white px-3 text-sm"
               value={album}
               onChange={(e) => setAlbum(e.target.value)}
             >
-              {ALBUMS.map((a) => (
-                <option key={a.value} value={a.value}>
-                  {a.label}
-                </option>
-              ))}
+              <optgroup label="Centros">
+                {centers.map((c) => (
+                  <option key={c.id} value={c.slug}>
+                    {c.shortName || c.name}
+                  </option>
+                ))}
+              </optgroup>
+              <optgroup label="Temas">
+                {THEME_ALBUMS.map((a) => (
+                  <option key={a.value} value={a.value}>
+                    {a.label}
+                  </option>
+                ))}
+              </optgroup>
             </select>
+            <p className="mt-1 text-[11px] text-slate-400">
+              Os centros vêm de <strong>Centros</strong> no menu (Lobão, São João de Ver, Sanguedo…).
+            </p>
           </div>
           <Button type="submit" disabled={!imageKey}>
             Adicionar à galeria
@@ -158,7 +209,7 @@ export default function AdminGalleryPage() {
           <ul className="grid gap-4 p-5 sm:grid-cols-2 lg:grid-cols-3">
             {rows.map((r) => {
               const src = mediaUrl(r.imageKey);
-              const albumLabel = ALBUMS.find((a) => a.value === r.album)?.label ?? r.album;
+              const label = albumLabel(r);
               return (
                 <li
                   key={r.id}
@@ -184,8 +235,8 @@ export default function AdminGalleryPage() {
                       <p className="truncate text-sm font-semibold text-slate-800">
                         {r.alt || "Sem descrição"}
                       </p>
-                      {albumLabel && (
-                        <p className="mt-0.5 text-[11px] font-medium text-violet-600">{albumLabel}</p>
+                      {label && (
+                        <p className="mt-0.5 text-[11px] font-medium text-pink-600">{label}</p>
                       )}
                     </div>
                     <Button size="sm" variant="outline" onClick={() => setPendingDelete(r.id)}>

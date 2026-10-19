@@ -28,7 +28,14 @@ export default function AdminLoginPage() {
     const { error: err } = await authClient.signIn.email({ email, password });
     setLoading(false);
     if (err) {
-      setError(err.message || "Login falhou");
+      const msg = (err.message || "").toLowerCase();
+      if (msg.includes("too many") || msg.includes("rate") || msg.includes("429")) {
+        setError("Demasiadas tentativas. Aguarde alguns minutos e tente novamente.");
+      } else if (msg.includes("invalid") || msg.includes("credential") || msg.includes("password")) {
+        setError("Email ou password incorretos.");
+      } else {
+        setError(err.message || "Não foi possível entrar. Tente novamente.");
+      }
       return;
     }
     try {

@@ -126,7 +126,14 @@ const galleryPastels = [
   "from-violet-100 to-purple-200",
 ] as const;
 
-type GalleryItem = { id: string; imageKey: string; alt?: string | null; album?: string | null };
+type GalleryItem = {
+  id: string;
+  imageKey: string;
+  alt?: string | null;
+  album?: string | null;
+  center?: { shortName?: string | null; name?: string | null; slug?: string } | null;
+};
+type CenterItem = { id: string; slug: string; name: string; shortName?: string | null };
 type TeamItem = { id: string; name: string; imageKey?: string | null };
 type PostItem = {
   id: string;
@@ -178,7 +185,11 @@ function GradientWord({ children }: { children: ReactNode }) {
   );
 }
 
-function galleryAlbumLabel(album?: string | null) {
+function galleryAlbumLabel(
+  album?: string | null,
+  center?: { shortName?: string | null; name?: string | null } | null,
+) {
+  if (center?.shortName || center?.name) return center.shortName || center.name || null;
   if (!album?.trim()) return null;
   const key = album.trim().toLowerCase();
   const map: Record<string, string> = {
@@ -188,7 +199,9 @@ function galleryAlbumLabel(album?: string | null) {
     lobao: "Lobão",
     lobão: "Lobão",
     "sao-joao": "São João de Ver",
+    "sao-joao-de-ver": "São João de Ver",
     "são joão de ver": "São João de Ver",
+    sanguedo: "Sanguedo",
     homepage: "Geral",
     salas: "Salas",
     sala: "Salas",
@@ -207,11 +220,18 @@ export default async function HomePage() {
   const posts = (data?.posts ?? []) as PostItem[];
   const gallery = (data?.gallery ?? []) as GalleryItem[];
   const formations = (data?.formations ?? []) as FormationItem[];
+  const centers = (data?.centers ?? []) as CenterItem[];
   const hero = content.hero;
   const services = content.services;
   const about = content.about;
   const partner = content.partner;
-  const contact = content.contact;
+  const contact = {
+    ...content.contact,
+    locations:
+      centers.length > 0
+        ? centers.map((c) => c.shortName || c.name)
+        : content.contact.locations,
+  };
   const social = content.social;
   const faqPreview = social.faq.slice(0, 5);
   const phone = settings?.contactPhone ?? contact.phone;
@@ -503,7 +523,7 @@ export default async function HomePage() {
               .slice(0, 6)
               .map((g, i) => {
                 const src = g.imageKey ? mediaUrl(g.imageKey) : null;
-                const albumLabel = galleryAlbumLabel(g.album);
+                const albumLabel = galleryAlbumLabel(g.album, g.center);
                 return (
                   <Link
                     key={g.id}

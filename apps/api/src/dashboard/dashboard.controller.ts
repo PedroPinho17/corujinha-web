@@ -15,7 +15,7 @@ export class DashboardController {
     const cached = await this.redis.getJson("public:home");
     if (cached) return cached;
 
-    const [formations, team, posts, protocols, gallery, settings] = await Promise.all([
+    const [formations, team, posts, protocols, gallery, centers, settings] = await Promise.all([
       this.prisma.formation.findMany({
         where: { active: true },
         orderBy: { sortOrder: "asc" },
@@ -40,11 +40,16 @@ export class DashboardController {
         where: { published: true },
         orderBy: { sortOrder: "asc" },
         take: 8,
+        include: { center: true },
+      }),
+      this.prisma.center.findMany({
+        where: { published: true },
+        orderBy: [{ isPrimary: "desc" }, { sortOrder: "asc" }],
       }),
       this.prisma.siteSettings.findFirst({ orderBy: { createdAt: "asc" } }),
     ]);
 
-    const data = { formations, team, posts, protocols, gallery, settings };
+    const data = { formations, team, posts, protocols, gallery, centers, settings };
     await this.redis.setJson("public:home", data);
     return data;
   }
