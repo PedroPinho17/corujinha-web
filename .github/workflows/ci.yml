@@ -382,6 +382,14 @@ jobs:
           curl -sf http://127.0.0.1:3000/privacidade >/dev/null
           echo "Web smoke OK"
 
+      - name: Playwright e2e smoke
+        env:
+          E2E_BASE_URL: http://127.0.0.1:3000
+        run: |
+          set -euo pipefail
+          pnpm exec playwright install --with-deps chromium
+          pnpm test:e2e
+
       - name: Teardown
         if: always()
         env:

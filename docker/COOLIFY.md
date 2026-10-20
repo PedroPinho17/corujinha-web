@@ -36,10 +36,20 @@ Fluxo de rede: **Cliente → Traefik (TLS) → web → api**. A API deve ver o p
 
 Ver secção «Cópias de segurança automáticas» em [`docs/RUNBOOK.md`](../docs/RUNBOOK.md): cron `pg_dump` + sync R2 + drill de restauro.
 
+## Traefik / HTTPS / HSTS
+
+- Só o Traefik deve expor 80/443. **Não** publicar `3000`/`3001` no host.
+- Ativar HSTS no edge (ex. Coolify / Traefik middleware): `stsSeconds=31536000`, incluir subdomínios.
+- Confirmar nos logs da API que o IP do rate-limit é o do visitante (`x-corujinha-client-ip`), não o do contentor Traefik.
+
+## Redis
+
+O Redis vem de `docker-compose.yml` (AOF + volume `redis_data`), referenciado por `docker-compose.prod.yml` (`depends_on: redis`, `REDIS_HOST=redis`). Se criar o Redis à parte no Coolify: `--appendonly yes` + volume persistente + `REDIS_URL`.
+
 ## Healthcheck
 
 API: `GET /api/health`
 
 ## Compose
 
-`docker-compose.prod.yml` — serviços `postgres`, `redis`, `api`, `web`. No Coolify pode mapear o mesmo `.env` e build Dockerfiles em `apps/api` e `apps/web`.
+`docker-compose.yml` + `docker-compose.prod.yml` — `postgres`, `redis`, `api`, `web`. No Coolify mapear o `.env` e os Dockerfiles em `apps/api` e `apps/web`.

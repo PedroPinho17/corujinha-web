@@ -161,6 +161,7 @@ export function AdminDataTable<T extends { id: string }>({
           <Search className="pointer-events-none absolute left-3 h-4 w-4 text-slate-500" aria-hidden />
           <input
             id="admin-table-search"
+            aria-label="Procurar registos"
             className="h-9 w-[240px] rounded-xl border border-slate-200 bg-white py-2 pl-9 pr-3 text-sm text-slate-700 shadow-sm outline-none placeholder:text-slate-500 focus:border-pink-300 focus:ring-2 focus:ring-pink-100"
             value={query}
             placeholder="Procurar…"

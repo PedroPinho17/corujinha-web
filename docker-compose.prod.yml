@@ -1,6 +1,8 @@
 # Corujinha — deploy (Coolify / VPS) e base para CI smoke.
 # Uso: docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d --build
 #
+# Redis: definido em docker-compose.yml (appendonly + volume redis_data). Não publique
+# a porta 3000/3001 no host — só Traefik → web (expose). API só na rede interna.
 # S3/R2: valores vêm do .env (não forçar Garage aqui).
 # Para smoke no CI: acrescentar docker-compose.ci-smoke.yml (override S3 → Garage).
 

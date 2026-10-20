@@ -1,18 +1,18 @@
 import { expect, test } from "@playwright/test";
 
 /**
- * Smoke e2e — run with the stack up (`pnpm dev` or compose).
- * Not part of the default CI job (see docs/RUNBOOK.md / package.json test:e2e).
+ * Smoke e2e — run with the stack up (`pnpm dev` or compose-smoke).
+ * Also runs in CI after compose-smoke brings the stack up (`pnpm test:e2e`).
  */
 const base = process.env.E2E_BASE_URL ?? "http://localhost:3000";
 
 test.describe("Corujinha public smoke", () => {
   test("home loads with brand and contact form", async ({ page }) => {
     await page.goto(base);
-    await expect(page.getByRole("banner")).toBeVisible();
     await expect(page.locator("body")).toContainText(/Corujinha/i);
+    await expect(page.locator("header, [role='banner']").first()).toBeVisible();
     await page.goto(`${base}/#contact`);
-    await expect(page.locator('form, [id="contact"]').first()).toBeVisible({ timeout: 15_000 });
+    await expect(page.locator("#contact form, form").first()).toBeVisible({ timeout: 15_000 });
   });
 
   test("robots and sitemap are public", async ({ request }) => {

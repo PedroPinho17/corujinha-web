@@ -31,6 +31,9 @@
    - `WEBAUTHN_RP_ID=SEU_DOMINIO` (hostname sem protocolo)
    - `INTERNAL_API_URL=http://api:3001` (rede Docker interna)
 5. Proxy: Traefik → Next → API (rewrites). Definir `TRUST_PROXY_HOPS=1` na API (peer imediato = contentor web). O Next envia `x-corujinha-client-ip` a partir de `X-Real-IP` do Traefik — **não** confiar em `X-Forwarded-For` inventado pelo browser.
+6. **Não** publicar as portas `3000`/`3001` no host — só `expose` na rede Docker; o Traefik é a única entrada.
+7. HSTS: ativar no Traefik/Coolify (middleware `headers.stsSeconds=31536000`, `stsIncludeSubdomains=true`). A app Next não envia HSTS (fica no edge).
+8. Redis: o serviço está em `docker-compose.yml` com `--appendonly yes` e volume `redis_data`. No Coolify, confirme o mesmo volume + AOF se o Redis for um serviço à parte.
 
 ### 2. Email (Resend + DNS)
 
@@ -135,7 +138,7 @@ pnpm test:e2e
 # ou: E2E_BASE_URL=https://staging.exemplo pnpm test:e2e
 ```
 
-Não faz parte do CI por omissão (evita depender de browser no job); os checks `audit` / `test` / `docker` / `compose-smoke` continuam a ser a barreira do `main`.
+No CI, o job `compose-smoke` corre estes testes contra `http://127.0.0.1:3000` depois do stack estar up.
 
 ## Incidentes
 

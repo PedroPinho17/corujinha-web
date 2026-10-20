@@ -214,8 +214,9 @@ export function ContactForm({
         />
       </div>
 
-      <label className="flex items-start gap-2 text-sm text-ink/80">
+      <label className="flex items-start gap-2 text-sm text-ink/80" htmlFor="privacyConsent">
         <input
+          id="privacyConsent"
           type="checkbox"
           name="privacyConsent"
           required
