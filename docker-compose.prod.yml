@@ -20,6 +20,8 @@ services:
     env_file: .env
     environment:
       NODE_ENV: production
+      # Traefik → web → api: um hop de proxy de confiança (peer = contentor web)
+      TRUST_PROXY_HOPS: ${TRUST_PROXY_HOPS:-1}
       POSTGRES_USER: ${POSTGRES_USER:?POSTGRES_USER obrigatorio}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD obrigatorio}
       POSTGRES_DB: ${POSTGRES_DB:-corujinha}

@@ -3,10 +3,9 @@ import { prismaAdapter } from "better-auth/adapters/prisma";
 import { passkey } from "@better-auth/passkey";
 import { prisma } from "@corujinha/database";
 import { resolveAuthSecret } from "../env";
-import { escapeHtml } from "../common/escape-html";
-import { renderEmailHtml } from "../mail/email-layout";
 import { sendMail } from "../mail/send-mail";
 import { authEmailPassword } from "./auth.config";
+import { buildResetPasswordMail } from "./reset-password-mail";
 
 export { authEmailPassword } from "./auth.config";
 
@@ -48,29 +47,12 @@ export const auth = betterAuth({
     resetPasswordTokenExpiresIn: 3600,
     // Fire-and-forget: awaiting would leak timing (user exists vs not).
     sendResetPassword: async ({ user, url }) => {
-      const name = user.name || "admin";
+      const mail = buildResetPasswordMail(user.name || "admin", url);
       void sendMail({
         to: user.email,
-        subject: "Recuperar password — Corujinha",
-        text: [
-          `Olá ${name},`,
-          "",
-          "Recebemos um pedido para redefinir a password do backoffice Corujinha.",
-          "Abre este link (válido durante 1 hora):",
-          url,
-          "",
-          "Se não pediste esta alteração, ignora este email.",
-          "",
-          "— Centro de Apoio Escolar Corujinha",
-        ].join("\n"),
-        html: renderEmailHtml({
-          title: "Recuperar password",
-          preheader: "Link para definir uma nova password (válido 1 hora)",
-          bodyHtml: `<p>Olá <strong>${escapeHtml(name)}</strong>,</p>
-<p>Recebemos um pedido para redefinir a password do backoffice Corujinha.</p>
-<p>O link é válido durante <strong>1 hora</strong>. Se não pediste esta alteração, podes ignorar este email com segurança.</p>`,
-          cta: { label: "Definir nova password", href: url },
-        }),
+        subject: mail.subject,
+        text: mail.text,
+        html: mail.html,
       });
     },
     onPasswordReset: async ({ user }) => {

@@ -257,13 +257,14 @@ export function PostsPageSection({ posts }: { posts: PostItem[] }) {
 }
 
 function SectionHeaderBlock({ large }: { large?: boolean }) {
+  const Heading = large ? "h1" : "h2";
   return (
     <div className="mb-12 text-center md:mb-14">
       <Badge variant="pink" className="mb-5 shadow-sm">
         <Megaphone className="h-4 w-4" />
         Novidades e anúncios
       </Badge>
-      <h2
+      <Heading
         className={cn(
           "font-bold tracking-tight text-ink",
           large ? "mb-5 text-4xl sm:text-5xl md:text-6xl" : "mb-4 text-3xl sm:text-4xl md:text-5xl",
@@ -278,7 +279,7 @@ function SectionHeaderBlock({ large }: { large?: boolean }) {
             Fique Atualizado com as <span className="text-pink">Últimas Notícias</span>
           </>
         )}
-      </h2>
+      </Heading>
       <p className="mx-auto max-w-2xl text-base text-muted sm:text-lg md:text-xl">
         {large
           ? "Fique atualizado sobre formações, parcerias, oportunidades e muito mais"

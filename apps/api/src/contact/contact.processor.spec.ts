@@ -68,10 +68,11 @@ describe("ContactProcessor", () => {
     prisma.contactMessage.update.mockResolvedValue({});
     await processor.process({ data: { contactId: "1" } } as never);
     expect(mail.send).toHaveBeenCalledWith(
-      expect.objectContaining({ subject: expect.stringContaining("Contacto") }),
+      expect.objectContaining({ subject: expect.stringMatching(/contacto/i) }),
     );
     const generalHtml = mail.send.mock.calls[0][0].html as string;
-    expect(generalHtml).toContain("https://corujinha.example/logo.webp");
+    expect(generalHtml).toContain("https://corujinha.example/logo-email.png");
+    expect(generalHtml).toContain("Abrir no backoffice");
     expect(generalHtml).toContain("Centro de Apoio Escolar Corujinha");
     expect(generalHtml).toContain("Nova mensagem de contacto");
     expect(generalHtml).toContain("Ana");
@@ -90,7 +91,7 @@ describe("ContactProcessor", () => {
       expect.objectContaining({ subject: expect.stringContaining("inscrição") }),
     );
     const enrollHtml = mail.send.mock.calls[0][0].html as string;
-    expect(enrollHtml).toContain("/logo.webp");
+    expect(enrollHtml).toContain("/logo-email.png");
     expect(enrollHtml).toContain("Pedido de inscrição");
     expect(mail.send.mock.calls[1][0].to).toBe("ana@example.com");
     expect(prisma.contactMessage.update).toHaveBeenCalledWith(

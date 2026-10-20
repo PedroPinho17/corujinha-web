@@ -25,6 +25,12 @@ type Props<T extends { id: string }> = {
   emptyMessage?: string;
   loading?: boolean;
   defaultPageSize?: number;
+  /** Card title on small screens */
+  mobileTitle?: (row: T) => ReactNode;
+  /** Optional subtitle under the title on cards */
+  mobileMeta?: (row: T) => ReactNode;
+  /** Action buttons row on cards (defaults to actions column cell) */
+  mobileActions?: (row: T) => ReactNode;
 };
 
 export function AdminDataTable<T extends { id: string }>({
@@ -35,6 +41,9 @@ export function AdminDataTable<T extends { id: string }>({
   emptyMessage = "Nenhum registo encontrado.",
   loading = false,
   defaultPageSize = 25,
+  mobileTitle,
+  mobileMeta,
+  mobileActions,
 }: Props<T>) {
   const [query, setQuery] = useState("");
   const [pageSize, setPageSize] = useState(defaultPageSize);
@@ -82,6 +91,9 @@ export function AdminDataTable<T extends { id: string }>({
   const end = pageSize === -1 ? total : Math.min(start + size, total);
   const pageRows = filtered.slice(start, end);
 
+  const titleCol = columns.find((c) => c.id === "name" || c.id === "title") ?? columns[0];
+  const actionsCol = columns.find((c) => c.id === "actions");
+
   function toggleSort(col: DataTableColumn<T>) {
     if (col.sortable === false) return;
     if (!col.sortValue && !col.searchValue) return;
@@ -94,6 +106,18 @@ export function AdminDataTable<T extends { id: string }>({
     setPage(0);
   }
 
+  function cardTitle(row: T): ReactNode {
+    if (mobileTitle) return mobileTitle(row);
+    if (titleCol) return titleCol.cell(row);
+    return row.id;
+  }
+
+  function cardActions(row: T): ReactNode {
+    if (mobileActions) return mobileActions(row);
+    if (actionsCol) return actionsCol.cell(row);
+    return null;
+  }
+
   return (
     <div className="overflow-hidden rounded-2xl border border-slate-100 bg-white shadow-[0_8px_30px_rgba(15,23,42,0.04)]">
       {(title || toolbar) && (
@@ -101,7 +125,7 @@ export function AdminDataTable<T extends { id: string }>({
           {title ? (
             <h2 className="text-base font-semibold tracking-tight text-slate-900">
               {title}{" "}
-              <span className="ml-1 rounded-full bg-slate-100 px-2 py-0.5 text-xs font-medium text-slate-500">
+              <span className="ml-1 rounded-full bg-slate-100 px-2 py-0.5 text-xs font-medium text-slate-600">
                 {rows.length}
               </span>
             </h2>
@@ -113,9 +137,10 @@ export function AdminDataTable<T extends { id: string }>({
       )}
 
       <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-100 bg-slate-50/60 px-4 py-3 md:px-5">
-        <label className="flex items-center gap-2 text-sm text-slate-600">
+        <label className="flex items-center gap-2 text-sm text-slate-600" htmlFor="admin-table-page-size">
           <span>Mostrar</span>
           <select
+            id="admin-table-page-size"
             className="h-9 rounded-xl border border-slate-200 bg-white px-2.5 text-sm text-slate-700 shadow-sm outline-none focus:border-pink-300 focus:ring-2 focus:ring-pink-100"
             value={pageSize}
             onChange={(e) => {
@@ -132,10 +157,11 @@ export function AdminDataTable<T extends { id: string }>({
           <span>registos</span>
         </label>
 
-        <label className="relative flex items-center text-sm text-slate-600">
-          <Search className="pointer-events-none absolute left-3 h-4 w-4 text-slate-400" aria-hidden />
+        <label className="relative flex items-center text-sm text-slate-600" htmlFor="admin-table-search">
+          <Search className="pointer-events-none absolute left-3 h-4 w-4 text-slate-500" aria-hidden />
           <input
-            className="h-9 w-[240px] rounded-xl border border-slate-200 bg-white py-2 pl-9 pr-3 text-sm text-slate-700 shadow-sm outline-none placeholder:text-slate-400 focus:border-pink-300 focus:ring-2 focus:ring-pink-100"
+            id="admin-table-search"
+            className="h-9 w-[240px] rounded-xl border border-slate-200 bg-white py-2 pl-9 pr-3 text-sm text-slate-700 shadow-sm outline-none placeholder:text-slate-500 focus:border-pink-300 focus:ring-2 focus:ring-pink-100"
             value={query}
             placeholder="Procurar…"
             onChange={(e) => {
@@ -147,10 +173,30 @@ export function AdminDataTable<T extends { id: string }>({
       </div>
 
       {loading ? (
-        <p className="px-4 py-14 text-center text-sm text-slate-400">A carregar…</p>
+        <p className="px-4 py-14 text-center text-sm text-slate-500">A carregar…</p>
       ) : (
         <>
-          <div className="overflow-x-auto">
+          {/* Mobile cards */}
+          <ul className="divide-y divide-slate-100 md:hidden">
+            {pageRows.length === 0 ? (
+              <li className="px-4 py-12 text-center text-slate-500">{emptyMessage}</li>
+            ) : (
+              pageRows.map((row) => (
+                <li key={row.id} className="space-y-3 px-4 py-4">
+                  <div className="min-w-0">
+                    <div className="font-semibold text-slate-900">{cardTitle(row)}</div>
+                    {mobileMeta ? (
+                      <div className="mt-1 text-xs text-slate-600">{mobileMeta(row)}</div>
+                    ) : null}
+                  </div>
+                  <div>{cardActions(row)}</div>
+                </li>
+              ))
+            )}
+          </ul>
+
+          {/* Desktop table */}
+          <div className="hidden overflow-x-auto md:block">
             <table className="w-full min-w-[640px] border-collapse text-sm">
               <thead>
                 <tr className="border-b border-slate-100 bg-white">
@@ -161,7 +207,7 @@ export function AdminDataTable<T extends { id: string }>({
                       <th
                         key={col.id}
                         className={cn(
-                          "whitespace-nowrap px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-wider text-slate-400",
+                          "whitespace-nowrap px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-wider text-slate-500",
                           canSort && "cursor-pointer select-none hover:text-slate-700",
                           col.headerClassName,
                         )}
@@ -191,10 +237,7 @@ export function AdminDataTable<T extends { id: string }>({
               <tbody>
                 {pageRows.length === 0 ? (
                   <tr>
-                    <td
-                      colSpan={columns.length}
-                      className="px-4 py-12 text-center text-slate-500"
-                    >
+                    <td colSpan={columns.length} className="px-4 py-12 text-center text-slate-500">
                       {emptyMessage}
                     </td>
                   </tr>
@@ -219,11 +262,9 @@ export function AdminDataTable<T extends { id: string }>({
             </table>
           </div>
 
-          <div className="flex flex-wrap items-center justify-between gap-3 border-t border-slate-100 bg-slate-50/40 px-4 py-3 text-sm text-slate-500 md:px-5">
+          <div className="flex flex-wrap items-center justify-between gap-3 border-t border-slate-100 bg-slate-50/40 px-4 py-3 text-sm text-slate-600 md:px-5">
             <p>
-              {total === 0
-                ? "Sem registos"
-                : `${start + 1}–${end} de ${total}`}
+              {total === 0 ? "Sem registos" : `${start + 1}–${end} de ${total}`}
               {query.trim() && total !== rows.length ? ` (filtrado de ${rows.length})` : ""}
             </p>
             <div className="flex items-center gap-1">
@@ -250,7 +291,7 @@ export function AdminDataTable<T extends { id: string }>({
                 }, [])
                 .map((item, idx) =>
                   item === "…" ? (
-                    <span key={`e-${idx}`} className="px-1 text-slate-400">
+                    <span key={`e-${idx}`} className="px-1 text-slate-500">
                       …
                     </span>
                   ) : (

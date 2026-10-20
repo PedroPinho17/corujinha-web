@@ -9,6 +9,7 @@
     "docker:up": "docker compose --profile local up -d",
     "docker:down": "docker compose --profile local down",
     "test": "pnpm --filter @corujinha/api test",
+    "test:e2e": "playwright test -c e2e/playwright.config.ts",
     "typecheck": "pnpm --filter @corujinha/api typecheck && pnpm --filter web exec tsc --noEmit",
     "db:generate": "pnpm --filter @corujinha/database generate",
     "db:migrate": "prisma migrate dev --schema=packages/database/prisma/schema.prisma",

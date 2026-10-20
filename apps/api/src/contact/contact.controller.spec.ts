@@ -20,7 +20,7 @@ describe("ContactController", () => {
   it("submit passes dto and client ip", async () => {
     contacts.submit.mockResolvedValue({ success: true });
     const dto = { name: "Ana", email: "a@b.com", message: "hello!", privacyConsent: true };
-    await controller.submit(dto as never, { ip: "1.2.3.4" });
+    await controller.submit(dto as never, { socket: { remoteAddress: "1.2.3.4" } });
     expect(contacts.submit).toHaveBeenCalledWith(dto, "1.2.3.4");
   });
 

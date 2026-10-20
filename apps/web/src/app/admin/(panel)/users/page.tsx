@@ -16,8 +16,11 @@ type User = {
   mustChangePassword: boolean;
 };
 
+type Me = { id: string; role: string };
+
 export default function AdminUsersPage() {
   const [rows, setRows] = useState<User[]>([]);
+  const [me, setMe] = useState<Me | null>(null);
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -26,7 +29,12 @@ export default function AdminUsersPage() {
   const [saving, setSaving] = useState(false);
 
   async function load() {
-    setRows(await adminFetch<User[]>("/api/admin/users"));
+    const [users, session] = await Promise.all([
+      adminFetch<User[]>("/api/admin/users"),
+      adminFetch<{ user: Me }>("/api/me"),
+    ]);
+    setRows(users);
+    setMe(session.user);
   }
 
   useEffect(() => {
@@ -77,6 +85,7 @@ export default function AdminUsersPage() {
       await load();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Erro ao atualizar papel");
+      await load();
     }
   }
 
@@ -100,7 +109,11 @@ export default function AdminUsersPage() {
           caracteres.
         </p>
       </div>
-      {error && <p className="text-sm text-red-600">{error}</p>}
+      {error && (
+        <p className="rounded-xl bg-rose-50 px-4 py-2 text-sm text-rose-700" role="alert">
+          {error}
+        </p>
+      )}
 
       <form
         onSubmit={create}
@@ -109,16 +122,28 @@ export default function AdminUsersPage() {
         <h2 className="text-base font-semibold text-slate-800">Novo utilizador</h2>
         <div className="grid gap-3 sm:grid-cols-2">
           <div>
-            <Label>Nome</Label>
-            <Input value={name} onChange={(e) => setName(e.target.value)} required />
-          </div>
-          <div>
-            <Label>Email</Label>
-            <Input type="email" value={email} onChange={(e) => setEmail(e.target.value)} required />
-          </div>
-          <div>
-            <Label>Password inicial</Label>
+            <Label htmlFor="user-name">Nome</Label>
             <Input
+              id="user-name"
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              required
+            />
+          </div>
+          <div>
+            <Label htmlFor="user-email">Email</Label>
+            <Input
+              id="user-email"
+              type="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              required
+            />
+          </div>
+          <div>
+            <Label htmlFor="user-password">Password inicial</Label>
+            <Input
+              id="user-password"
               type="password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
@@ -145,36 +170,44 @@ export default function AdminUsersPage() {
       </form>
 
       <ul className="space-y-2">
-        {rows.map((u) => (
-          <li
-            key={u.id}
-            className="flex flex-wrap items-center justify-between gap-3 rounded-xl bg-white px-4 py-3 shadow-sm ring-1 ring-slate-100"
-          >
-            <div className="min-w-0">
-              <p className="font-medium text-slate-900">
-                {u.name} · <span className="font-normal text-slate-600">{u.email}</span>
-              </p>
-              <p className="mt-0.5 text-xs text-slate-500">
-                {u.mustChangePassword ? "Deve mudar a password no próximo login · " : null}
-                Papel atual: <strong>{u.role}</strong>
-              </p>
-            </div>
-            <div className="flex flex-wrap items-center gap-2">
-              <select
-                aria-label={`Papel de ${u.name}`}
-                value={u.role === "ADMIN" ? "ADMIN" : "EDITOR"}
-                onChange={(e) => void setUserRole(u.id, e.target.value as UserRole)}
-                className="h-9 rounded-md border border-slate-200 bg-white px-2 text-xs font-medium text-slate-700 outline-none focus:border-pink-400"
-              >
-                <option value="EDITOR">Editor</option>
-                <option value="ADMIN">Admin</option>
-              </select>
-              <Button size="sm" variant="outline" onClick={() => void remove(u.id)}>
-                Apagar
-              </Button>
-            </div>
-          </li>
-        ))}
+        {rows.map((u) => {
+          const isSelf = me?.id === u.id;
+          return (
+            <li
+              key={u.id}
+              className="flex flex-wrap items-center justify-between gap-3 rounded-xl bg-white px-4 py-3 shadow-sm ring-1 ring-slate-100"
+            >
+              <div className="min-w-0">
+                <p className="font-medium text-slate-900">
+                  {u.name} · <span className="font-normal text-slate-600">{u.email}</span>
+                  {isSelf ? (
+                    <span className="ml-2 text-xs font-semibold text-pink-600">(você)</span>
+                  ) : null}
+                </p>
+                <p className="mt-0.5 text-xs text-slate-600">
+                  {u.mustChangePassword ? "Deve mudar a password no próximo login · " : null}
+                  Papel atual: <strong>{u.role}</strong>
+                </p>
+              </div>
+              <div className="flex flex-wrap items-center gap-2">
+                <select
+                  aria-label={`Papel de ${u.name}`}
+                  value={u.role === "ADMIN" ? "ADMIN" : "EDITOR"}
+                  onChange={(e) => void setUserRole(u.id, e.target.value as UserRole)}
+                  className="h-9 rounded-md border border-slate-200 bg-white px-2 text-xs font-medium text-slate-700 outline-none focus:border-pink-400"
+                >
+                  <option value="EDITOR">Editor</option>
+                  <option value="ADMIN">Admin</option>
+                </select>
+                {!isSelf ? (
+                  <Button size="sm" variant="outline" onClick={() => void remove(u.id)}>
+                    Apagar
+                  </Button>
+                ) : null}
+              </div>
+            </li>
+          );
+        })}
       </ul>
     </div>
   );

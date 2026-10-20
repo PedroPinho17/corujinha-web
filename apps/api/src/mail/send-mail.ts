@@ -30,15 +30,21 @@ function getTransporter(): Transporter | null {
   return sharedTransporter;
 }
 
+function logFallback(message: string) {
+  // Prefer stderr so Vitest/CI do not treat it as hanging stdout pipes.
+  if (typeof process.stderr?.write === "function") {
+    process.stderr.write(`${message}\n`);
+    return;
+  }
+}
+
 /** Standalone mail sender (usable outside Nest DI, e.g. Better Auth hooks). */
 export async function sendMail(opts: SendMailOpts): Promise<"sent" | "logged"> {
   const from = process.env.SMTP_FROM ?? "noreply@corujinha.local";
   const transporter = getTransporter();
   if (!transporter) {
-    // eslint-disable-next-line no-console
-    console.warn(`[mail] SMTP not configured — logged only: ${opts.subject} → ${opts.to}`);
-    // eslint-disable-next-line no-console
-    console.log(opts.text);
+    logFallback(`[mail] SMTP not configured — logged only: ${opts.subject} → ${opts.to}`);
+    logFallback(opts.text);
     return "logged";
   }
   await transporter.sendMail({

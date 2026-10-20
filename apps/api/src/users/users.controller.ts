@@ -1,7 +1,9 @@
 import {
+  BadRequestException,
   Body,
   Controller,
   Delete,
+  ForbiddenException,
   Get,
   Param,
   Post,
@@ -39,6 +41,10 @@ class UserDto {
 @UseGuards(SuperAdminGuard)
 export class UsersController {
   constructor(private readonly prisma: PrismaService) {}
+
+  private async adminCount() {
+    return this.prisma.user.count({ where: { role: UserRole.ADMIN } });
+  }
 
   @Get()
   list() {
@@ -86,7 +92,26 @@ export class UsersController {
   }
 
   @Put(":id")
-  async update(@Param("id") id: string, @Body() dto: UserDto) {
+  async update(
+    @Param("id") id: string,
+    @Body() dto: UserDto,
+    @CurrentUser() me: SessionUser,
+  ) {
+    const existing = await this.prisma.user.findUniqueOrThrow({ where: { id } });
+
+    if (me.id === id && dto.role && dto.role !== UserRole.ADMIN && existing.role === UserRole.ADMIN) {
+      throw new ForbiddenException("Não pode remover as suas próprias permissões de administrador.");
+    }
+
+    if (
+      existing.role === UserRole.ADMIN &&
+      dto.role &&
+      dto.role !== UserRole.ADMIN &&
+      (await this.adminCount()) <= 1
+    ) {
+      throw new BadRequestException("Tem de existir pelo menos um administrador.");
+    }
+
     const data: {
       name: string;
       email: string;
@@ -127,7 +152,11 @@ export class UsersController {
   @Delete(":id")
   async remove(@Param("id") id: string, @CurrentUser() me: SessionUser) {
     if (me.id === id) {
-      return { success: false, message: "Não pode apagar a própria conta" };
+      throw new ForbiddenException("Não pode apagar a própria conta.");
+    }
+    const target = await this.prisma.user.findUniqueOrThrow({ where: { id } });
+    if (target.role === UserRole.ADMIN && (await this.adminCount()) <= 1) {
+      throw new BadRequestException("Não pode apagar o último administrador.");
     }
     await this.prisma.user.delete({ where: { id } });
     return { success: true };

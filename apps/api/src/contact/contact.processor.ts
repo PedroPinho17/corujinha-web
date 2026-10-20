@@ -48,8 +48,8 @@ export class ContactProcessor extends WorkerHost {
       await this.mail.send({
         to,
         subject: isEnrollment
-          ? `Pedido de inscrição - Corujinha (${contact.name})`
-          : `Nova Mensagem de Contacto - Corujinha`,
+          ? `Pedido de inscrição — Corujinha (${contact.name})`
+          : `Nova mensagem de contacto — Corujinha`,
         replyTo: contact.email,
         text: [
           `Tipo: ${isEnrollment ? "Inscrição" : "Mensagem"}`,
@@ -62,6 +62,8 @@ export class ContactProcessor extends WorkerHost {
           `Consentimento privacidade: ${contact.privacyConsent ? "sim" : "não"}`,
           "",
           contact.message,
+          "",
+          `Abrir no backoffice: ${site}/admin/contacts`,
         ]
           .filter(Boolean)
           .join("\n"),
@@ -79,6 +81,7 @@ export class ContactProcessor extends WorkerHost {
             <tr><td style="padding:4px 0;"><strong>Consentimento:</strong> ${contact.privacyConsent ? "sim" : "não"}</td></tr>
           </table>
           <p style="margin:20px 0 0;padding:16px;background:#fdf2f8;border-radius:12px;">${messageHtml}</p>`,
+          cta: { label: "Abrir no backoffice", href: `${site}/admin/contacts` },
         }),
       });
 

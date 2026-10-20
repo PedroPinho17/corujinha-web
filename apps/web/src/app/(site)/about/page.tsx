@@ -1,6 +1,13 @@
 import Image from "next/image";
+import type { Metadata } from "next";
 import { DEFAULT_SITE_CONTENT, type SiteContent } from "@/lib/site-content";
 import { mediaUrl } from "@/lib/utils";
+
+export const metadata: Metadata = {
+  title: "Sobre nós",
+  description:
+    "Conheça a história, a fundadora e a missão do Centro de Apoio Escolar Corujinha.",
+};
 
 const api = process.env.INTERNAL_API_URL ?? "http://localhost:3001";
 

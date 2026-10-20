@@ -10,7 +10,18 @@ import * as Sentry from "@sentry/nestjs";
 import { AppModule } from "./app.module";
 import { auth } from "./auth/auth";
 import { assertProductionEnv } from "./env";
-import { SlidingWindowRateLimiter, clientIp } from "./common/rate-limit";
+import { RedisRateLimiter, clientIp } from "./common/rate-limit";
+import { RedisService } from "./redis/redis.service";
+
+function isAuthRateLimitedPath(method: string, path: string): boolean {
+  if (method !== "POST") return false;
+  return (
+    path.includes("sign-in") ||
+    path.includes("sign-up") ||
+    path.includes("forget-password") ||
+    path.includes("request-password-reset")
+  );
+}
 
 async function bootstrap() {
   assertProductionEnv();
@@ -26,7 +37,8 @@ async function bootstrap() {
     bodyParser: false,
   });
 
-  app.set("trust proxy", 1);
+  const trustHops = Number(process.env.TRUST_PROXY_HOPS ?? "1");
+  app.set("trust proxy", Number.isFinite(trustHops) && trustHops >= 0 ? trustHops : 1);
   app.use(helmet());
 
   const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000";
@@ -41,26 +53,35 @@ async function bootstrap() {
   });
 
   const expressApp = app.getHttpAdapter().getInstance();
-  /** 5 tentativas de login / 15 min por IP — bloqueia força bruta no backoffice. */
-  const authLimiter = new SlidingWindowRateLimiter(5, 15 * 60 * 1000);
+  const redis = app.get(RedisService);
+  /** 5 falhas de login / 15 min por IP — Redis partilhado entre réplicas. */
+  const authLimiter = new RedisRateLimiter(redis.client, 5, 15 * 60 * 1000, "rl:auth");
   const authHandler = toNodeHandler(auth);
-  expressApp.use((req: Request, res: Response, next: () => void) => {
+
+  expressApp.use(async (req: Request, res: Response, next: () => void) => {
     if (!req.path.startsWith("/api/auth")) return next();
-    if (
-      req.method === "POST" &&
-      (req.path.includes("sign-in") ||
-        req.path.includes("sign-up") ||
-        req.path.includes("forget-password") ||
-        req.path.includes("request-password-reset"))
-    ) {
+
+    if (isAuthRateLimitedPath(req.method, req.path)) {
       const ip = clientIp(req);
-      if (!authLimiter.allow(`auth:${ip}`)) {
+      const key = `auth:${ip}`;
+      if (!(await authLimiter.check(key))) {
         res.status(429).json({
           message: "Demasiadas tentativas. Aguarde alguns minutos e tente novamente.",
         });
         return;
       }
+
+      const originalEnd = res.end.bind(res);
+      // Count only client/auth failures — not successes or 429.
+      res.end = ((...args: Parameters<typeof res.end>) => {
+        const code = res.statusCode;
+        if (code === 400 || code === 401 || code === 403) {
+          void authLimiter.hit(key);
+        }
+        return originalEnd(...args);
+      }) as typeof res.end;
     }
+
     return authHandler(req, res);
   });
 

@@ -1,4 +1,10 @@
+import type { Metadata } from "next";
 import { PostsPageSection } from "@/components/site/posts-section";
+
+export const metadata: Metadata = {
+  title: "Novidades",
+  description: "Notícias, formações e anúncios do Centro de Apoio Escolar Corujinha.",
+};
 
 const api = process.env.INTERNAL_API_URL ?? "http://localhost:3001";
 

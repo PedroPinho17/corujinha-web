@@ -1,4 +1,10 @@
+import type { Metadata } from "next";
 import { mediaUrl } from "@/lib/utils";
+
+export const metadata: Metadata = {
+  title: "Equipa",
+  description: "Profissionais dedicados ao acompanhamento de cada criança na Corujinha.",
+};
 
 const api = process.env.INTERNAL_API_URL ?? "http://localhost:3001";
 
