@@ -23,8 +23,9 @@ test.describe("Corujinha public smoke", () => {
     const robotsText = await robots.text();
     // Must not be an HTML page (old bug: redirect robots.txt → /).
     expect(robotsText).not.toMatch(/<html/i);
-    expect(robotsText).toMatch(/Disallow:\s*\//i);
-    expect(robotsText).not.toMatch(/Allow:\s*\//i);
+    // Line-anchored: /Allow:/ would also match inside "Disallow: /".
+    expect(robotsText).toMatch(/^Disallow:\s*\/\s*$/m);
+    expect(robotsText).not.toMatch(/^Allow:/m);
 
     const sitemap = await request.get(`${base}/sitemap.xml`);
     expect(sitemap.ok()).toBeTruthy();
