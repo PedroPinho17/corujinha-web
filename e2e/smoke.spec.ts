@@ -15,16 +15,22 @@ test.describe("Corujinha public smoke", () => {
     await expect(page.locator("#contact form, form").first()).toBeVisible({ timeout: 15_000 });
   });
 
-  test("robots and sitemap are public", async ({ request }) => {
+  test("robots.txt is plain text and blocks indexing by default", async ({ request }) => {
     const robots = await request.get(`${base}/robots.txt`);
     expect(robots.ok()).toBeTruthy();
+    const ct = robots.headers()["content-type"] ?? "";
+    expect(ct).toMatch(/text\/plain/i);
     const robotsText = await robots.text();
-    expect(robotsText).toMatch(/Disallow:\s*\/admin/i);
+    // Must not be an HTML page (old bug: redirect robots.txt → /).
+    expect(robotsText).not.toMatch(/<html/i);
+    // Line-anchored: /Allow:/ would also match inside "Disallow: /".
+    expect(robotsText).toMatch(/^Disallow:\s*\/\s*$/m);
+    expect(robotsText).not.toMatch(/^Allow:/m);
 
     const sitemap = await request.get(`${base}/sitemap.xml`);
     expect(sitemap.ok()).toBeTruthy();
     const xml = await sitemap.text();
-    expect(xml).toContain("/noticias");
+    expect(xml).not.toContain("/noticias");
   });
 
   test("admin is present but not for indexing cues", async ({ page }) => {

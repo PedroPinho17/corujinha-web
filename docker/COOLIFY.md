@@ -24,6 +24,7 @@ Fluxo de rede: **Cliente → Traefik (TLS) → web → api**. A API deve ver o p
 - `SMTP_*` + `SMTP_FROM` no domínio verificado + `CONTACT_NOTIFY_TO`
 - `SENTRY_DSN` / `NEXT_PUBLIC_SENTRY_DSN` (recomendado)
 - `WEBAUTHN_RP_ID` = hostname público (sem protocolo)
+- `ALLOW_SEARCH_INDEXING=false` até o go-live; depois `true` (robots/sitemap públicos; admin continua bloqueado)
 
 ## Email (Resend)
 

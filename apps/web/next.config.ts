@@ -92,6 +92,11 @@ const nextConfig: NextConfig = {
   async headers() {
     return [
       {
+        // Always plain text — never HTML shell / never redirect to /
+        source: "/robots.txt",
+        headers: [{ key: "Content-Type", value: "text/plain; charset=utf-8" }],
+      },
+      {
         source: "/:path*",
         headers: [
           { key: "Content-Security-Policy", value: csp },

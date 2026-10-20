@@ -19,28 +19,40 @@ export function resolveClientIp(request: NextRequest): string {
     if (parts.length > 0) return parts[parts.length - 1]!;
   }
 
-  // NextRequest.ip is set behind trusted proxies in some runtimes.
   const fromNext = (request as NextRequest & { ip?: string }).ip;
   if (fromNext) return fromNext;
 
   return "unknown";
 }
 
+function indexingEnabled() {
+  return process.env.ALLOW_SEARCH_INDEXING === "true";
+}
+
 export function middleware(request: NextRequest) {
-  if (!request.nextUrl.pathname.startsWith("/api/")) {
-    return NextResponse.next();
+  const { pathname } = request.nextUrl;
+
+  // API proxy: stamp real client IP for rate limits
+  if (pathname.startsWith("/api/")) {
+    const requestHeaders = new Headers(request.headers);
+    requestHeaders.set(CLIENT_IP_HEADER, resolveClientIp(request));
+    requestHeaders.delete("x-forwarded-for");
+    return NextResponse.next({ request: { headers: requestHeaders } });
   }
 
-  const requestHeaders = new Headers(request.headers);
-  requestHeaders.set(CLIENT_IP_HEADER, resolveClientIp(request));
-  // Prevent the API (trust proxy) from seeing a client-spoofed chain as the sole source of truth.
-  requestHeaders.delete("x-forwarded-for");
+  // Until go-live: nothing should be indexed (pages + assets HTML responses)
+  if (!indexingEnabled() && !pathname.startsWith("/robots.txt")) {
+    const res = NextResponse.next();
+    res.headers.set("X-Robots-Tag", "noindex, nofollow, nosnippet, noarchive");
+    return res;
+  }
 
-  return NextResponse.next({
-    request: { headers: requestHeaders },
-  });
+  return NextResponse.next();
 }
 
 export const config = {
-  matcher: ["/api/:path*"],
+  matcher: [
+    "/api/:path*",
+    "/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp|ico)$).*)",
+  ],
 };
