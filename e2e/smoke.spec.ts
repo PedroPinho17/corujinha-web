@@ -15,16 +15,18 @@ test.describe("Corujinha public smoke", () => {
     await expect(page.locator("#contact form, form").first()).toBeVisible({ timeout: 15_000 });
   });
 
-  test("robots and sitemap are public", async ({ request }) => {
+  test("robots blocks indexing by default", async ({ request }) => {
     const robots = await request.get(`${base}/robots.txt`);
     expect(robots.ok()).toBeTruthy();
     const robotsText = await robots.text();
-    expect(robotsText).toMatch(/Disallow:\s*\/admin/i);
+    // Until ALLOW_SEARCH_INDEXING=true: nothing should be crawlable.
+    expect(robotsText).toMatch(/Disallow:\s*\//i);
+    expect(robotsText).not.toMatch(/Allow:\s*\//i);
 
     const sitemap = await request.get(`${base}/sitemap.xml`);
     expect(sitemap.ok()).toBeTruthy();
     const xml = await sitemap.text();
-    expect(xml).toContain("/noticias");
+    expect(xml).not.toContain("/noticias");
   });
 
   test("admin is present but not for indexing cues", async ({ page }) => {

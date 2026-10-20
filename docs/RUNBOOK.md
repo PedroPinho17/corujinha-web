@@ -34,6 +34,7 @@
 6. **Não** publicar as portas `3000`/`3001` no host — só `expose` na rede Docker; o Traefik é a única entrada.
 7. HSTS: ativar no Traefik/Coolify (middleware `headers.stsSeconds=31536000`, `stsIncludeSubdomains=true`). A app Next não envia HSTS (fica no edge).
 8. Redis: o serviço está em `docker-compose.yml` com `--appendonly yes` e volume `redis_data`. No Coolify, confirme o mesmo volume + AOF se o Redis for um serviço à parte.
+9. Indexação: por omissão `ALLOW_SEARCH_INDEXING` está off — `/robots.txt` responde `Disallow: /` e o sitemap fica vazio. No go-live, no Coolify: `ALLOW_SEARCH_INDEXING=true` (sem rebuild, a rota é dinâmica).
 
 ### 2. Email (Resend + DNS)
 
