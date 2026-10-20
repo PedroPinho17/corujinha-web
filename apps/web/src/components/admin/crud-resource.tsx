@@ -286,6 +286,11 @@ export function CrudResourcePage({
             <AdminToggle
               checked={on}
               disabled={togglingId === r.id}
+              aria-label={
+                on
+                  ? `Desativar ${String(r[nameField] || r.title || r.name || r.id)}`
+                  : `Ativar ${String(r[nameField] || r.title || r.name || r.id)}`
+              }
               onChange={async () => toggleRow(r.id)}
             />
           );

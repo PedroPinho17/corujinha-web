@@ -115,7 +115,7 @@ export default function AdminLoginPage() {
           >
             Entrar com passkey
           </Button>
-          <p className="text-center text-xs text-slate-400">
+          <p className="text-center text-xs text-slate-600">
             Primeira vez? Entra com email/password e regista a passkey em Segurança.
           </p>
         </div>

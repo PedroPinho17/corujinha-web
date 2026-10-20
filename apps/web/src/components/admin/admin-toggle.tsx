@@ -7,10 +7,17 @@ type Props = {
   checked: boolean;
   disabled?: boolean;
   onChange: (checked: boolean) => void | Promise<void>;
+  /** Accessible name for the underlying checkbox */
+  "aria-label"?: string;
 };
 
 /** Bootstrap5-toggle — same plugin as Laravel admin. */
-export function AdminToggle({ checked, disabled, onChange }: Props) {
+export function AdminToggle({
+  checked,
+  disabled,
+  onChange,
+  "aria-label": ariaLabel = "Ativo / Inativo",
+}: Props) {
   const inputRef = useRef<HTMLInputElement>(null);
   const busyRef = useRef(false);
 
@@ -97,6 +104,7 @@ export function AdminToggle({ checked, disabled, onChange }: Props) {
       type="checkbox"
       defaultChecked={checked}
       data-toggle="toggle"
+      aria-label={ariaLabel}
     />
   );
 }
