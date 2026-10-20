@@ -10,7 +10,7 @@ export default function AdminCentersPage() {
       nameField="name"
       bodyField="address"
       extraFields={[
-        { key: "slug", label: "Slug (filtro / URL)", type: "text" },
+        { key: "slug", label: "Endereço curto (filtro / URL)", type: "text" },
         { key: "shortName", label: "Nome curto (ex.: Lobão)", type: "text" },
         { key: "city", label: "Localidade", type: "text" },
         { key: "postalCode", label: "Código postal", type: "text" },

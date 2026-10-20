@@ -6,7 +6,13 @@ import { mockPrisma } from "../test/mocks";
 describe("ContactService", () => {
   let prisma: ReturnType<typeof mockPrisma>;
   let queue: { add: ReturnType<typeof vi.fn> };
-  let redis: { client: { incr: ReturnType<typeof vi.fn>; pexpire: ReturnType<typeof vi.fn> } };
+  let redis: {
+    client: {
+      get: ReturnType<typeof vi.fn>;
+      incr: ReturnType<typeof vi.fn>;
+      pexpire: ReturnType<typeof vi.fn>;
+    };
+  };
   let service: ContactService;
 
   beforeEach(() => {
@@ -15,6 +21,7 @@ describe("ContactService", () => {
     queue = { add: vi.fn().mockResolvedValue(undefined) };
     redis = {
       client: {
+        get: vi.fn().mockResolvedValue(null),
         incr: vi.fn().mockResolvedValue(1),
         pexpire: vi.fn().mockResolvedValue(1),
       },
@@ -38,7 +45,8 @@ describe("ContactService", () => {
   });
 
   it("rate limits and requires privacyConsent", async () => {
-    redis.client.incr.mockResolvedValue(99);
+    // check() reads current count — at/over limit blocks without incrementing.
+    redis.client.get.mockResolvedValue("5");
     await expect(
       service.submit(
         { name: "A", email: "a@b.com", message: "hello!", privacyConsent: true } as never,
@@ -46,6 +54,7 @@ describe("ContactService", () => {
       ),
     ).rejects.toBeInstanceOf(HttpException);
 
+    redis.client.get.mockResolvedValue(null);
     redis.client.incr.mockResolvedValue(1);
     await expect(
       service.submit(

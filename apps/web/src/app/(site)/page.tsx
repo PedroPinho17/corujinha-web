@@ -1,5 +1,6 @@
 import Image from "next/image";
 import Link from "next/link";
+import type { Metadata } from "next";
 import type { ReactNode } from "react";
 import {
   BookOpen,
@@ -20,6 +21,17 @@ import {
 import { ContactForm } from "@/components/site/contact-form";
 import { mediaUrl } from "@/lib/utils";
 import { mergeSiteContent, type SiteContent } from "@/lib/site-content";
+
+export const metadata: Metadata = {
+  title: { absolute: "Corujinha — Centro de Apoio Escolar" },
+  description:
+    "Explicações e apoio educativo até ao 12º ano. Centros em Lobão, São João de Ver e Sanguedo.",
+  openGraph: {
+    title: "Corujinha — Centro de Apoio Escolar",
+    description:
+      "Explicações e apoio educativo até ao 12º ano. Centros em Lobão, São João de Ver e Sanguedo.",
+  },
+};
 
 const api = process.env.INTERNAL_API_URL ?? "http://localhost:3001";
 
@@ -660,7 +672,9 @@ export default async function HomePage() {
               {googleRatingLabel && googleReviewCountLabel ? (
                 <div className="mt-3 space-y-1">
                   <p className="flex flex-wrap items-center justify-center gap-x-2 gap-y-1 text-muted">
-                    <Star className="h-4 w-4 fill-orange text-orange" aria-hidden />
+                    <span role="img" aria-label={`${googleRatingLabel} estrelas`}>
+                      <Star className="h-4 w-4 fill-orange text-orange" aria-hidden />
+                    </span>
                     <a
                       href={googlePlaceUrl}
                       target="_blank"
@@ -709,9 +723,9 @@ export default async function HomePage() {
                       <p className="text-xs text-muted">{t.role || "no Google"}</p>
                     </div>
                   </div>
-                  <div className="mb-3 flex gap-0.5 text-orange" aria-label="5 estrelas">
+                  <div className="mb-3 flex gap-0.5 text-orange" role="img" aria-label="5 estrelas">
                     {Array.from({ length: 5 }).map((_, i) => (
-                      <Star key={i} className="h-4 w-4 fill-current" />
+                      <Star key={i} className="h-4 w-4 fill-current" aria-hidden />
                     ))}
                   </div>
                   <p className="text-sm leading-relaxed text-ink/80">&ldquo;{t.quote}&rdquo;</p>

@@ -58,10 +58,7 @@ export default function AdminGalleryPage() {
         adminFetch<Center[]>("/api/admin/centers"),
       ]);
       setRows(gallery);
-      setCenters(ctrs.filter((c) => true));
-      if (ctrs[0] && album === "homepage") {
-        // keep homepage default for new uploads
-      }
+      setCenters(ctrs);
     } catch (e) {
       setError(e instanceof Error ? e.message : "Erro ao carregar");
     }
@@ -71,6 +68,15 @@ export default function AdminGalleryPage() {
     load().catch(() => undefined);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  useEffect(() => {
+    if (!pendingDelete) return;
+    function onEsc(e: KeyboardEvent) {
+      if (e.key === "Escape") setPendingDelete(null);
+    }
+    document.addEventListener("keydown", onEsc);
+    return () => document.removeEventListener("keydown", onEsc);
+  }, [pendingDelete]);
 
   async function create(e: React.FormEvent) {
     e.preventDefault();
@@ -159,15 +165,22 @@ export default function AdminGalleryPage() {
             value={imageKey}
             folder="gallery"
             resetKey={String(formKey)}
+            optional={false}
             onChange={setImageKey}
           />
           <div>
-            <Label>Alt / descrição</Label>
-            <Input value={alt} onChange={(e) => setAlt(e.target.value)} placeholder="Descrição da imagem" />
+            <Label htmlFor="gallery-alt">Descrição para quem não vê a imagem</Label>
+            <Input
+              id="gallery-alt"
+              value={alt}
+              onChange={(e) => setAlt(e.target.value)}
+              placeholder="Descrição da imagem"
+            />
           </div>
           <div>
-            <Label>Álbum / centro (filtro no site)</Label>
+            <Label htmlFor="gallery-album">Álbum / centro (filtro no site)</Label>
             <select
+              id="gallery-album"
               className="flex h-10 w-full rounded-md border border-slate-200 bg-white px-3 text-sm"
               value={album}
               onChange={(e) => setAlbum(e.target.value)}
@@ -187,7 +200,7 @@ export default function AdminGalleryPage() {
                 ))}
               </optgroup>
             </select>
-            <p className="mt-1 text-[11px] text-slate-400">
+            <p className="mt-1 text-[11px] text-slate-600">
               Os centros vêm de <strong>Centros</strong> no menu (Lobão, São João de Ver, Sanguedo…).
             </p>
           </div>
@@ -200,11 +213,11 @@ export default function AdminGalleryPage() {
       <div className="overflow-hidden rounded-2xl bg-white shadow-[0_20px_27px_rgba(0,0,0,0.05)]">
         <div className="border-b border-slate-100 px-5 py-4">
           <h2 className="text-base font-bold text-slate-800">Galeria</h2>
-          <p className="text-xs text-slate-400">{rows.length} imagem(ns)</p>
+          <p className="text-xs text-slate-600">{rows.length} imagem(ns)</p>
         </div>
 
         {rows.length === 0 ? (
-          <p className="px-5 py-10 text-center text-sm text-slate-400">Nenhuma imagem na galeria.</p>
+          <p className="px-5 py-10 text-center text-sm text-slate-500">Nenhuma imagem na galeria.</p>
         ) : (
           <ul className="grid gap-4 p-5 sm:grid-cols-2 lg:grid-cols-3">
             {rows.map((r) => {

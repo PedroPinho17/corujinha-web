@@ -114,48 +114,54 @@ export default function AdminSiteContentPage() {
         </div>
         {msg && <p className="text-sm font-medium text-pink-600">{msg}</p>}
 
-        {/* Branding */}
+        {/* Marca */}
         <section className="space-y-3 rounded-2xl bg-white p-5 shadow-sm ring-1 ring-slate-100">
-          <h2 className="text-lg font-semibold">Branding</h2>
+          <h2 className="text-lg font-semibold">Marca</h2>
           <div className="grid gap-3 md:grid-cols-2">
             <div>
-              <Label>Nome da marca</Label>
+              <Label htmlFor="branding-name">Nome da marca</Label>
               <Input
+                id="branding-name"
                 value={settings.brandingName}
                 onChange={(e) => setSettings({ ...settings, brandingName: e.target.value })}
               />
             </div>
             <div>
-              <Label>Telefone (geral)</Label>
+              <Label htmlFor="contact-phone">Telefone (geral)</Label>
               <Input
+                id="contact-phone"
                 value={settings.contactPhone ?? ""}
                 onChange={(e) => setSettings({ ...settings, contactPhone: e.target.value })}
               />
             </div>
             <div>
-              <Label>Email (geral)</Label>
+              <Label htmlFor="contact-email">Email (geral)</Label>
               <Input
+                id="contact-email"
                 value={settings.contactEmail ?? ""}
                 onChange={(e) => setSettings({ ...settings, contactEmail: e.target.value })}
               />
             </div>
             <div>
-              <Label>Morada (resumo)</Label>
+              <Label htmlFor="contact-address">Morada (resumo)</Label>
               <Input
+                id="contact-address"
                 value={settings.address ?? ""}
                 onChange={(e) => setSettings({ ...settings, address: e.target.value })}
               />
             </div>
             <div>
-              <Label>Facebook URL</Label>
+              <Label htmlFor="contact-facebook">Facebook URL</Label>
               <Input
+                id="contact-facebook"
                 value={settings.facebookUrl ?? ""}
                 onChange={(e) => setSettings({ ...settings, facebookUrl: e.target.value })}
               />
             </div>
             <div>
-              <Label>Instagram URL</Label>
+              <Label htmlFor="contact-instagram">Instagram URL</Label>
               <Input
+                id="contact-instagram"
                 value={settings.instagramUrl ?? ""}
                 onChange={(e) => setSettings({ ...settings, instagramUrl: e.target.value })}
               />
@@ -217,108 +223,129 @@ export default function AdminSiteContentPage() {
           </div>
           <div className="grid gap-3 md:grid-cols-2">
             <div>
-              <Label>Início do título</Label>
+              <Label htmlFor="hero-title-before">Início do título</Label>
               <Input
+                id="hero-title-before"
                 value={c.hero.titleBefore}
                 onChange={(e) => setContent({ ...c, hero: { ...c.hero, titleBefore: e.target.value } })}
               />
             </div>
             <div>
-              <Label>Palavra em destaque (rosa)</Label>
+              <Label htmlFor="hero-title-pink">Palavra em destaque (rosa)</Label>
               <Input
+                id="hero-title-pink"
                 value={c.hero.titlePink}
                 onChange={(e) => setContent({ ...c, hero: { ...c.hero, titlePink: e.target.value } })}
               />
             </div>
             <div>
-              <Label>Palavra do meio (ex.: &quot;e&quot;)</Label>
+              <Label htmlFor="hero-title-mid">Palavra do meio (ex.: &quot;e&quot;)</Label>
               <Input
+                id="hero-title-mid"
                 value={c.hero.titleMid}
                 onChange={(e) => setContent({ ...c, hero: { ...c.hero, titleMid: e.target.value } })}
               />
             </div>
             <div>
-              <Label>Palavra em destaque (laranja)</Label>
+              <Label htmlFor="hero-title-orange">Palavra em destaque (laranja)</Label>
               <Input
+                id="hero-title-orange"
                 value={c.hero.titleOrange}
                 onChange={(e) => setContent({ ...c, hero: { ...c.hero, titleOrange: e.target.value } })}
               />
             </div>
             <div>
-              <Label>Botão principal</Label>
+              <Label htmlFor="hero-cta-primary">Botão principal</Label>
               <Input
+                id="hero-cta-primary"
                 value={c.hero.ctaPrimary}
                 onChange={(e) => setContent({ ...c, hero: { ...c.hero, ctaPrimary: e.target.value } })}
               />
             </div>
             <div>
-              <Label>Botão secundário</Label>
+              <Label htmlFor="hero-cta-secondary">Botão secundário</Label>
               <Input
+                id="hero-cta-secondary"
                 value={c.hero.ctaSecondary}
                 onChange={(e) => setContent({ ...c, hero: { ...c.hero, ctaSecondary: e.target.value } })}
               />
             </div>
             <div>
-              <Label>Número do destaque (ex.: +500)</Label>
+              <Label htmlFor="hero-badge-value">Número do destaque (ex.: +500)</Label>
               <Input
+                id="hero-badge-value"
                 value={c.hero.badgeValue}
                 onChange={(e) => setContent({ ...c, hero: { ...c.hero, badgeValue: e.target.value } })}
               />
             </div>
             <div>
-              <Label>Texto do destaque (ex.: Crianças apoiadas)</Label>
+              <Label htmlFor="hero-badge-label">Texto do destaque (ex.: Crianças apoiadas)</Label>
               <Input
+                id="hero-badge-label"
                 value={c.hero.badgeLabel}
                 onChange={(e) => setContent({ ...c, hero: { ...c.hero, badgeLabel: e.target.value } })}
               />
             </div>
           </div>
           <div>
-            <Label>Texto de apoio</Label>
+            <Label htmlFor="hero-subtitle">Texto de apoio</Label>
             <Textarea
+              id="hero-subtitle"
               value={c.hero.subtitle}
               onChange={(e) => setContent({ ...c, hero: { ...c.hero, subtitle: e.target.value } })}
             />
           </div>
           <div className="space-y-3">
-            <Label>Cartões de destaque no topo</Label>
+            <p className="text-sm font-medium leading-none">Cartões de destaque no topo</p>
             {c.hero.features.map((f, i) => (
               <div key={i} className="grid gap-2 rounded-xl border border-slate-100 bg-slate-50/50 p-3 md:grid-cols-3">
-                <Input
-                  value={f.title}
-                  placeholder="Título"
-                  onChange={(e) => {
-                    const features = c.hero.features.map((x, idx) =>
-                      idx === i ? { ...x, title: e.target.value } : x,
-                    );
-                    setContent({ ...c, hero: { ...c.hero, features } });
-                  }}
-                />
-                <Input
-                  value={f.description}
-                  placeholder="Descrição"
-                  onChange={(e) => {
-                    const features = c.hero.features.map((x, idx) =>
-                      idx === i ? { ...x, description: e.target.value } : x,
-                    );
-                    setContent({ ...c, hero: { ...c.hero, features } });
-                  }}
-                />
-                <select
-                  className="flex h-10 w-full rounded-md border border-slate-200 bg-white px-3 text-sm"
-                  value={f.tone}
-                  onChange={(e) => {
-                    const tone = e.target.value as "pink" | "orange" | "blue";
-                    const features = c.hero.features.map((x, idx) =>
-                      idx === i ? { ...x, tone } : x,
-                    );
-                    setContent({ ...c, hero: { ...c.hero, features } });
-                  }}
-                >
-                  <option value="pink">Rosa</option>
-                  <option value="orange">Laranja</option>
-                  <option value="blue">Azul</option>
-                </select>
+                <div>
+                  <Label htmlFor={`hero-feature-${i}-title`}>Título</Label>
+                  <Input
+                    id={`hero-feature-${i}-title`}
+                    value={f.title}
+                    placeholder="Título"
+                    onChange={(e) => {
+                      const features = c.hero.features.map((x, idx) =>
+                        idx === i ? { ...x, title: e.target.value } : x,
+                      );
+                      setContent({ ...c, hero: { ...c.hero, features } });
+                    }}
+                  />
+                </div>
+                <div>
+                  <Label htmlFor={`hero-feature-${i}-description`}>Descrição</Label>
+                  <Input
+                    id={`hero-feature-${i}-description`}
+                    value={f.description}
+                    placeholder="Descrição"
+                    onChange={(e) => {
+                      const features = c.hero.features.map((x, idx) =>
+                        idx === i ? { ...x, description: e.target.value } : x,
+                      );
+                      setContent({ ...c, hero: { ...c.hero, features } });
+                    }}
+                  />
+                </div>
+                <div>
+                  <Label htmlFor={`hero-feature-${i}-tone`}>Tom da cor</Label>
+                  <select
+                    id={`hero-feature-${i}-tone`}
+                    className="flex h-10 w-full rounded-md border border-slate-200 bg-white px-3 text-sm"
+                    value={f.tone}
+                    onChange={(e) => {
+                      const tone = e.target.value as "pink" | "orange" | "blue";
+                      const features = c.hero.features.map((x, idx) =>
+                        idx === i ? { ...x, tone } : x,
+                      );
+                      setContent({ ...c, hero: { ...c.hero, features } });
+                    }}
+                  >
+                    <option value="pink">Rosa</option>
+                    <option value="orange">Laranja</option>
+                    <option value="blue">Azul</option>
+                  </select>
+                </div>
               </div>
             ))}
           </div>
@@ -329,15 +356,17 @@ export default function AdminSiteContentPage() {
           <h2 className="text-lg font-semibold">Serviços</h2>
           <div className="grid gap-3 md:grid-cols-2">
             <div>
-              <Label>Título</Label>
+              <Label htmlFor="services-title">Título</Label>
               <Input
+                id="services-title"
                 value={c.services.title}
                 onChange={(e) => setContent({ ...c, services: { ...c.services, title: e.target.value } })}
               />
             </div>
             <div>
-              <Label>Título accent</Label>
+              <Label htmlFor="services-title-accent">Palavra em destaque</Label>
               <Input
+                id="services-title-accent"
                 value={c.services.titleAccent}
                 onChange={(e) =>
                   setContent({ ...c, services: { ...c.services, titleAccent: e.target.value } })
@@ -346,23 +375,29 @@ export default function AdminSiteContentPage() {
             </div>
           </div>
           <div>
-            <Label>Subtítulo</Label>
+            <Label htmlFor="services-subtitle">Subtítulo</Label>
             <Textarea
+              id="services-subtitle"
               value={c.services.subtitle}
               onChange={(e) => setContent({ ...c, services: { ...c.services, subtitle: e.target.value } })}
             />
           </div>
           {c.services.cards.map((card, i) => (
             <div key={i} className="space-y-2 rounded-xl border border-slate-100 bg-slate-50/50 p-4">
-              <p className="text-xs font-bold uppercase text-slate-400">Cartão {i + 1}</p>
+              <p className="text-xs font-bold uppercase text-slate-500">Cartão {i + 1}</p>
               <div className="grid gap-2 md:grid-cols-2">
                 <div>
-                  <Label>Título</Label>
-                  <Input value={card.title} onChange={(e) => updateService(i, { title: e.target.value })} />
+                  <Label htmlFor={`service-${i}-title`}>Título</Label>
+                  <Input
+                    id={`service-${i}-title`}
+                    value={card.title}
+                    onChange={(e) => updateService(i, { title: e.target.value })}
+                  />
                 </div>
                 <div>
-                  <Label>Tom</Label>
+                  <Label htmlFor={`service-${i}-tone`}>Tom da cor</Label>
                   <select
+                    id={`service-${i}-tone`}
                     className="flex h-10 w-full rounded-md border border-slate-200 bg-white px-3 text-sm"
                     value={card.tone}
                     onChange={(e) =>
@@ -378,15 +413,17 @@ export default function AdminSiteContentPage() {
                 </div>
               </div>
               <div>
-                <Label>Descrição</Label>
+                <Label htmlFor={`service-${i}-description`}>Descrição</Label>
                 <Textarea
+                  id={`service-${i}-description`}
                   value={card.description}
                   onChange={(e) => updateService(i, { description: e.target.value })}
                 />
               </div>
               <div>
-                <Label>Itens (um por linha)</Label>
+                <Label htmlFor={`service-${i}-items`}>Itens (um por linha)</Label>
                 <Textarea
+                  id={`service-${i}-items`}
                   value={lines(card.items)}
                   onChange={(e) => updateService(i, { items: fromLines(e.target.value) })}
                 />
@@ -395,110 +432,123 @@ export default function AdminSiteContentPage() {
           ))}
         </section>
 
-        {/* About */}
+        {/* Sobre / Fundadora */}
         <section className="space-y-4 rounded-2xl bg-white p-5 shadow-sm ring-1 ring-slate-100">
           <div>
-            <h2 className="text-lg font-semibold">About / Fundadora</h2>
+            <h2 className="text-lg font-semibold">Sobre / Fundadora</h2>
             <p className="text-sm text-slate-500">
               Textos da fundadora — a fotografia configura-se acima, em Imagens principais.
             </p>
           </div>
           <div className="grid gap-3 md:grid-cols-2">
             <div>
-              <Label>Título secção</Label>
+              <Label htmlFor="about-section-title">Título secção</Label>
               <Input
+                id="about-section-title"
                 value={c.about.sectionTitle}
                 onChange={(e) => setContent({ ...c, about: { ...c.about, sectionTitle: e.target.value } })}
               />
             </div>
             <div>
-              <Label>Accent</Label>
+              <Label htmlFor="about-section-accent">Palavra em destaque</Label>
               <Input
+                id="about-section-accent"
                 value={c.about.sectionAccent}
                 onChange={(e) => setContent({ ...c, about: { ...c.about, sectionAccent: e.target.value } })}
               />
             </div>
             <div>
-              <Label>Nome</Label>
+              <Label htmlFor="about-founder-name">Nome</Label>
               <Input
+                id="about-founder-name"
                 value={c.about.founderName}
                 onChange={(e) => setContent({ ...c, about: { ...c.about, founderName: e.target.value } })}
               />
             </div>
             <div>
-              <Label>Cargo</Label>
+              <Label htmlFor="about-founder-role">Cargo</Label>
               <Input
+                id="about-founder-role"
                 value={c.about.founderRole}
                 onChange={(e) => setContent({ ...c, about: { ...c.about, founderRole: e.target.value } })}
               />
             </div>
           </div>
           <div>
-            <Label>Subtítulo secção</Label>
+            <Label htmlFor="about-section-subtitle">Subtítulo secção</Label>
             <Textarea
+              id="about-section-subtitle"
               value={c.about.sectionSubtitle}
               onChange={(e) => setContent({ ...c, about: { ...c.about, sectionSubtitle: e.target.value } })}
             />
           </div>
           <div>
-            <Label>Bio (home)</Label>
+            <Label htmlFor="about-founder-bio">Bio (home)</Label>
             <Textarea
+              id="about-founder-bio"
               value={c.about.founderBio}
               onChange={(e) => setContent({ ...c, about: { ...c.about, founderBio: e.target.value } })}
             />
           </div>
           <div>
-            <Label>História (página Sobre)</Label>
+            <Label htmlFor="about-story">História (página Sobre)</Label>
             <Textarea
+              id="about-story"
               rows={4}
               value={c.about.storyHtml}
               onChange={(e) => setContent({ ...c, about: { ...c.about, storyHtml: e.target.value } })}
             />
           </div>
           <div>
-            <Label>Citação</Label>
+            <Label htmlFor="about-quote">Citação</Label>
             <Textarea
+              id="about-quote"
               value={c.about.quote}
               onChange={(e) => setContent({ ...c, about: { ...c.about, quote: e.target.value } })}
             />
           </div>
         </section>
 
-        {/* Contact / inscrição */}
+        {/* Contacto / inscrição */}
         <section className="space-y-3 rounded-2xl bg-white p-5 shadow-sm ring-1 ring-slate-100">
           <h2 className="text-lg font-semibold">Contacto e inscrição</h2>
           <div className="grid gap-3 md:grid-cols-2">
             <div>
-              <Label>Título</Label>
+              <Label htmlFor="contact-title">Título</Label>
               <Input
+                id="contact-title"
                 value={c.contact.title}
                 onChange={(e) => setContent({ ...c, contact: { ...c.contact, title: e.target.value } })}
               />
             </div>
             <div>
-              <Label>Accent</Label>
+              <Label htmlFor="contact-title-accent">Palavra em destaque</Label>
               <Input
+                id="contact-title-accent"
                 value={c.contact.titleAccent}
                 onChange={(e) => setContent({ ...c, contact: { ...c.contact, titleAccent: e.target.value } })}
               />
             </div>
             <div>
-              <Label>Telefone (página)</Label>
+              <Label htmlFor="contact-page-phone">Telefone (página)</Label>
               <Input
+                id="contact-page-phone"
                 value={c.contact.phone}
                 onChange={(e) => setContent({ ...c, contact: { ...c.contact, phone: e.target.value } })}
               />
             </div>
             <div>
-              <Label>Email principal</Label>
+              <Label htmlFor="contact-email-primary">Email principal</Label>
               <Input
+                id="contact-email-primary"
                 value={c.contact.emailPrimary}
                 onChange={(e) => setContent({ ...c, contact: { ...c.contact, emailPrimary: e.target.value } })}
               />
             </div>
             <div>
-              <Label>Email secundário</Label>
+              <Label htmlFor="contact-email-secondary">Email secundário</Label>
               <Input
+                id="contact-email-secondary"
                 value={c.contact.emailSecondary}
                 onChange={(e) =>
                   setContent({ ...c, contact: { ...c.contact, emailSecondary: e.target.value } })
@@ -506,8 +556,9 @@ export default function AdminSiteContentPage() {
               />
             </div>
             <div>
-              <Label>Label morada principal</Label>
+              <Label htmlFor="contact-address-main-label">Etiqueta da morada principal</Label>
               <Input
+                id="contact-address-main-label"
                 value={c.contact.addressMainLabel}
                 onChange={(e) =>
                   setContent({ ...c, contact: { ...c.contact, addressMainLabel: e.target.value } })
@@ -515,8 +566,9 @@ export default function AdminSiteContentPage() {
               />
             </div>
             <div>
-              <Label>Label morada SJV</Label>
+              <Label htmlFor="contact-address-secondary-label">Etiqueta da morada secundária</Label>
               <Input
+                id="contact-address-secondary-label"
                 value={c.contact.addressSecondaryLabel}
                 onChange={(e) =>
                   setContent({ ...c, contact: { ...c.contact, addressSecondaryLabel: e.target.value } })
@@ -525,16 +577,18 @@ export default function AdminSiteContentPage() {
             </div>
           </div>
           <div>
-            <Label>Subtítulo</Label>
+            <Label htmlFor="contact-subtitle">Subtítulo</Label>
             <Textarea
+              id="contact-subtitle"
               value={c.contact.subtitle}
               onChange={(e) => setContent({ ...c, contact: { ...c.contact, subtitle: e.target.value } })}
             />
           </div>
           <div className="grid gap-3 md:grid-cols-2">
             <div>
-              <Label>Morada principal (linhas)</Label>
+              <Label htmlFor="contact-address-main-lines">Morada principal (linhas)</Label>
               <Textarea
+                id="contact-address-main-lines"
                 value={lines(c.contact.addressMainLines)}
                 onChange={(e) =>
                   setContent({
@@ -545,8 +599,9 @@ export default function AdminSiteContentPage() {
               />
             </div>
             <div>
-              <Label>Morada SJV (linhas)</Label>
+              <Label htmlFor="contact-address-secondary-lines">Morada secundária (linhas)</Label>
               <Textarea
+                id="contact-address-secondary-lines"
                 value={lines(c.contact.addressSecondaryLines)}
                 onChange={(e) =>
                   setContent({
@@ -558,8 +613,9 @@ export default function AdminSiteContentPage() {
             </div>
           </div>
           <div>
-            <Label>Horários (um por linha)</Label>
+            <Label htmlFor="contact-hours">Horários (um por linha)</Label>
             <Textarea
+              id="contact-hours"
               value={lines(c.contact.hoursLines)}
               onChange={(e) =>
                 setContent({ ...c, contact: { ...c.contact, hoursLines: fromLines(e.target.value) } })
@@ -567,8 +623,9 @@ export default function AdminSiteContentPage() {
             />
           </div>
           <div>
-            <Label>Polos (formulário)</Label>
+            <Label htmlFor="contact-locations">Polos (formulário)</Label>
             <Textarea
+              id="contact-locations"
               value={lines(c.contact.locations)}
               onChange={(e) =>
                 setContent({ ...c, contact: { ...c.contact, locations: fromLines(e.target.value) } })
@@ -576,8 +633,9 @@ export default function AdminSiteContentPage() {
             />
           </div>
           <div>
-            <Label>Disciplinas (formulário)</Label>
+            <Label htmlFor="contact-subjects">Disciplinas (formulário)</Label>
             <Textarea
+              id="contact-subjects"
               value={lines(c.contact.subjects)}
               onChange={(e) =>
                 setContent({ ...c, contact: { ...c.contact, subjects: fromLines(e.target.value) } })
@@ -585,8 +643,9 @@ export default function AdminSiteContentPage() {
             />
           </div>
           <div>
-            <Label>Anos escolares (formulário)</Label>
+            <Label htmlFor="contact-school-years">Anos escolares (formulário)</Label>
             <Textarea
+              id="contact-school-years"
               value={lines(c.contact.schoolYears)}
               onChange={(e) =>
                 setContent({ ...c, contact: { ...c.contact, schoolYears: fromLines(e.target.value) } })
@@ -595,34 +654,38 @@ export default function AdminSiteContentPage() {
           </div>
         </section>
 
-        {/* Partner */}
+        {/* Parceria */}
         <section className="space-y-3 rounded-2xl bg-white p-5 shadow-sm ring-1 ring-slate-100">
           <h2 className="text-lg font-semibold">Parceria</h2>
           <div className="grid gap-3 md:grid-cols-2">
             <div>
-              <Label>Badge</Label>
+              <Label htmlFor="partner-badge">Etiqueta</Label>
               <Input
+                id="partner-badge"
                 value={c.partner.badge}
                 onChange={(e) => setContent({ ...c, partner: { ...c.partner, badge: e.target.value } })}
               />
             </div>
             <div>
-              <Label>Website</Label>
+              <Label htmlFor="partner-website">Website</Label>
               <Input
+                id="partner-website"
                 value={c.partner.website ?? ""}
                 onChange={(e) => setContent({ ...c, partner: { ...c.partner, website: e.target.value } })}
               />
             </div>
             <div>
-              <Label>Título</Label>
+              <Label htmlFor="partner-title">Título</Label>
               <Input
+                id="partner-title"
                 value={c.partner.title}
                 onChange={(e) => setContent({ ...c, partner: { ...c.partner, title: e.target.value } })}
               />
             </div>
             <div>
-              <Label>Accent</Label>
+              <Label htmlFor="partner-title-accent">Palavra em destaque</Label>
               <Input
+                id="partner-title-accent"
                 value={c.partner.titleAccent}
                 onChange={(e) =>
                   setContent({ ...c, partner: { ...c.partner, titleAccent: e.target.value } })
@@ -630,37 +693,42 @@ export default function AdminSiteContentPage() {
               />
             </div>
             <div>
-              <Label>Nome</Label>
+              <Label htmlFor="partner-name">Nome</Label>
               <Input
+                id="partner-name"
                 value={c.partner.name}
                 onChange={(e) => setContent({ ...c, partner: { ...c.partner, name: e.target.value } })}
               />
             </div>
             <div>
-              <Label>Tagline</Label>
+              <Label htmlFor="partner-tagline">Frase curta</Label>
               <Input
+                id="partner-tagline"
                 value={c.partner.tagline}
                 onChange={(e) => setContent({ ...c, partner: { ...c.partner, tagline: e.target.value } })}
               />
             </div>
           </div>
           <div>
-            <Label>Subtítulo</Label>
+            <Label htmlFor="partner-subtitle">Subtítulo</Label>
             <Textarea
+              id="partner-subtitle"
               value={c.partner.subtitle}
               onChange={(e) => setContent({ ...c, partner: { ...c.partner, subtitle: e.target.value } })}
             />
           </div>
           <div>
-            <Label>Texto</Label>
+            <Label htmlFor="partner-body">Texto</Label>
             <Textarea
+              id="partner-body"
               value={c.partner.body}
               onChange={(e) => setContent({ ...c, partner: { ...c.partner, body: e.target.value } })}
             />
           </div>
           <div>
-            <Label>Serviços (um por linha)</Label>
+            <Label htmlFor="partner-services">Serviços (um por linha)</Label>
             <Textarea
+              id="partner-services"
               value={lines(c.partner.services)}
               onChange={(e) =>
                 setContent({
@@ -677,15 +745,17 @@ export default function AdminSiteContentPage() {
           <h2 className="text-lg font-semibold">FAQ e testemunhos</h2>
           <div className="grid gap-3 md:grid-cols-2">
             <div>
-              <Label>Título FAQ</Label>
+              <Label htmlFor="social-faq-title">Título FAQ</Label>
               <Input
+                id="social-faq-title"
                 value={c.social.faqTitle}
                 onChange={(e) => setContent({ ...c, social: { ...c.social, faqTitle: e.target.value } })}
               />
             </div>
             <div>
-              <Label>Título testemunhos</Label>
+              <Label htmlFor="social-testimonials-title">Título testemunhos</Label>
               <Input
+                id="social-testimonials-title"
                 value={c.social.testimonialsTitle}
                 onChange={(e) =>
                   setContent({ ...c, social: { ...c.social, testimonialsTitle: e.target.value } })
@@ -695,7 +765,7 @@ export default function AdminSiteContentPage() {
           </div>
           <div className="space-y-3">
             <div className="flex items-center justify-between gap-2">
-              <Label>Perguntas frequentes</Label>
+              <p className="text-sm font-medium leading-none">Perguntas frequentes</p>
               <Button
                 type="button"
                 variant="outline"
@@ -716,7 +786,7 @@ export default function AdminSiteContentPage() {
             {c.social.faq.map((f, i) => (
               <div key={i} className="space-y-2 rounded-xl border border-slate-100 bg-slate-50/50 p-3">
                 <div className="flex items-center justify-between">
-                  <p className="text-xs font-bold uppercase text-slate-400">Pergunta {i + 1}</p>
+                  <p className="text-xs font-bold uppercase text-slate-500">Pergunta {i + 1}</p>
                   <button
                     type="button"
                     className="text-xs font-semibold text-rose-600 hover:underline"
@@ -733,33 +803,41 @@ export default function AdminSiteContentPage() {
                     Remover
                   </button>
                 </div>
-                <Input
-                  value={f.question}
-                  placeholder="Pergunta"
-                  onChange={(e) => {
-                    const faq = c.social.faq.map((x, idx) =>
-                      idx === i ? { ...x, question: e.target.value } : x,
-                    );
-                    setContent({ ...c, social: { ...c.social, faq } });
-                  }}
-                />
-                <Textarea
-                  value={f.answer}
-                  placeholder="Resposta"
-                  rows={2}
-                  onChange={(e) => {
-                    const faq = c.social.faq.map((x, idx) =>
-                      idx === i ? { ...x, answer: e.target.value } : x,
-                    );
-                    setContent({ ...c, social: { ...c.social, faq } });
-                  }}
-                />
+                <div>
+                  <Label htmlFor={`faq-${i}-question`}>Pergunta</Label>
+                  <Input
+                    id={`faq-${i}-question`}
+                    value={f.question}
+                    placeholder="Pergunta"
+                    onChange={(e) => {
+                      const faq = c.social.faq.map((x, idx) =>
+                        idx === i ? { ...x, question: e.target.value } : x,
+                      );
+                      setContent({ ...c, social: { ...c.social, faq } });
+                    }}
+                  />
+                </div>
+                <div>
+                  <Label htmlFor={`faq-${i}-answer`}>Resposta</Label>
+                  <Textarea
+                    id={`faq-${i}-answer`}
+                    value={f.answer}
+                    placeholder="Resposta"
+                    rows={2}
+                    onChange={(e) => {
+                      const faq = c.social.faq.map((x, idx) =>
+                        idx === i ? { ...x, answer: e.target.value } : x,
+                      );
+                      setContent({ ...c, social: { ...c.social, faq } });
+                    }}
+                  />
+                </div>
               </div>
             ))}
           </div>
           <div className="space-y-3">
             <div className="flex items-center justify-between gap-2">
-              <Label>Testemunhos</Label>
+              <p className="text-sm font-medium leading-none">Testemunhos</p>
               <Button
                 type="button"
                 variant="outline"
@@ -780,7 +858,7 @@ export default function AdminSiteContentPage() {
             {c.social.testimonials.map((t, i) => (
               <div key={i} className="space-y-2 rounded-xl border border-slate-100 bg-slate-50/50 p-3">
                 <div className="flex items-center justify-between">
-                  <p className="text-xs font-bold uppercase text-slate-400">Testemunho {i + 1}</p>
+                  <p className="text-xs font-bold uppercase text-slate-500">Testemunho {i + 1}</p>
                   <button
                     type="button"
                     className="text-xs font-semibold text-rose-600 hover:underline"
@@ -797,38 +875,50 @@ export default function AdminSiteContentPage() {
                     Remover
                   </button>
                 </div>
-                <Textarea
-                  value={t.quote}
-                  placeholder="Citação"
-                  rows={2}
-                  onChange={(e) => {
-                    const testimonials = c.social.testimonials.map((x, idx) =>
-                      idx === i ? { ...x, quote: e.target.value } : x,
-                    );
-                    setContent({ ...c, social: { ...c.social, testimonials } });
-                  }}
-                />
+                <div>
+                  <Label htmlFor={`testimonial-${i}-quote`}>Citação</Label>
+                  <Textarea
+                    id={`testimonial-${i}-quote`}
+                    value={t.quote}
+                    placeholder="Citação"
+                    rows={2}
+                    onChange={(e) => {
+                      const testimonials = c.social.testimonials.map((x, idx) =>
+                        idx === i ? { ...x, quote: e.target.value } : x,
+                      );
+                      setContent({ ...c, social: { ...c.social, testimonials } });
+                    }}
+                  />
+                </div>
                 <div className="grid gap-2 md:grid-cols-2">
-                  <Input
-                    value={t.author}
-                    placeholder="Nome"
-                    onChange={(e) => {
-                      const testimonials = c.social.testimonials.map((x, idx) =>
-                        idx === i ? { ...x, author: e.target.value } : x,
-                      );
-                      setContent({ ...c, social: { ...c.social, testimonials } });
-                    }}
-                  />
-                  <Input
-                    value={t.role}
-                    placeholder="Papel (ex.: no Google)"
-                    onChange={(e) => {
-                      const testimonials = c.social.testimonials.map((x, idx) =>
-                        idx === i ? { ...x, role: e.target.value } : x,
-                      );
-                      setContent({ ...c, social: { ...c.social, testimonials } });
-                    }}
-                  />
+                  <div>
+                    <Label htmlFor={`testimonial-${i}-author`}>Nome</Label>
+                    <Input
+                      id={`testimonial-${i}-author`}
+                      value={t.author}
+                      placeholder="Nome"
+                      onChange={(e) => {
+                        const testimonials = c.social.testimonials.map((x, idx) =>
+                          idx === i ? { ...x, author: e.target.value } : x,
+                        );
+                        setContent({ ...c, social: { ...c.social, testimonials } });
+                      }}
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor={`testimonial-${i}-role`}>Papel (ex.: no Google)</Label>
+                    <Input
+                      id={`testimonial-${i}-role`}
+                      value={t.role}
+                      placeholder="Papel (ex.: no Google)"
+                      onChange={(e) => {
+                        const testimonials = c.social.testimonials.map((x, idx) =>
+                          idx === i ? { ...x, role: e.target.value } : x,
+                        );
+                        setContent({ ...c, social: { ...c.social, testimonials } });
+                      }}
+                    />
+                  </div>
                 </div>
               </div>
             ))}
@@ -839,15 +929,16 @@ export default function AdminSiteContentPage() {
         <section className="space-y-3 rounded-2xl bg-white p-5 shadow-sm ring-1 ring-slate-100">
           <h2 className="text-lg font-semibold">Rodapé do site</h2>
           <div>
-            <Label>Frase do rodapé</Label>
+            <Label htmlFor="footer-tagline">Frase do rodapé</Label>
             <Textarea
+              id="footer-tagline"
               value={c.footer.tagline}
               onChange={(e) => setContent({ ...c, footer: { ...c.footer, tagline: e.target.value } })}
             />
           </div>
           <div className="space-y-3">
             <div className="flex items-center justify-between gap-2">
-              <Label>Ligações rápidas</Label>
+              <p className="text-sm font-medium leading-none">Ligações rápidas</p>
               <Button
                 type="button"
                 variant="outline"
@@ -867,29 +958,38 @@ export default function AdminSiteContentPage() {
             </div>
             {c.footer.quickLinks.map((l, i) => (
               <div key={i} className="grid gap-2 rounded-xl border border-slate-100 bg-slate-50/50 p-3 md:grid-cols-[1fr_1fr_auto]">
-                <Input
-                  value={l.label}
-                  placeholder="Texto (ex.: Sobre)"
-                  onChange={(e) => {
-                    const quickLinks = c.footer.quickLinks.map((x, idx) =>
-                      idx === i ? { ...x, label: e.target.value } : x,
-                    );
-                    setContent({ ...c, footer: { ...c.footer, quickLinks } });
-                  }}
-                />
-                <Input
-                  value={l.href}
-                  placeholder="Caminho (ex.: /about)"
-                  onChange={(e) => {
-                    const quickLinks = c.footer.quickLinks.map((x, idx) =>
-                      idx === i ? { ...x, href: e.target.value } : x,
-                    );
-                    setContent({ ...c, footer: { ...c.footer, quickLinks } });
-                  }}
-                />
+                <div>
+                  <Label htmlFor={`footer-link-${i}-label`}>Texto</Label>
+                  <Input
+                    id={`footer-link-${i}-label`}
+                    value={l.label}
+                    placeholder="Texto (ex.: Sobre)"
+                    onChange={(e) => {
+                      const quickLinks = c.footer.quickLinks.map((x, idx) =>
+                        idx === i ? { ...x, label: e.target.value } : x,
+                      );
+                      setContent({ ...c, footer: { ...c.footer, quickLinks } });
+                    }}
+                  />
+                </div>
+                <div>
+                  <Label htmlFor={`footer-link-${i}-href`}>Caminho</Label>
+                  <Input
+                    id={`footer-link-${i}-href`}
+                    value={l.href}
+                    placeholder="Caminho (ex.: /about)"
+                    onChange={(e) => {
+                      const quickLinks = c.footer.quickLinks.map((x, idx) =>
+                        idx === i ? { ...x, href: e.target.value } : x,
+                      );
+                      setContent({ ...c, footer: { ...c.footer, quickLinks } });
+                    }}
+                  />
+                </div>
                 <Button
                   type="button"
                   variant="outline"
+                  className="self-end"
                   onClick={() =>
                     setContent({
                       ...c,

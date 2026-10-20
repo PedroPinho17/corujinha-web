@@ -14,16 +14,16 @@ describe("email-layout", () => {
 
   it("builds absolute logo URL from NEXT_PUBLIC_APP_URL", () => {
     process.env.NEXT_PUBLIC_APP_URL = "https://corujinha.example/";
-    expect(emailLogoUrl()).toBe("https://corujinha.example/logo.webp");
+    expect(emailLogoUrl()).toBe("https://corujinha.example/logo-email.png");
   });
 
   it("falls back to BETTER_AUTH_URL then localhost", () => {
     delete process.env.NEXT_PUBLIC_APP_URL;
     process.env.BETTER_AUTH_URL = "https://auth.example";
-    expect(emailLogoUrl()).toBe("https://auth.example/logo.webp");
+    expect(emailLogoUrl()).toBe("https://auth.example/logo-email.png");
 
     delete process.env.BETTER_AUTH_URL;
-    expect(emailLogoUrl()).toBe("http://localhost:3000/logo.webp");
+    expect(emailLogoUrl()).toBe("http://localhost:3000/logo-email.png");
   });
 
   it("renders branded shell with logo, title, CTA and footer", () => {
@@ -34,14 +34,16 @@ describe("email-layout", () => {
       bodyHtml: "<p>Olá Pedro,</p><p>Clique no botão abaixo.</p>",
       cta: { label: "Definir nova password", href: "https://corujinha.example/reset" },
     });
-    expect(html).toContain("https://corujinha.example/logo.webp");
+    expect(html).toContain("https://corujinha.example/logo-email.png");
     expect(html).toContain("Recuperar password");
     expect(html).toContain("Definir nova password");
     expect(html).toContain("https://corujinha.example/reset");
     expect(html).toContain("Centro de Apoio Escolar Corujinha");
-    expect(html).toContain("Lobão · São João de Ver");
+    expect(html).toContain("Lobão · São João de Ver · Sanguedo");
+    expect(html).toContain("/privacidade");
     expect(html).toContain('alt="Corujinha"');
     expect(html).toContain("Link válido 1 hora");
+    expect(html).toContain("font-family:Arial");
   });
 
   it("omits CTA and preheader when not provided", () => {
@@ -50,7 +52,7 @@ describe("email-layout", () => {
       title: "Aviso",
       bodyHtml: "<p>Só texto.</p>",
     });
-    expect(html).not.toContain("border-radius:999px");
+    expect(html).not.toContain("Definir nova password");
     expect(html).not.toContain("display:none;max-height:0");
     expect(html).toContain("Só texto.");
     expect(html).toContain("Centro de Apoio Escolar Corujinha");

@@ -12,10 +12,34 @@ const body = Nunito({
   variable: "--font-body",
 });
 
+const siteUrl = (process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000").replace(/\/$/, "");
+
+const defaultTitle = "Corujinha — Centro de Apoio Escolar";
+const defaultDescription =
+  "Centro de explicações e apoio educativo para crianças até ao 12º ano. Educação com carinho e dedicação em Lobão, São João de Ver e Sanguedo.";
+
 export const metadata: Metadata = {
-  title: "Corujinha — Centro de Apoio Escolar",
-  description:
-    "Centro de explicações e apoio educativo para crianças até ao 12º ano. Educação com carinho e dedicação.",
+  metadataBase: new URL(siteUrl),
+  title: {
+    default: defaultTitle,
+    template: "%s — Corujinha",
+  },
+  description: defaultDescription,
+  openGraph: {
+    type: "website",
+    locale: "pt_PT",
+    url: siteUrl,
+    siteName: "Corujinha",
+    title: defaultTitle,
+    description: defaultDescription,
+    images: [{ url: "/logo.webp", width: 512, height: 230, alt: "Corujinha" }],
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: defaultTitle,
+    description: defaultDescription,
+    images: ["/logo.webp"],
+  },
   icons: {
     icon: [
       { url: "/favicon.png", type: "image/png", sizes: "32x32" },
@@ -35,7 +59,7 @@ export const viewport: Viewport = {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="pt">
+    <html lang="pt-PT">
       <body className={`${body.variable} ${display.variable} font-sans antialiased`}>{children}</body>
     </html>
   );

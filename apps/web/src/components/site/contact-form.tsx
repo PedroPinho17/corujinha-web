@@ -40,16 +40,10 @@ export function ContactForm({
       return;
     }
 
+    // Structured fields go in subject/schoolYear/location — do not duplicate into message.
     const message =
       mode === "ENROLLMENT"
-        ? [
-            freeMessage || "Pedido de inscrição via site.",
-            subject && `Disciplina: ${subject}`,
-            schoolYear && `Ano: ${schoolYear}`,
-            location && `Polo: ${location}`,
-          ]
-            .filter(Boolean)
-            .join("\n")
+        ? freeMessage || "Pedido de inscrição via site."
         : freeMessage;
 
     try {

@@ -69,7 +69,7 @@ export default function AdminProfilePage() {
   }
 
   if (!me) {
-    return <p className="text-center text-sm text-slate-400">A carregar…</p>;
+    return <p className="text-center text-sm text-slate-500">A carregar…</p>;
   }
 
   return (
@@ -84,14 +84,19 @@ export default function AdminProfilePage() {
       >
         <h2 className="text-base font-bold text-slate-800">Dados pessoais</h2>
         <div>
-          <Label>Email</Label>
-          <Input value={me.email} disabled />
+          <Label htmlFor="profile-email">Email</Label>
+          <Input id="profile-email" value={me.email} disabled />
         </div>
         <div>
-          <Label>Nome</Label>
-          <Input value={name} onChange={(e) => setName(e.target.value)} required />
+          <Label htmlFor="profile-name">Nome</Label>
+          <Input
+            id="profile-name"
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            required
+          />
         </div>
-        <p className="text-xs text-slate-400">Permissão: {me.role}</p>
+        <p className="text-xs text-slate-500">Permissão: {me.role}</p>
         <Button type="submit">Guardar perfil</Button>
       </form>
 
@@ -101,8 +106,9 @@ export default function AdminProfilePage() {
       >
         <h2 className="text-base font-bold text-slate-800">Alterar password</h2>
         <div>
-          <Label>Password actual</Label>
+          <Label htmlFor="profile-current-password">Password actual</Label>
           <Input
+            id="profile-current-password"
             type="password"
             minLength={12}
             value={currentPassword}
@@ -112,8 +118,9 @@ export default function AdminProfilePage() {
           />
         </div>
         <div>
-          <Label>Nova password</Label>
+          <Label htmlFor="profile-new-password">Nova password</Label>
           <Input
+            id="profile-new-password"
             type="password"
             minLength={12}
             value={password}

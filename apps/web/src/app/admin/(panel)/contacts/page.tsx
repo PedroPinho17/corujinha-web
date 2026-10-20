@@ -54,6 +54,15 @@ export default function AdminContactsPage() {
     load().catch(() => undefined);
   }, []);
 
+  useEffect(() => {
+    if (!selected) return;
+    function onEsc(e: KeyboardEvent) {
+      if (e.key === "Escape") setSelected(null);
+    }
+    document.addEventListener("keydown", onEsc);
+    return () => document.removeEventListener("keydown", onEsc);
+  }, [selected]);
+
   function open(c: Contact) {
     setSelected(c);
     setNotes(c.adminNotes ?? "");
@@ -163,7 +172,7 @@ export default function AdminContactsPage() {
           </button>
         </div>
 
-        {loading && <p className="px-5 py-10 text-center text-sm text-slate-400">A carregar…</p>}
+        {loading && <p className="px-5 py-10 text-center text-sm text-slate-500">A carregar…</p>}
         {!loading && error && (
           <p className="px-5 py-10 text-center text-sm text-rose-600" role="alert">
             {error}
@@ -172,105 +181,142 @@ export default function AdminContactsPage() {
         {!loading && !error && rows.length === 0 && (
           <div className="px-5 py-14 text-center">
             <p className="text-sm font-semibold text-slate-700">Ainda não há mensagens</p>
-            <p className="mx-auto mt-2 max-w-md text-sm text-slate-400">
+            <p className="mx-auto mt-2 max-w-md text-sm text-slate-500">
               Pedidos de inscrição e mensagens do site aparecem aqui.
             </p>
           </div>
         )}
 
         {!loading && !error && rows.length > 0 && (
-          <div className="overflow-x-auto">
-            <table className="w-full min-w-[800px] text-left text-sm">
-              <thead>
-                <tr className="border-b border-slate-100 text-[10px] uppercase tracking-wide text-slate-400">
-                  <th className="px-4 py-3 font-bold">Data</th>
-                  <th className="px-4 py-3 font-bold">Tipo</th>
-                  <th className="px-4 py-3 font-bold">Nome</th>
-                  <th className="px-4 py-3 font-bold">Pedido</th>
-                  <th className="px-4 py-3 font-bold">Estado</th>
-                  <th className="sticky right-0 z-[1] bg-white px-4 py-3 text-right font-bold shadow-[-6px_0_8px_-6px_rgba(15,23,42,0.12)]">
-                    Ações
-                  </th>
-                </tr>
-              </thead>
-              <tbody>
-                {rows.map((c) => (
-                  <tr
-                    key={c.id}
-                    className={`border-b border-slate-50 align-top hover:bg-slate-50/80 ${
-                      !c.readAt ? "bg-amber-50/40" : ""
-                    }`}
-                  >
-                    <td className="whitespace-nowrap px-4 py-3 text-xs text-slate-500">
-                      {new Date(c.createdAt).toLocaleString("pt-PT")}
-                    </td>
-                    <td className="px-4 py-3">
-                      <span
-                        className={`rounded-full px-2 py-0.5 text-[11px] font-bold ${
-                          c.kind === "ENROLLMENT"
-                            ? "bg-pink-50 text-pink-700"
-                            : "bg-slate-100 text-slate-600"
-                        }`}
-                      >
-                        {c.kind === "ENROLLMENT" ? "Inscrição" : "Mensagem"}
-                      </span>
-                    </td>
-                    <td className="px-4 py-3">
+          <>
+            <ul className="divide-y divide-slate-100 md:hidden">
+              {rows.map((c) => (
+                <li key={c.id} className={`space-y-2 px-4 py-4 ${!c.readAt ? "bg-amber-50/40" : ""}`}>
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="min-w-0">
                       <p className="font-semibold text-slate-800">
                         {!c.readAt && <span className="mr-1 text-amber-500">●</span>}
                         {c.name}
                       </p>
-                      <p className="text-xs text-slate-500">{c.email}</p>
-                    </td>
-                    <td className="max-w-xs px-4 py-3 text-sm text-slate-700">
-                      {c.kind === "ENROLLMENT" ? (
-                        <span>
-                          {[c.subject, c.schoolYear, c.location].filter(Boolean).join(" · ") ||
-                            c.message.slice(0, 100)}
-                        </span>
-                      ) : (
-                        c.message.slice(0, 100)
-                      )}
-                    </td>
-                    <td className="px-4 py-3">
-                      <span
-                        className={`rounded-full px-2.5 py-0.5 text-[11px] font-bold ${
-                          c.status === "NEW"
-                            ? "bg-amber-50 text-amber-700"
-                            : c.status === "FAILED"
-                              ? "bg-rose-50 text-rose-600"
-                              : "bg-emerald-50 text-emerald-600"
-                        }`}
-                      >
+                      <p className="text-xs text-slate-600">
+                        {c.kind === "ENROLLMENT" ? "Inscrição" : "Mensagem"} ·{" "}
                         {statusLabel[c.status] ?? c.status}
-                      </span>
-                    </td>
-                    <td className="sticky right-0 z-[1] bg-inherit px-4 py-3 text-right shadow-[-6px_0_8px_-6px_rgba(15,23,42,0.12)]">
-                      <div className="flex flex-col items-stretch justify-end gap-1 sm:flex-row sm:items-center sm:gap-2">
-                        <button
-                          type="button"
-                          className="rounded-lg border border-slate-200 bg-white px-2.5 py-1 text-xs font-bold text-indigo-600 hover:bg-indigo-50"
-                          onClick={() => open(c)}
-                        >
-                          Abrir
-                        </button>
-                        <a
-                          href={`mailto:${c.email}?subject=${encodeURIComponent(
-                            c.kind === "ENROLLMENT"
-                              ? "Re: Pedido de inscrição — Corujinha"
-                              : "Re: Contacto — Corujinha",
-                          )}`}
-                          className="rounded-lg border border-pink-100 bg-pink-50 px-2.5 py-1 text-center text-xs font-bold text-pink-700 hover:bg-pink-100"
-                        >
-                          Responder
-                        </a>
-                      </div>
-                    </td>
+                      </p>
+                    </div>
+                    <time className="shrink-0 text-[11px] text-slate-500">
+                      {new Date(c.createdAt).toLocaleDateString("pt-PT")}
+                    </time>
+                  </div>
+                  <div className="flex gap-2">
+                    <button
+                      type="button"
+                      className="flex-1 rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-xs font-bold text-indigo-600"
+                      onClick={() => open(c)}
+                    >
+                      Abrir
+                    </button>
+                    <a
+                      href={`mailto:${c.email}`}
+                      className="flex-1 rounded-lg border border-pink-100 bg-pink-50 px-2.5 py-1.5 text-center text-xs font-bold text-pink-700"
+                    >
+                      Responder
+                    </a>
+                  </div>
+                </li>
+              ))}
+            </ul>
+
+            <div className="hidden overflow-x-auto md:block">
+              <table className="w-full min-w-[800px] text-left text-sm">
+                <thead>
+                  <tr className="border-b border-slate-100 text-[10px] uppercase tracking-wide text-slate-500">
+                    <th className="px-4 py-3 font-bold">Data</th>
+                    <th className="px-4 py-3 font-bold">Tipo</th>
+                    <th className="px-4 py-3 font-bold">Nome</th>
+                    <th className="px-4 py-3 font-bold">Pedido</th>
+                    <th className="px-4 py-3 font-bold">Estado</th>
+                    <th className="px-4 py-3 text-right font-bold">Ações</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+                </thead>
+                <tbody>
+                  {rows.map((c) => (
+                    <tr
+                      key={c.id}
+                      className={`border-b border-slate-50 align-top hover:bg-slate-50/80 ${
+                        !c.readAt ? "bg-amber-50/40" : ""
+                      }`}
+                    >
+                      <td className="whitespace-nowrap px-4 py-3 text-xs text-slate-500">
+                        {new Date(c.createdAt).toLocaleString("pt-PT")}
+                      </td>
+                      <td className="px-4 py-3">
+                        <span
+                          className={`rounded-full px-2 py-0.5 text-[11px] font-bold ${
+                            c.kind === "ENROLLMENT"
+                              ? "bg-pink-50 text-pink-700"
+                              : "bg-slate-100 text-slate-600"
+                          }`}
+                        >
+                          {c.kind === "ENROLLMENT" ? "Inscrição" : "Mensagem"}
+                        </span>
+                      </td>
+                      <td className="px-4 py-3">
+                        <p className="font-semibold text-slate-800">
+                          {!c.readAt && <span className="mr-1 text-amber-500">●</span>}
+                          {c.name}
+                        </p>
+                        <p className="text-xs text-slate-500">{c.email}</p>
+                      </td>
+                      <td className="max-w-xs px-4 py-3 text-sm text-slate-700">
+                        {c.kind === "ENROLLMENT" ? (
+                          <span>
+                            {[c.subject, c.schoolYear, c.location].filter(Boolean).join(" · ") ||
+                              c.message.slice(0, 100)}
+                          </span>
+                        ) : (
+                          c.message.slice(0, 100)
+                        )}
+                      </td>
+                      <td className="px-4 py-3">
+                        <span
+                          className={`rounded-full px-2.5 py-0.5 text-[11px] font-bold ${
+                            c.status === "NEW"
+                              ? "bg-amber-50 text-amber-700"
+                              : c.status === "FAILED"
+                                ? "bg-rose-50 text-rose-600"
+                                : "bg-emerald-50 text-emerald-600"
+                          }`}
+                        >
+                          {statusLabel[c.status] ?? c.status}
+                        </span>
+                      </td>
+                      <td className="px-4 py-3 text-right">
+                        <div className="flex flex-row items-center justify-end gap-2">
+                          <button
+                            type="button"
+                            className="rounded-lg border border-slate-200 bg-white px-2.5 py-1 text-xs font-bold text-indigo-600 hover:bg-indigo-50"
+                            onClick={() => open(c)}
+                          >
+                            Abrir
+                          </button>
+                          <a
+                            href={`mailto:${c.email}?subject=${encodeURIComponent(
+                              c.kind === "ENROLLMENT"
+                                ? "Re: Pedido de inscrição — Corujinha"
+                                : "Re: Contacto — Corujinha",
+                            )}`}
+                            className="rounded-lg border border-pink-100 bg-pink-50 px-2.5 py-1 text-center text-xs font-bold text-pink-700 hover:bg-pink-100"
+                          >
+                            Responder
+                          </a>
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </>
         )}
       </div>
 

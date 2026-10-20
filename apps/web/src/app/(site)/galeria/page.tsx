@@ -1,4 +1,10 @@
+import type { Metadata } from "next";
 import { GalleryClient } from "@/components/site/gallery-client";
+
+export const metadata: Metadata = {
+  title: "Galeria",
+  description: "Momentos e atividades nos centros Corujinha em Lobão, São João de Ver e Sanguedo.",
+};
 
 const api = process.env.INTERNAL_API_URL ?? "http://localhost:3001";
 

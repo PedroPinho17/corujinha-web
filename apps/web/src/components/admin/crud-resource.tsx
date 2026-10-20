@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState, type ReactNode } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -71,6 +71,15 @@ export function CrudResourcePage({
   useEffect(() => {
     load().catch(() => undefined);
   }, [load]);
+
+  useEffect(() => {
+    if (!pendingDelete) return;
+    function onEsc(e: KeyboardEvent) {
+      if (e.key === "Escape") setPendingDelete(null);
+    }
+    document.addEventListener("keydown", onEsc);
+    return () => document.removeEventListener("keydown", onEsc);
+  }, [pendingDelete]);
 
   function startCreate() {
     setEditing(null);
@@ -285,10 +294,8 @@ export function CrudResourcePage({
       {
         id: "actions",
         header: "Ações",
-        headerClassName:
-          "sticky right-0 z-[1] bg-white text-center shadow-[-6px_0_8px_-6px_rgba(15,23,42,0.12)]",
-        className:
-          "sticky right-0 z-[1] bg-white text-center shadow-[-6px_0_8px_-6px_rgba(15,23,42,0.12)]",
+        headerClassName: "w-[160px] text-center",
+        className: "text-center",
         sortable: false,
         cell: (r) => (
           <div className="flex flex-col items-stretch justify-center gap-1 sm:flex-row sm:items-center">
@@ -313,6 +320,16 @@ export function CrudResourcePage({
 
     return cols;
   }, [imageField, nameField, bodyField, togglingId, move, startEdit, toggleRow]);
+
+  const mobileTitle = useCallback(
+    (r: Row): ReactNode => String(r[nameField] || r.title || r.name || r.schoolName || r.id),
+    [nameField],
+  );
+
+  const mobileMeta = useCallback((r: Row): ReactNode => {
+    const on = (r.published ?? r.active ?? true) as boolean;
+    return on ? "Ativo" : "Inativo";
+  }, []);
 
   return (
     <div className="space-y-4">
@@ -364,25 +381,29 @@ export function CrudResourcePage({
           </p>
           <div className="max-w-xl space-y-3">
             <div>
-              <Label>Título / Nome (PT)</Label>
+              <Label htmlFor="crud-name">Título / Nome (PT)</Label>
               <Input
+                id="crud-name"
                 value={String(form[nameField] ?? "")}
                 onChange={(e) => setForm({ ...form, [nameField]: e.target.value })}
                 required
               />
             </div>
             <div>
-              <Label>{bodyField === "address" ? "Morada" : "Descrição (PT)"}</Label>
+              <Label htmlFor="crud-body">{bodyField === "address" ? "Morada" : "Descrição (PT)"}</Label>
               <Textarea
+                id="crud-body"
                 value={String(form[bodyField] ?? "")}
                 onChange={(e) => setForm({ ...form, [bodyField]: e.target.value })}
               />
             </div>
             {extraFields.map((f) => {
+              const fieldId = `crud-extra-${f.key}`;
               if (f.type === "checkbox") {
                 return (
-                  <label key={f.key} className="flex items-center gap-2 text-sm">
+                  <label key={f.key} className="flex items-center gap-2 text-sm" htmlFor={fieldId}>
                     <input
+                      id={fieldId}
                       type="checkbox"
                       checked={Boolean(form[f.key])}
                       onChange={(e) => setForm({ ...form, [f.key]: e.target.checked })}
@@ -406,8 +427,9 @@ export function CrudResourcePage({
               if (f.type === "select") {
                 return (
                   <div key={f.key}>
-                    <Label>{f.label}</Label>
+                    <Label htmlFor={fieldId}>{f.label}</Label>
                     <select
+                      id={fieldId}
                       className="flex h-10 w-full rounded-md border border-slate-200 bg-white px-3 text-sm"
                       value={String(form[f.key] ?? "")}
                       onChange={(e) => setForm({ ...form, [f.key]: e.target.value })}
@@ -424,8 +446,9 @@ export function CrudResourcePage({
               }
               return (
                 <div key={f.key}>
-                  <Label>{f.label}</Label>
+                  <Label htmlFor={fieldId}>{f.label}</Label>
                   <Input
+                    id={fieldId}
                     value={String(form[f.key] ?? "")}
                     onChange={(e) => setForm({ ...form, [f.key]: e.target.value })}
                   />
@@ -481,6 +504,26 @@ export function CrudResourcePage({
         loading={loading}
         defaultPageSize={25}
         emptyMessage="Nenhum registo encontrado."
+        mobileTitle={mobileTitle}
+        mobileMeta={mobileMeta}
+        mobileActions={(r) => (
+          <div className="flex gap-2">
+            <button
+              type="button"
+              className="inline-flex h-8 flex-1 items-center justify-center rounded border border-slate-300 bg-sky-50 px-2.5 text-xs font-semibold text-sky-700"
+              onClick={() => startEdit(r)}
+            >
+              Editar
+            </button>
+            <button
+              type="button"
+              className="inline-flex h-8 flex-1 items-center justify-center rounded border border-rose-200 bg-rose-50 px-2.5 text-xs font-semibold text-rose-700"
+              onClick={() => setPendingDelete(r.id)}
+            >
+              Eliminar
+            </button>
+          </div>
+        )}
         toolbar={
           <Button type="button" onClick={startCreate}>
             + Novo
