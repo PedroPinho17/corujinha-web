@@ -15,11 +15,14 @@ test.describe("Corujinha public smoke", () => {
     await expect(page.locator("#contact form, form").first()).toBeVisible({ timeout: 15_000 });
   });
 
-  test("robots blocks indexing by default", async ({ request }) => {
+  test("robots.txt is plain text and blocks indexing by default", async ({ request }) => {
     const robots = await request.get(`${base}/robots.txt`);
     expect(robots.ok()).toBeTruthy();
+    const ct = robots.headers()["content-type"] ?? "";
+    expect(ct).toMatch(/text\/plain/i);
     const robotsText = await robots.text();
-    // Until ALLOW_SEARCH_INDEXING=true: nothing should be crawlable.
+    // Must not be an HTML page (old bug: redirect robots.txt → /).
+    expect(robotsText).not.toMatch(/<html/i);
     expect(robotsText).toMatch(/Disallow:\s*\//i);
     expect(robotsText).not.toMatch(/Allow:\s*\//i);
 
