@@ -55,8 +55,8 @@ services:
     environment:
       NODE_ENV: production
       INTERNAL_API_URL: http://api:3001
-      # false por omissão — /robots.txt = Disallow: / até o go-live
-      ALLOW_SEARCH_INDEXING: ${ALLOW_SEARCH_INDEXING:-false}
+      # true por omissão — site indexável; use false só em staging
+      ALLOW_SEARCH_INDEXING: ${ALLOW_SEARCH_INDEXING:-true}
     expose:
       - "3000"
     depends_on:

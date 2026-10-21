@@ -1,4 +1,5 @@
 import type { Metadata, Viewport } from "next";
+import { connection } from "next/server";
 import { Fraunces, Nunito } from "next/font/google";
 import "./globals.css";
 
@@ -57,7 +58,9 @@ export const viewport: Viewport = {
   themeColor: "#ec4899",
 };
 
-export default function RootLayout({ children }: { children: React.ReactNode }) {
+export default async function RootLayout({ children }: { children: React.ReactNode }) {
+  // Required for per-request CSP nonces (middleware → Next script injection).
+  await connection();
   return (
     <html lang="pt-PT">
       <body className={`${body.variable} ${display.variable} font-sans antialiased`}>{children}</body>

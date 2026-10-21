@@ -1,10 +1,11 @@
 @import "tailwindcss";
 
 :root {
-  --pink: #db2777;
-  --pink-dark: #be185d;
-  --orange: #ea580c;
-  --orange-dark: #c2410c;
+  /* Darkened for WCAG AA text contrast on white / blush backgrounds */
+  --pink: #be185d;
+  --pink-dark: #9d174d;
+  --orange: #c2410c;
+  --orange-dark: #9a3412;
   --purple: #7c3aed;
   --blue: #7c3aed; /* alias legado → roxo da marca */
   --ink: #111827;

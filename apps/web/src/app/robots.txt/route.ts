@@ -2,7 +2,8 @@ export const dynamic = "force-dynamic";
 
 /**
  * Plain-text robots.txt (never HTML / never redirect to `/`).
- * Default: Disallow everything. Go-live: ALLOW_SEARCH_INDEXING=true.
+ * ALLOW_SEARCH_INDEXING=true → Allow: / + Sitemap (admin bloqueado).
+ * false → Disallow: / (staging).
  */
 export function GET() {
   const indexing = process.env.ALLOW_SEARCH_INDEXING === "true";
