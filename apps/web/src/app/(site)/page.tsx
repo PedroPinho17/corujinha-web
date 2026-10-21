@@ -335,7 +335,7 @@ export default async function HomePage() {
               <div className="flex flex-wrap gap-3">
                 <Link
                   href="/#contact"
-                  className="rounded-full bg-pink px-7 py-3 text-sm font-semibold text-white shadow-lg shadow-pink/25 transition hover:bg-pink-dark"
+                  className="rounded-full bg-pink px-7 py-3 text-sm font-semibold text-white shadow-lg transition hover:bg-pink-dark"
                 >
                   {hero.ctaPrimary || "Pedir inscrição"}
                 </Link>
@@ -575,7 +575,7 @@ export default async function HomePage() {
           <div className="mt-10 text-center">
             <Link
               href="/galeria"
-              className="inline-flex rounded-full bg-pink px-8 py-3 text-sm font-semibold text-white shadow-md shadow-pink/20 transition hover:bg-pink-dark"
+              className="inline-flex rounded-full bg-pink px-8 py-3 text-sm font-semibold text-white shadow-md transition hover:bg-pink-dark"
             >
               Ver galeria completa
             </Link>
@@ -638,7 +638,7 @@ export default async function HomePage() {
                       )}
                     </div>
                     <div className="min-w-0">
-                      <p className="text-[11px] font-bold uppercase tracking-wide text-orange">{item.kind}</p>
+                      <p className="text-[11px] font-bold uppercase tracking-wide text-orange-dark">{item.kind}</p>
                       <h3 className="mt-1 font-display text-lg font-bold leading-snug text-ink">{item.title}</h3>
                       {item.summary && (
                         <p className="mt-1 line-clamp-2 text-sm text-muted">{item.summary}</p>
@@ -737,7 +737,7 @@ export default async function HomePage() {
                 href={googlePlaceUrl}
                 target="_blank"
                 rel="noreferrer"
-                className="inline-flex rounded-full bg-pink px-7 py-2.5 text-sm font-semibold text-white shadow-md shadow-pink/20 transition hover:bg-pink-dark"
+                className="inline-flex rounded-full bg-pink px-7 py-2.5 text-sm font-semibold text-white shadow-md transition hover:bg-pink-dark"
               >
                 Ver todas no Google
               </a>

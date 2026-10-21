@@ -4,7 +4,7 @@ export const dynamic = "force-dynamic";
 
 const siteUrl = (process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000").replace(/\/$/, "");
 
-/** Empty while indexing is off — avoids advertising URLs before go-live. */
+/** Empty when ALLOW_SEARCH_INDEXING is not true (staging). */
 export default function sitemap(): MetadataRoute.Sitemap {
   if (process.env.ALLOW_SEARCH_INDEXING !== "true") {
     return [];

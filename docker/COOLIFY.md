@@ -24,7 +24,7 @@ Fluxo de rede: **Cliente → Traefik (TLS) → web → api**. A API deve ver o p
 - `SMTP_*` + `SMTP_FROM` no domínio verificado + `CONTACT_NOTIFY_TO`
 - `SENTRY_DSN` / `NEXT_PUBLIC_SENTRY_DSN` (recomendado)
 - `WEBAUTHN_RP_ID` = hostname público (sem protocolo)
-- `ALLOW_SEARCH_INDEXING=false` até o go-live; depois `true` (robots/sitemap públicos; admin continua bloqueado)
+- `ALLOW_SEARCH_INDEXING=true` por omissão (robots/sitemap públicos; admin bloqueado). Staging: `false`. Com o domínio live: `node scripts/verify-production.mjs https://SEU_DOMINIO` → Search Console → submeter `/sitemap.xml`
 
 ## Email (Resend)
 
@@ -42,6 +42,7 @@ Ver secção «Cópias de segurança automáticas» em [`docs/RUNBOOK.md`](../do
 - Só o Traefik deve expor 80/443. **Não** publicar `3000`/`3001` no host.
 - Ativar HSTS no edge (ex. Coolify / Traefik middleware): `stsSeconds=31536000`, incluir subdomínios.
 - Confirmar nos logs da API que o IP do rate-limit é o do visitante (`x-corujinha-client-ip`), não o do contentor Traefik.
+- Pós-deploy: `VERIFY_HOST=<ip-vps> node scripts/verify-production.mjs https://SEU_DOMINIO` (portas, robots, CSP, interruptor de indexação).
 
 ## Redis
 

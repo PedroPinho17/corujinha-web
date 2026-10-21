@@ -10,14 +10,14 @@ export const metadata: Metadata = {
 export default function PrivacidadePage() {
   return (
     <div className="mx-auto max-w-3xl px-5 py-16">
-      <p className="mb-6 text-sm text-ink/50">
+      <p className="mb-6 text-sm text-muted">
         <Link href="/" className="underline hover:text-pink">
           Voltar ao início
         </Link>
       </p>
 
       <h1 className="font-display text-4xl text-ink md:text-5xl">Política de privacidade</h1>
-      <p className="mt-3 text-sm text-ink/50">Última atualização: outubro de 2026</p>
+      <p className="mt-3 text-sm text-muted">Última atualização: outubro de 2026</p>
 
       <div className="mt-10 space-y-8 text-sm leading-relaxed text-ink/80">
         <section>

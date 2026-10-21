@@ -31,31 +31,8 @@ function mediaHosts(): { https: string[]; http: string[] } {
   return { https: [...https], http: [...http] };
 }
 
-const media = mediaHosts();
-const imgSrc = [
-  "'self'",
-  "data:",
-  "blob:",
-  ...media.https.map((h) => `https://${h}`),
-  ...(isProd ? [] : media.http.map((h) => `http://${h}`)),
-].join(" ");
-
-const csp = [
-  "default-src 'self'",
-  "base-uri 'self'",
-  "form-action 'self'",
-  "frame-ancestors 'none'",
-  "object-src 'none'",
-  `img-src ${imgSrc}`,
-  "font-src 'self' data: https://fonts.gstatic.com",
-  "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
-  // App Router without nonces still needs these; tighten later with nonces.
-  "script-src 'self' 'unsafe-inline' 'unsafe-eval'",
-  `connect-src 'self' https:${isProd ? "" : " http://localhost:* http://127.0.0.1:*"}`,
-  ...(isProd ? ["upgrade-insecure-requests"] : []),
-].join("; ");
-
 function remotePatterns(): NonNullable<NextConfig["images"]>["remotePatterns"] {
+  const media = mediaHosts();
   const patterns: NonNullable<NextConfig["images"]>["remotePatterns"] = [];
   for (const host of media.https) {
     const [hostname, port] = host.split(":");
@@ -90,24 +67,11 @@ const nextConfig: NextConfig = {
     ];
   },
   async headers() {
+    // CSP (with per-request nonce) is set in middleware — do not duplicate here.
     return [
       {
-        // Always plain text — never HTML shell / never redirect to /
         source: "/robots.txt",
         headers: [{ key: "Content-Type", value: "text/plain; charset=utf-8" }],
-      },
-      {
-        source: "/:path*",
-        headers: [
-          { key: "Content-Security-Policy", value: csp },
-          { key: "X-Frame-Options", value: "DENY" },
-          { key: "X-Content-Type-Options", value: "nosniff" },
-          { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },
-          {
-            key: "Permissions-Policy",
-            value: "camera=(), microphone=(), geolocation=(), payment=()",
-          },
-        ],
       },
     ];
   },

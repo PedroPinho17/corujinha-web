@@ -34,7 +34,11 @@
 6. **Não** publicar as portas `3000`/`3001` no host — só `expose` na rede Docker; o Traefik é a única entrada.
 7. HSTS: ativar no Traefik/Coolify (middleware `headers.stsSeconds=31536000`, `stsIncludeSubdomains=true`). A app Next não envia HSTS (fica no edge).
 8. Redis: o serviço está em `docker-compose.yml` com `--appendonly yes` e volume `redis_data`. No Coolify, confirme o mesmo volume + AOF se o Redis for um serviço à parte.
-9. Indexação: por omissão `ALLOW_SEARCH_INDEXING` está off — `/robots.txt` responde `Disallow: /` e o sitemap fica vazio. No go-live, no Coolify: `ALLOW_SEARCH_INDEXING=true` (sem rebuild, a rota é dinâmica).
+9. Indexação: por omissão `ALLOW_SEARCH_INDEXING=true` — `/robots.txt` com `Allow: /` + `Disallow: /admin` e sitemap público. Em staging, pôr `false`. Após o domínio estar no ar:
+   - `node scripts/verify-production.mjs https://SEU_DOMINIO` (opcional `VERIFY_HOST=IP_VPS` para confirmar 3000/3001 fechadas)
+   - Confirmar nos logs da API o IP real do visitante (`x-corujinha-client-ip`)
+   - [Google Search Console](https://search.google.com/search-console) → propriedade do domínio → **Sitemaps** → submeter `https://SEU_DOMINIO/sitemap.xml`
+10. CSP: a app envia `Content-Security-Policy` com nonce por pedido (`script-src` sem `unsafe-inline` / `unsafe-eval`). Verificar com o script acima ou `curl -sI https://SEU_DOMINIO | grep -i content-security`.
 
 ### 2. Email (Resend + DNS)
 
@@ -136,10 +140,18 @@ Com a stack a correr (`pnpm dev` ou compose):
 ```bash
 pnpm exec playwright install chromium   # uma vez
 pnpm test:e2e
+# inclui smoke, CSP (nonce, sem unsafe-eval) e axe (home, about, privacidade, admin/login)
 # ou: E2E_BASE_URL=https://staging.exemplo pnpm test:e2e
 ```
 
 No CI, o job `compose-smoke` corre estes testes contra `http://127.0.0.1:3000` depois do stack estar up.
+
+Pós-deploy no VPS:
+
+```bash
+pnpm verify:production -- https://SEU_DOMINIO
+# VERIFY_HOST=IP_VPS pnpm verify:production -- https://SEU_DOMINIO
+```
 
 ## Incidentes
 
