@@ -31,14 +31,13 @@ function contrastRatio(fg: string, bg: string): number | null {
   return (lighter + 0.05) / (darker + 0.05);
 }
 
-async function expectNoSeriousViolations(page: import("@playwright/test").Page, path: string) {
-  await page.goto(`${base}${path}`, { waitUntil: "domcontentloaded" });
+async function analyzeAxe(page: import("@playwright/test").Page, label: string) {
   // color-contrast is on. Hero CTAs with soft shadows are mis-sampled by axe (oklab + shadow);
   // those two links are asserted via getComputedStyle in the dedicated contrast test below.
   const results = await new AxeBuilder({ page })
     .withTags(["wcag2a", "wcag2aa", "wcag21a", "wcag21aa"])
-    .exclude('a.bg-pink.text-white')
-    .exclude('a.border-pink.text-pink')
+    .exclude("a.bg-pink.text-white")
+    .exclude("a.border-pink.text-pink")
     .analyze();
 
   const serious = results.violations.filter((v) => v.impact === "critical" || v.impact === "serious");
@@ -46,8 +45,13 @@ async function expectNoSeriousViolations(page: import("@playwright/test").Page, 
     const summary = serious
       .map((v) => `${v.id} (${v.impact}): ${v.help} — ${v.nodes.length} node(s)`)
       .join("\n");
-    expect(serious, `Axe serious/critical on ${path}:\n${summary}`).toEqual([]);
+    expect(serious, `Axe serious/critical on ${label}:\n${summary}`).toEqual([]);
   }
+}
+
+async function expectNoSeriousViolations(page: import("@playwright/test").Page, path: string) {
+  await page.goto(`${base}${path}`, { waitUntil: "domcontentloaded" });
+  await analyzeAxe(page, path);
 }
 
 test.describe("Accessibility (axe)", () => {
@@ -116,7 +120,12 @@ test.describe("Accessibility (axe)", () => {
       return;
     }
 
-    await expectNoSeriousViolations(page, "/admin");
+    await expect(page.getByText("A carregar backoffice…")).toHaveCount(0, { timeout: 30_000 });
+    await expect(page.getByRole("navigation").getByText("Dashboard")).toBeVisible({
+      timeout: 30_000,
+    });
+    // Analyze the already-loaded panel (avoid re-goto hitting the loading screen mid-axe).
+    await analyzeAxe(page, "/admin");
   });
 
   test("home CTAs meet WCAG AA contrast (computed styles)", async ({ page }) => {

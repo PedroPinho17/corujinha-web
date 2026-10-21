@@ -134,15 +134,15 @@ export default function AdminDashboardPage() {
         <div className="flex items-center justify-between border-b border-slate-100 px-5 py-4">
           <div>
             <h2 className="text-base font-bold text-slate-800">Contactos recentes</h2>
-            <p className="text-xs text-slate-400">{stats?.unreadContacts ?? 0} por ler</p>
+            <p className="text-xs text-slate-600">{stats?.unreadContacts ?? 0} por ler</p>
           </div>
-          <Link href="/admin/contacts" className="text-xs font-bold text-indigo-500 hover:underline">
+          <Link href="/admin/contacts" className="text-xs font-bold text-pink hover:underline">
             Ver todos
           </Link>
         </div>
-        {loading && <p className="px-5 py-8 text-center text-sm text-slate-400">A carregar…</p>}
+        {loading && <p className="px-5 py-8 text-center text-sm text-slate-600">A carregar…</p>}
         {!loading && !error && stats && stats.recentContacts.length === 0 && (
-          <p className="px-5 py-8 text-center text-sm text-slate-400">Ainda sem mensagens.</p>
+          <p className="px-5 py-8 text-center text-sm text-slate-600">Ainda sem mensagens.</p>
         )}
         {!loading && stats && stats.recentContacts.length > 0 && (
           <ul className="divide-y divide-slate-50">
@@ -157,7 +157,7 @@ export default function AdminDashboardPage() {
                       </span>
                     )}
                     {c.kind === "ENROLLMENT" && (
-                      <span className="ml-2 rounded-full bg-pink-50 px-2 py-0.5 text-[10px] font-bold text-pink-700">
+                      <span className="ml-2 rounded-full bg-pink-50 px-2 py-0.5 text-[10px] font-bold text-pink">
                         Inscrição
                       </span>
                     )}
