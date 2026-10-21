@@ -7,7 +7,19 @@ export const metadata: Metadata = {
     "Informação sobre o tratamento de dados pessoais no site do Centro de Apoio Escolar Corujinha.",
 };
 
+function retentionMonthsLabel(): string {
+  const raw =
+    process.env.CONTACT_RETENTION_MONTHS?.trim() ||
+    process.env.NEXT_PUBLIC_CONTACT_RETENTION_MONTHS?.trim() ||
+    "24";
+  const n = Number(raw);
+  const months = Number.isFinite(n) && n >= 1 ? Math.floor(n) : 24;
+  return months === 1 ? "1 mês" : `${months} meses`;
+}
+
 export default function PrivacidadePage() {
+  const retention = retentionMonthsLabel();
+
   return (
     <div className="mx-auto max-w-3xl px-5 py-16">
       <p className="mb-6 text-sm text-muted">
@@ -50,7 +62,7 @@ export default function PrivacidadePage() {
           <p>
             As mensagens do formulário de contacto / inscrição são conservadas enquanto forem
             necessárias para responder e para a gestão interna. Decorridos{" "}
-            <strong>24 meses</strong> desde a criação do registo, os dados pessoais são{" "}
+            <strong>{retention}</strong> desde a criação do registo, os dados pessoais são{" "}
             <strong>anonimizados automaticamente</strong> (nome, email, telefone e conteúdo da
             mensagem deixam de identificar a pessoa). Pode pedir o apagamento antecipado a
             qualquer momento; o administrador também pode anonimizar um registo no backoffice.

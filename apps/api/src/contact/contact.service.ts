@@ -44,6 +44,10 @@ export class ContactService {
       };
     }
 
+    if (!dto.privacyConsent) {
+      throw new BadRequestException("É necessário aceitar a política de privacidade.");
+    }
+
     if (!(await this.limiter.allow(ip))) {
       throw new HttpException(
         "Demasiados pedidos. Tenta mais tarde.",
@@ -57,10 +61,6 @@ export class ContactService {
         "Demasiados pedidos para este email. Tenta mais tarde.",
         HttpStatus.TOO_MANY_REQUESTS,
       );
-    }
-
-    if (!dto.privacyConsent) {
-      throw new BadRequestException("É necessário aceitar a política de privacidade.");
     }
 
     const kind = dto.kind === "ENROLLMENT" ? "ENROLLMENT" : "GENERAL";

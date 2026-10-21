@@ -57,6 +57,8 @@ services:
       INTERNAL_API_URL: http://api:3001
       # false por omissão — cópias de teste não indexáveis; true só no Coolify em produção
       ALLOW_SEARCH_INDEXING: ${ALLOW_SEARCH_INDEXING:-false}
+      # Same as API — shown on /privacidade (server component)
+      CONTACT_RETENTION_MONTHS: ${CONTACT_RETENTION_MONTHS:-24}
     expose:
       - "3000"
     depends_on:
