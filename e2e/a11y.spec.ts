@@ -33,9 +33,12 @@ function contrastRatio(fg: string, bg: string): number | null {
 
 async function expectNoSeriousViolations(page: import("@playwright/test").Page, path: string) {
   await page.goto(`${base}${path}`, { waitUntil: "domcontentloaded" });
-  // color-contrast is enabled; home CTAs are also checked via getComputedStyle below.
+  // color-contrast is on. Hero CTAs with soft shadows are mis-sampled by axe (oklab + shadow);
+  // those two links are asserted via getComputedStyle in the dedicated contrast test below.
   const results = await new AxeBuilder({ page })
     .withTags(["wcag2a", "wcag2aa", "wcag21a", "wcag21aa"])
+    .exclude('a.bg-pink.text-white')
+    .exclude('a.border-pink.text-pink')
     .analyze();
 
   const serious = results.violations.filter((v) => v.impact === "critical" || v.impact === "serious");
@@ -89,12 +92,18 @@ test.describe("Accessibility (axe)", () => {
     await page.locator("#email").fill(adminEmail);
     await page.locator("#password").fill(adminPassword);
     await page.locator('button[type="submit"]').click();
-    await page.waitForURL(/\/admin(\/|$)/, { timeout: 30_000 });
+    // Do not match /admin/login — the previous regex /\/admin(\/|$)/ resolved immediately on the login URL.
+    await page.waitForURL(
+      (url) => {
+        const p = url.pathname.replace(/\/+$/, "") || "/";
+        return p === "/admin" || p.startsWith("/admin/change-password");
+      },
+      { timeout: 30_000 },
+    );
 
     // After media-smoke change-password, mustChangePassword is false → dashboard.
     // Fresh seed without that step still lands on change-password — axe that screen.
     const path = new URL(page.url()).pathname;
-    expect(path, "login should leave /admin/login").not.toMatch(/\/admin\/login\/?$/);
     if (path.includes("change-password")) {
       await expectNoSeriousViolations(page, "/admin/change-password");
       return;
