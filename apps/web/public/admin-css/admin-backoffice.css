@@ -1,10 +1,17 @@
-/* Admin backoffice — neutralize Bootstrap global link underlines */
+/* Admin backoffice — neutralize Bootstrap global link styles (underline + #0d6efd) */
 
 .admin-backoffice a,
 .admin-backoffice a:hover,
 .admin-backoffice a:focus,
 .admin-backoffice a:active {
   text-decoration: none !important;
+  color: inherit;
+}
+
+.admin-backoffice a.text-pink,
+.admin-backoffice a.text-\[\#be185d\],
+.admin-backoffice .text-pink {
+  color: #be185d !important;
 }
 
 .admin-backoffice .nav-link-text {

@@ -70,12 +70,12 @@ function NavLink({
       onClick={onNavigate}
       className={`flex items-center gap-2.5 rounded-xl px-2.5 py-2 text-sm font-medium no-underline transition ${
         active
-          ? "bg-pink-50 text-pink-800 ring-1 ring-pink-100"
+          ? "bg-pink-50 text-[#be185d] ring-1 ring-pink-100"
           : "text-slate-600 hover:bg-slate-50 hover:text-slate-900"
       }`}
     >
       <Icon
-        className={`h-[18px] w-[18px] shrink-0 ${active ? "text-pink-600" : "text-slate-400"}`}
+        className={`h-[18px] w-[18px] shrink-0 ${active ? "text-[#be185d]" : "text-slate-500"}`}
         strokeWidth={1.75}
         aria-hidden
       />
@@ -144,7 +144,7 @@ export default function AdminPanelLayout({ children }: { children: React.ReactNo
 
   if (isPending || !session || mustChange === null || role === null) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-[#f6f7fb] text-slate-500">
+      <div className="flex min-h-screen items-center justify-center bg-[#f6f7fb] text-slate-700">
         A carregar backoffice…
       </div>
     );
@@ -152,7 +152,7 @@ export default function AdminPanelLayout({ children }: { children: React.ReactNo
 
   if (mustChange) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-[#f6f7fb] text-slate-500">
+      <div className="flex min-h-screen items-center justify-center bg-[#f6f7fb] text-slate-700">
         A redirecionar…
       </div>
     );
@@ -181,8 +181,8 @@ export default function AdminPanelLayout({ children }: { children: React.ReactNo
               priority
             />
             <div className="min-w-0">
-              <p className="text-xs font-bold uppercase tracking-wide text-pink-600">Backoffice</p>
-              <span className="mt-0.5 inline-flex rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-slate-500">
+              <p className="text-xs font-bold uppercase tracking-wide text-[#be185d]">Backoffice</p>
+              <span className="mt-0.5 inline-flex rounded-full bg-slate-200 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-slate-700">
                 {role === "ADMIN" ? "Admin" : "Editor"}
               </span>
             </div>
@@ -190,7 +190,7 @@ export default function AdminPanelLayout({ children }: { children: React.ReactNo
         </div>
 
         <nav className="admin-sidebar-nav flex-1 space-y-0.5 overflow-y-auto overscroll-contain px-2.5 py-3">
-          <p className="px-2.5 pb-1.5 pt-1 text-[10px] font-bold uppercase tracking-wider text-slate-400">
+          <p className="px-2.5 pb-1.5 pt-1 text-[10px] font-bold uppercase tracking-wider text-slate-600">
             Conteúdo
           </p>
           {contentNav.map((item) => (
@@ -202,7 +202,7 @@ export default function AdminPanelLayout({ children }: { children: React.ReactNo
             />
           ))}
           <hr className="my-2.5 border-slate-100" />
-          <p className="px-2.5 pb-1.5 text-[10px] font-bold uppercase tracking-wider text-slate-400">
+          <p className="px-2.5 pb-1.5 text-[10px] font-bold uppercase tracking-wider text-slate-600">
             Conta
           </p>
           {visibleAccount.map((item) => (
@@ -220,7 +220,7 @@ export default function AdminPanelLayout({ children }: { children: React.ReactNo
             href="/"
             target="_blank"
             rel="noreferrer"
-            className="block rounded-xl bg-pink-50 px-3 py-2.5 text-center text-xs font-bold text-pink-700 hover:bg-pink-100"
+            className="block rounded-xl bg-pink-50 px-3 py-2.5 text-center text-xs font-bold text-[#be185d] hover:bg-pink-100"
           >
             Ver site público ↗
           </a>

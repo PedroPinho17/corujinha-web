@@ -38,7 +38,9 @@
    - `node scripts/verify-production.mjs https://SEU_DOMINIO` (opcional `VERIFY_HOST=IP_VPS` para confirmar 3000/3001 fechadas)
    - Confirmar nos logs da API o IP real do visitante (`x-corujinha-client-ip`)
    - [Google Search Console](https://search.google.com/search-console) → propriedade do domínio → **Sitemaps** → submeter `https://SEU_DOMINIO/sitemap.xml`
-10. CSP: a app envia `Content-Security-Policy` com nonce por pedido (`script-src` sem `unsafe-inline` / `unsafe-eval`). Verificar com o script acima ou `curl -sI https://SEU_DOMINIO | grep -i content-security`.
+10. Cache on-demand: no Coolify gerar `REVALIDATE_SECRET` forte (`openssl rand -hex 32`) e definir o **mesmo** valor em **web** e **api** (não reutilizar `BETTER_AUTH_SECRET`).
+11. CSP: a app envia `Content-Security-Policy` com nonce por pedido (`script-src` sem `unsafe-inline` / `unsafe-eval`). Verificar com o script acima ou `curl -sI https://SEU_DOMINIO | grep -i content-security`.
+12. Velocidade: após go-live, medir TTFB/LCP nas páginas públicas (/, /galeria, /equipa, /noticias) — Lighthouse ou CrUX — e confirmar que a cache Redis + `revalidateTag` estão a servir conteúdo quente.
 
 ### 2. Email (Resend + DNS)
 
@@ -146,7 +148,7 @@ pnpm test:e2e
 ```
 
 
-No CI, o job `compose-smoke` corre estes testes contra `http://127.0.0.1:3000` depois do stack estar up.
+No CI, o job `compose-smoke` corre estes testes contra `http://localhost:3000` (mesmo host que `BETTER_AUTH_URL`) depois do stack estar up.
 
 Pós-deploy no VPS:
 

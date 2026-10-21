@@ -31,12 +31,13 @@ function contrastRatio(fg: string, bg: string): number | null {
   return (lighter + 0.05) / (darker + 0.05);
 }
 
-async function expectNoSeriousViolations(page: import("@playwright/test").Page, path: string) {
-  await page.goto(`${base}${path}`, { waitUntil: "domcontentloaded" });
-  // color-contrast: axe often mis-samples Tailwind v4 oklab + soft shadows; checked via getComputedStyle below.
+async function analyzeAxe(page: import("@playwright/test").Page, label: string) {
+  // color-contrast is on. Hero CTAs with soft shadows are mis-sampled by axe (oklab + shadow);
+  // those two links are asserted via getComputedStyle in the dedicated contrast test below.
   const results = await new AxeBuilder({ page })
     .withTags(["wcag2a", "wcag2aa", "wcag21a", "wcag21aa"])
-    .disableRules(["color-contrast"])
+    .exclude("a.bg-pink.text-white")
+    .exclude("a.border-pink.text-pink")
     .analyze();
 
   const serious = results.violations.filter((v) => v.impact === "critical" || v.impact === "serious");
@@ -44,8 +45,13 @@ async function expectNoSeriousViolations(page: import("@playwright/test").Page, 
     const summary = serious
       .map((v) => `${v.id} (${v.impact}): ${v.help} — ${v.nodes.length} node(s)`)
       .join("\n");
-    expect(serious, `Axe serious/critical on ${path}:\n${summary}`).toEqual([]);
+    expect(serious, `Axe serious/critical on ${label}:\n${summary}`).toEqual([]);
   }
+}
+
+async function expectNoSeriousViolations(page: import("@playwright/test").Page, path: string) {
+  await page.goto(`${base}${path}`, { waitUntil: "domcontentloaded" });
+  await analyzeAxe(page, path);
 }
 
 test.describe("Accessibility (axe)", () => {
@@ -78,22 +84,48 @@ test.describe("Accessibility (axe)", () => {
   });
 
   test("admin panel after login has no serious/critical violations", async ({ page }) => {
-    test.skip(!adminEmail || !adminPassword, "Set E2E_ADMIN_EMAIL and E2E_ADMIN_PASSWORD (or ADMIN_*)");
+    // In CI, credentials are required (compose-smoke sets E2E_ADMIN_* after change-password → CiComposeAdmin99!).
+    if (process.env.CI) {
+      expect(adminEmail, "CI must set E2E_ADMIN_EMAIL").toBeTruthy();
+      expect(adminPassword, "CI must set E2E_ADMIN_PASSWORD").toBeTruthy();
+    } else {
+      test.skip(!adminEmail || !adminPassword, "Set E2E_ADMIN_EMAIL and E2E_ADMIN_PASSWORD (or ADMIN_*)");
+    }
 
     await page.goto(`${base}/admin/login`, { waitUntil: "domcontentloaded" });
     await page.locator("#email").fill(adminEmail);
     await page.locator("#password").fill(adminPassword);
     await page.locator('button[type="submit"]').click();
-    await page.waitForURL(/\/admin(\/|$)/, { timeout: 30_000 });
+    try {
+      // Do not match /admin/login — /\/admin(\/|$)/ resolved immediately on the login URL.
+      await page.waitForURL(
+        (url) => {
+          const p = url.pathname.replace(/\/+$/, "") || "/";
+          return p === "/admin" || p.startsWith("/admin/change-password");
+        },
+        { timeout: 30_000 },
+      );
+    } catch (err) {
+      const errText = await page.locator("p.text-red-600").textContent().catch(() => null);
+      throw new Error(
+        `Admin login did not leave /admin/login${errText ? `: ${errText}` : ""} (${String(err)})`,
+      );
+    }
 
-    // Seed forces mustChangePassword — axe that screen; otherwise the dashboard.
+    // After media-smoke change-password, mustChangePassword is false → dashboard.
+    // Fresh seed without that step still lands on change-password — axe that screen.
     const path = new URL(page.url()).pathname;
     if (path.includes("change-password")) {
       await expectNoSeriousViolations(page, "/admin/change-password");
       return;
     }
 
-    await expectNoSeriousViolations(page, "/admin");
+    await expect(page.getByText("A carregar backoffice…")).toHaveCount(0, { timeout: 30_000 });
+    await expect(page.getByRole("navigation").getByText("Dashboard")).toBeVisible({
+      timeout: 30_000,
+    });
+    // Analyze the already-loaded panel (avoid re-goto hitting the loading screen mid-axe).
+    await analyzeAxe(page, "/admin");
   });
 
   test("home CTAs meet WCAG AA contrast (computed styles)", async ({ page }) => {
