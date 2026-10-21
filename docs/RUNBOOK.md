@@ -148,7 +148,7 @@ pnpm test:e2e
 ```
 
 
-No CI, o job `compose-smoke` corre estes testes contra `http://127.0.0.1:3000` depois do stack estar up.
+No CI, o job `compose-smoke` corre estes testes contra `http://localhost:3000` (mesmo host que `BETTER_AUTH_URL`) depois do stack estar up.
 
 Pós-deploy no VPS:
 

@@ -92,14 +92,21 @@ test.describe("Accessibility (axe)", () => {
     await page.locator("#email").fill(adminEmail);
     await page.locator("#password").fill(adminPassword);
     await page.locator('button[type="submit"]').click();
-    // Do not match /admin/login — the previous regex /\/admin(\/|$)/ resolved immediately on the login URL.
-    await page.waitForURL(
-      (url) => {
-        const p = url.pathname.replace(/\/+$/, "") || "/";
-        return p === "/admin" || p.startsWith("/admin/change-password");
-      },
-      { timeout: 30_000 },
-    );
+    try {
+      // Do not match /admin/login — /\/admin(\/|$)/ resolved immediately on the login URL.
+      await page.waitForURL(
+        (url) => {
+          const p = url.pathname.replace(/\/+$/, "") || "/";
+          return p === "/admin" || p.startsWith("/admin/change-password");
+        },
+        { timeout: 30_000 },
+      );
+    } catch (err) {
+      const errText = await page.locator("p.text-red-600").textContent().catch(() => null);
+      throw new Error(
+        `Admin login did not leave /admin/login${errText ? `: ${errText}` : ""} (${String(err)})`,
+      );
+    }
 
     // After media-smoke change-password, mustChangePassword is false → dashboard.
     // Fresh seed without that step still lands on change-password — axe that screen.

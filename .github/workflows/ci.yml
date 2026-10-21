@@ -390,7 +390,9 @@ jobs:
 
       - name: Playwright e2e smoke
         env:
-          E2E_BASE_URL: http://127.0.0.1:3000
+          # Must match BETTER_AUTH_URL / NEXT_PUBLIC_APP_URL (localhost). In prod images
+          # trustedOrigins excludes 127.0.0.1, so admin sign-in via Playwright would fail there.
+          E2E_BASE_URL: http://localhost:3000
           # Seed uses CiComposeAdmin12!; media smoke changes it to 99! and clears mustChangePassword.
           # Admin axe must use 99! here — not the seed password — or login fails / skips the panel.
           E2E_ADMIN_EMAIL: admin@corujinha.local
