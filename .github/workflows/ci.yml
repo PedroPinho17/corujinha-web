@@ -342,10 +342,14 @@ jobs:
           cat /tmp/cj-signin2.json || true
           test "$code" = "200"
 
+          # Minimal 1x1 PNG — size must be signed into the presign URL.
+          printf '\x89PNG\r\n\x1a\n\x00\x00\x00\rIHDR\x00\x00\x00\x01\x00\x00\x00\x01\x08\x02\x00\x00\x00\x90wS\xde\x00\x00\x00\x0cIDATx\x9cc\xf8\x0f\x00\x00\x01\x01\x00\x05\x18\xd8N\x00\x00\x00\x00IEND\xaeB`\x82' > /tmp/cj-smoke.png
+          SMOKE_SIZE=$(wc -c < /tmp/cj-smoke.png | tr -d ' ')
+
           code=$(curl -sS -c "$COOKIE_JAR" -b "$COOKIE_JAR" -o /tmp/cj-presign.json -w '%{http_code}' \
             -X POST http://127.0.0.1:3001/api/admin/media/presign \
             -H 'content-type: application/json' \
-            -d '{"contentType":"image/png","folder":"gallery"}')
+            -d "{\"contentType\":\"image/png\",\"folder\":\"gallery\",\"size\":${SMOKE_SIZE}}")
           echo "presign HTTP=$code"
           cat /tmp/cj-presign.json
           test "$code" = "201" -o "$code" = "200"
@@ -356,7 +360,6 @@ jobs:
 
           NETWORK=$(docker inspect -f '{{range $k, $_ := .NetworkSettings.Networks}}{{$k}}{{end}}' corujinha-api | head -n1)
           test -n "$NETWORK"
-          printf '\x89PNG\r\n\x1a\n\x00\x00\x00\rIHDR\x00\x00\x00\x01\x00\x00\x00\x01\x08\x02\x00\x00\x00\x90wS\xde\x00\x00\x00\x0cIDATx\x9cc\xf8\x0f\x00\x00\x01\x01\x00\x05\x18\xd8N\x00\x00\x00\x00IEND\xaeB`\x82' > /tmp/cj-smoke.png
 
           put_code=$(docker run --rm --network "$NETWORK" -v /tmp/cj-smoke.png:/smoke.png:ro curlimages/curl:8.12.1 \
             -sS -o /dev/null -w '%{http_code}' \
