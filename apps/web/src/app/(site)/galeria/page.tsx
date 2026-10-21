@@ -7,10 +7,25 @@ export const metadata: Metadata = {
   description: "Momentos e atividades nos centros Corujinha em Lobão, São João de Ver e Sanguedo.",
 };
 
+type GalleryCenter = {
+  id: string;
+  slug: string;
+  name: string;
+  shortName?: string | null;
+};
+
+type GalleryItem = {
+  id: string;
+  imageKey: string;
+  alt?: string;
+  album?: string;
+  center?: GalleryCenter | null;
+};
+
 export default async function GaleriaPage() {
   const [items, centers] = await Promise.all([
-    fetchPublicList("/api/public/gallery", ["gallery"]),
-    fetchPublicList("/api/public/centers", ["centers"]),
+    fetchPublicList<GalleryItem>("/api/public/gallery", ["gallery"]),
+    fetchPublicList<GalleryCenter>("/api/public/centers", ["centers"]),
   ]);
   return (
     <div className="mx-auto max-w-6xl px-4 py-16">

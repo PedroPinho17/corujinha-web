@@ -14,8 +14,18 @@ async function getSettings() {
   }>("/api/public/settings", ["settings"]);
 }
 
+type PublicCenter = {
+  name: string;
+  shortName?: string | null;
+  address?: string | null;
+  city?: string | null;
+  postalCode?: string | null;
+  phone?: string | null;
+  email?: string | null;
+};
+
 async function getCenters() {
-  return fetchPublicList("/api/public/centers", ["centers"]);
+  return fetchPublicList<PublicCenter>("/api/public/centers", ["centers"]);
 }
 
 async function BrandHeader() {
