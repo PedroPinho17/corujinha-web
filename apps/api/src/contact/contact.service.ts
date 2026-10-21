@@ -13,9 +13,14 @@ import { RedisRateLimiter } from "../common/rate-limit";
 import { CONTACT_QUEUE } from "./contact.processor";
 import type { ContactDto } from "./contact.dto";
 
+/** Default RGPD retention for contact messages (months). Override with CONTACT_RETENTION_MONTHS. */
+export const CONTACT_RETENTION_MONTHS_DEFAULT = 24;
+
 @Injectable()
 export class ContactService {
   private readonly limiter: RedisRateLimiter;
+  /** Caps confirmation emails to arbitrary destinations (B4). */
+  private readonly emailLimiter: RedisRateLimiter;
 
   constructor(
     private readonly prisma: PrismaService,
@@ -23,6 +28,12 @@ export class ContactService {
     @InjectQueue(CONTACT_QUEUE) private readonly queue: Queue,
   ) {
     this.limiter = new RedisRateLimiter(this.redis.client, 5, 15 * 60 * 1000, "rl:contact");
+    this.emailLimiter = new RedisRateLimiter(
+      this.redis.client,
+      3,
+      60 * 60 * 1000,
+      "rl:contact-email",
+    );
   }
 
   async submit(dto: ContactDto, ip: string) {
@@ -36,6 +47,14 @@ export class ContactService {
     if (!(await this.limiter.allow(ip))) {
       throw new HttpException(
         "Demasiados pedidos. Tenta mais tarde.",
+        HttpStatus.TOO_MANY_REQUESTS,
+      );
+    }
+
+    const emailKey = dto.email.trim().toLowerCase();
+    if (!(await this.emailLimiter.allow(emailKey))) {
+      throw new HttpException(
+        "Demasiados pedidos para este email. Tenta mais tarde.",
         HttpStatus.TOO_MANY_REQUESTS,
       );
     }
@@ -143,6 +162,33 @@ export class ContactService {
       },
     });
     return { ok: true };
+  }
+
+  /**
+   * Anonymize contact messages older than the retention window (B7).
+   * Batched to avoid long transactions; safe to run daily.
+   */
+  async eraseExpired(retentionMonths?: number) {
+    const months =
+      retentionMonths ??
+      (Number(process.env.CONTACT_RETENTION_MONTHS) || CONTACT_RETENTION_MONTHS_DEFAULT);
+    const cutoff = new Date();
+    cutoff.setMonth(cutoff.getMonth() - Math.max(1, months));
+
+    const stale = await this.prisma.contactMessage.findMany({
+      where: { erasedAt: null, createdAt: { lt: cutoff } },
+      select: { id: true },
+      take: 500,
+      orderBy: { createdAt: "asc" },
+    });
+
+    let erased = 0;
+    for (const row of stale) {
+      await this.eraseGdpr(row.id);
+      erased += 1;
+    }
+
+    return { erased, cutoff: cutoff.toISOString(), retentionMonths: months };
   }
 
   private async requireActive(id: string) {

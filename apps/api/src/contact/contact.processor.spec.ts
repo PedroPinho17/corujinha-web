@@ -9,12 +9,13 @@ describe("ContactProcessor", () => {
     },
   };
   const mail = { send: vi.fn() };
+  const contacts = { eraseExpired: vi.fn().mockResolvedValue({ erased: 0, cutoff: "", retentionMonths: 24 }) };
   let processor: ContactProcessor;
   const prevNotify = process.env.CONTACT_NOTIFY_TO;
 
   beforeEach(() => {
     vi.clearAllMocks();
-    processor = new ContactProcessor(prisma as never, mail as never);
+    processor = new ContactProcessor(prisma as never, mail as never, contacts as never);
     process.env.CONTACT_NOTIFY_TO = "notify@example.com";
   });
 
@@ -146,6 +147,20 @@ describe("ContactProcessor", () => {
     expect(html).toContain("&lt;img");
     expect(html).toContain("&lt;b&gt;mundo&lt;/b&gt;");
     expect(html).toContain("Centro de Apoio Escolar Corujinha");
+  });
+
+  it("runs GDPR retention job", async () => {
+    contacts.eraseExpired.mockResolvedValue({
+      erased: 2,
+      cutoff: "2024-01-01T00:00:00.000Z",
+      retentionMonths: 24,
+    });
+    const result = await processor.process({ name: "gdpr-retention", data: {} } as never);
+    expect(contacts.eraseExpired).toHaveBeenCalled();
+    expect(result).toEqual(
+      expect.objectContaining({ erased: 2, retentionMonths: 24 }),
+    );
+    expect(mail.send).not.toHaveBeenCalled();
   });
 
   it("marks FAILED and rethrows on mail error", async () => {
