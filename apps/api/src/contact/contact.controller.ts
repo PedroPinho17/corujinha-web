@@ -6,6 +6,7 @@ import {
   Param,
   Patch,
   Post,
+  Query,
   Req,
   Res,
   UseGuards,
@@ -27,8 +28,8 @@ export class ContactController {
 
   @Get("admin/contacts")
   @UseGuards(AdminGuard)
-  list() {
-    return this.contacts.list();
+  list(@Query("page") page?: string, @Query("pageSize") pageSize?: string) {
+    return this.contacts.list(Number(page) || 1, Number(pageSize) || 50);
   }
 
   @Patch("admin/contacts/:id")

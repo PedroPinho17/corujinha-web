@@ -38,7 +38,7 @@ describe("MediaService.createPresignedUpload", () => {
   it("rejects invalid content types", async () => {
     const { MediaService } = await import("./media.service");
     const svc = new MediaService();
-    await expect(svc.createPresignedUpload("text/html", "uploads")).rejects.toBeInstanceOf(
+    await expect(svc.createPresignedUpload("text/html", "uploads", 100)).rejects.toBeInstanceOf(
       BadRequestException,
     );
   });
@@ -46,18 +46,26 @@ describe("MediaService.createPresignedUpload", () => {
   it("rejects invalid folders", async () => {
     const { MediaService } = await import("./media.service");
     const svc = new MediaService();
-    await expect(svc.createPresignedUpload("image/jpeg", "../etc")).rejects.toBeInstanceOf(
+    await expect(svc.createPresignedUpload("image/jpeg", "../etc", 100)).rejects.toBeInstanceOf(
       BadRequestException,
     );
+  });
+
+  it("rejects oversized images", async () => {
+    const { MediaService, MAX_IMAGE_BYTES } = await import("./media.service");
+    const svc = new MediaService();
+    await expect(
+      svc.createPresignedUpload("image/png", "gallery", MAX_IMAGE_BYTES + 1),
+    ).rejects.toBeInstanceOf(BadRequestException);
   });
 
   it("allows pdf only in protocols", async () => {
     const { MediaService } = await import("./media.service");
     const svc = new MediaService();
     await expect(
-      svc.createPresignedUpload("application/pdf", "posts"),
+      svc.createPresignedUpload("application/pdf", "posts", 1000),
     ).rejects.toBeInstanceOf(BadRequestException);
-    const ok = await svc.createPresignedUpload("application/pdf", "protocols");
+    const ok = await svc.createPresignedUpload("application/pdf", "protocols", 1000);
     expect(ok.key.startsWith("protocols/")).toBe(true);
     expect(ok.key.endsWith(".pdf")).toBe(true);
   });
@@ -65,9 +73,10 @@ describe("MediaService.createPresignedUpload", () => {
   it("returns signed upload for images", async () => {
     const { MediaService } = await import("./media.service");
     const svc = new MediaService();
-    const ok = await svc.createPresignedUpload("image/png", "gallery");
+    const ok = await svc.createPresignedUpload("image/png", "gallery", 2048);
     expect(ok.uploadUrl).toContain("http");
     expect(ok.key.startsWith("gallery/")).toBe(true);
+    expect(ok.size).toBe(2048);
   });
 
   it("getPublicUrl respects include-bucket flag and pingBucket", async () => {

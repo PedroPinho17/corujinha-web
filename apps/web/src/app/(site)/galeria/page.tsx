@@ -1,35 +1,17 @@
 import type { Metadata } from "next";
 import { GalleryClient } from "@/components/site/gallery-client";
+import { fetchPublicList } from "@/lib/public-api";
 
 export const metadata: Metadata = {
   title: "Galeria",
   description: "Momentos e atividades nos centros Corujinha em Lobão, São João de Ver e Sanguedo.",
 };
 
-const api = process.env.INTERNAL_API_URL ?? "http://localhost:3001";
-
-async function getGallery() {
-  try {
-    const res = await fetch(`${api}/api/public/gallery`, { next: { revalidate: 60 } });
-    if (!res.ok) return [];
-    return res.json();
-  } catch {
-    return [];
-  }
-}
-
-async function getCenters() {
-  try {
-    const res = await fetch(`${api}/api/public/centers`, { next: { revalidate: 60 } });
-    if (!res.ok) return [];
-    return res.json();
-  } catch {
-    return [];
-  }
-}
-
 export default async function GaleriaPage() {
-  const [items, centers] = await Promise.all([getGallery(), getCenters()]);
+  const [items, centers] = await Promise.all([
+    fetchPublicList("/api/public/gallery", ["gallery"]),
+    fetchPublicList("/api/public/centers", ["centers"]),
+  ]);
   return (
     <div className="mx-auto max-w-6xl px-4 py-16">
       <h1 className="text-4xl font-bold">

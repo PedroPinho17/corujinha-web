@@ -32,6 +32,10 @@ const EXT_BY_TYPE: Record<string, string> = {
   "application/pdf": "pdf",
 };
 
+/** Images stay smaller; PDFs (protocols) may use the full cap. */
+export const MAX_IMAGE_BYTES = 5_000_000;
+export const MAX_PDF_BYTES = 10_000_000;
+
 /** Example / placeholder credentials that must never ship to real production. */
 export const FORBIDDEN_S3_ACCESS_KEYS = new Set([
   "minioadmin",
@@ -159,7 +163,7 @@ export class MediaService implements OnModuleInit {
     }
   }
 
-  async createPresignedUpload(contentType: string, folder = "uploads") {
+  async createPresignedUpload(contentType: string, folder = "uploads", size?: number) {
     const type = contentType.trim().toLowerCase();
     const safeFolder = (folder ?? "uploads").trim().replace(/^\/+|\/+$/g, "");
 
@@ -181,21 +185,35 @@ export class MediaService implements OnModuleInit {
       );
     }
 
+    if (size === undefined || !Number.isFinite(size) || size < 1) {
+      throw new BadRequestException("size (bytes) é obrigatório.");
+    }
+    const maxBytes = isPdf ? MAX_PDF_BYTES : MAX_IMAGE_BYTES;
+    if (size > maxBytes) {
+      throw new BadRequestException(
+        `Ficheiro demasiado grande — máximo ${Math.floor(maxBytes / 1_000_000)} MB.`,
+      );
+    }
+
     const ext = EXT_BY_TYPE[type] ?? "bin";
     const key = `${safeFolder}/${randomUUID()}.${ext}`;
+    // ContentLength is signed — the PUT must match exactly (blocks oversized uploads).
     const command = new PutObjectCommand({
       Bucket: this.bucket,
       Key: key,
       ContentType: type,
+      ContentLength: size,
     });
     const uploadUrl = await getSignedUrl(this.client, command, {
       expiresIn: 600,
-      signableHeaders: new Set(["content-type"]),
+      signableHeaders: new Set(["content-type", "content-length"]),
     });
     return {
       key,
       uploadUrl,
       publicUrl: this.getPublicUrl(key),
+      maxBytes,
+      size,
     };
   }
 

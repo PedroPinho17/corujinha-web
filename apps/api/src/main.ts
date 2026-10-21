@@ -11,15 +11,20 @@ import { AppModule } from "./app.module";
 import { auth } from "./auth/auth";
 import { assertProductionEnv } from "./env";
 import { RedisRateLimiter, clientIp } from "./common/rate-limit";
+import { PrismaExceptionFilter } from "./common/prisma-exception.filter";
 import { RedisService } from "./redis/redis.service";
 
-function isAuthRateLimitedPath(method: string, path: string): boolean {
+function isLoginRateLimitedPath(method: string, path: string): boolean {
+  if (method !== "POST") return false;
+  return path.includes("sign-in") || path.includes("sign-up");
+}
+
+/** Password-reset always returns 200 — must count every attempt, not only failures. */
+function isPasswordResetPath(method: string, path: string): boolean {
   if (method !== "POST") return false;
   return (
-    path.includes("sign-in") ||
-    path.includes("sign-up") ||
-    path.includes("forget-password") ||
-    path.includes("request-password-reset")
+    path.includes("request-password-reset") ||
+    path.includes("forget-password")
   );
 }
 
@@ -56,12 +61,25 @@ async function bootstrap() {
   const redis = app.get(RedisService);
   /** 5 falhas de login / 15 min por IP — Redis partilhado entre réplicas. */
   const authLimiter = new RedisRateLimiter(redis.client, 5, 15 * 60 * 1000, "rl:auth");
+  /** 3 pedidos de reset / hora por IP — conta sempre (respostas 200 não revelam contas). */
+  const resetLimiter = new RedisRateLimiter(redis.client, 3, 60 * 60 * 1000, "rl:reset");
   const authHandler = toNodeHandler(auth);
 
   expressApp.use(async (req: Request, res: Response, next: () => void) => {
     if (!req.path.startsWith("/api/auth")) return next();
 
-    if (isAuthRateLimitedPath(req.method, req.path)) {
+    if (isPasswordResetPath(req.method, req.path)) {
+      const ip = clientIp(req);
+      if (!(await resetLimiter.allow(`ip:${ip}`))) {
+        res.status(429).json({
+          message: "Demasiados pedidos de recuperação. Aguarde e tente novamente.",
+        });
+        return;
+      }
+      return authHandler(req, res);
+    }
+
+    if (isLoginRateLimitedPath(req.method, req.path)) {
       const ip = clientIp(req);
       const key = `auth:${ip}`;
       if (!(await authLimiter.check(key))) {
@@ -95,6 +113,7 @@ async function bootstrap() {
       forbidNonWhitelisted: true,
     }),
   );
+  app.useGlobalFilters(new PrismaExceptionFilter());
 
   const port = Number(process.env.PORT ?? 3001);
   await app.listen(port);

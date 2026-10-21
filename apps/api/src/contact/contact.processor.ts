@@ -117,7 +117,7 @@ export class ContactProcessor extends WorkerHost {
           }),
         });
       } catch (confirmErr) {
-        this.logger.warn(`Confirmação à família falhou (${contact.email}): ${String(confirmErr)}`);
+        this.logger.warn(`Confirmação à família falhou (contact ${contact.id}): ${String(confirmErr)}`);
       }
 
       await this.prisma.contactMessage.update({

@@ -19,6 +19,7 @@ import {
   Users,
 } from "lucide-react";
 import { ContactForm } from "@/components/site/contact-form";
+import { fetchPublicJson } from "@/lib/public-api";
 import { mediaUrl } from "@/lib/utils";
 import { mergeSiteContent, type SiteContent } from "@/lib/site-content";
 
@@ -33,26 +34,17 @@ export const metadata: Metadata = {
   },
 };
 
-const api = process.env.INTERNAL_API_URL ?? "http://localhost:3001";
-
 async function getHome() {
-  try {
-    const res = await fetch(`${api}/api/public/home`, { next: { revalidate: 30 } });
-    if (!res.ok) return null;
-    return res.json();
-  } catch {
-    return null;
-  }
+  return fetchPublicJson<Record<string, unknown>>("/api/public/home", ["home"]);
 }
 
 async function getSettings() {
-  try {
-    const res = await fetch(`${api}/api/public/settings`, { next: { revalidate: 30 } });
-    if (!res.ok) return null;
-    return res.json();
-  } catch {
-    return null;
-  }
+  return fetchPublicJson<{
+    brandingName?: string;
+    contactPhone?: string | null;
+    contactEmail?: string | null;
+    content?: unknown;
+  }>("/api/public/settings", ["settings", "home"]);
 }
 
 type GooglePlaceSummary = {
@@ -66,17 +58,18 @@ type GooglePlaceSummary = {
 
 async function getGooglePlaceSummary(): Promise<GooglePlaceSummary | null> {
   try {
-    const res = await fetch(`${api}/api/public/google-place`, { next: { revalidate: 86_400 } });
-    if (res.ok) {
-      const data = (await res.json()) as Partial<GooglePlaceSummary> | null;
-      if (
-        data &&
-        typeof data.rating === "number" &&
-        typeof data.userRatingCount === "number" &&
-        typeof data.googleMapsUri === "string"
-      ) {
-        return data as GooglePlaceSummary;
-      }
+    const data = await fetchPublicJson<Partial<GooglePlaceSummary>>(
+      "/api/public/google-place",
+      ["google-place"],
+      86_400,
+    );
+    if (
+      data &&
+      typeof data.rating === "number" &&
+      typeof data.userRatingCount === "number" &&
+      typeof data.googleMapsUri === "string"
+    ) {
+      return data as GooglePlaceSummary;
     }
   } catch {
     /* API em baixo — fallback abaixo */

@@ -34,7 +34,7 @@
 6. **Não** publicar as portas `3000`/`3001` no host — só `expose` na rede Docker; o Traefik é a única entrada.
 7. HSTS: ativar no Traefik/Coolify (middleware `headers.stsSeconds=31536000`, `stsIncludeSubdomains=true`). A app Next não envia HSTS (fica no edge).
 8. Redis: o serviço está em `docker-compose.yml` com `--appendonly yes` e volume `redis_data`. No Coolify, confirme o mesmo volume + AOF se o Redis for um serviço à parte.
-9. Indexação: por omissão `ALLOW_SEARCH_INDEXING=true` — `/robots.txt` com `Allow: /` + `Disallow: /admin` e sitemap público. Em staging, pôr `false`. Após o domínio estar no ar:
+9. Indexação: por omissão `ALLOW_SEARCH_INDEXING=false` (`.env.example` / compose) — staging e cópias de teste ficam com `Disallow: /`. Em produção no Coolify pôr `true` (`Allow: /` + `Disallow: /admin` + sitemap). Após o domínio estar no ar com `true`:
    - `node scripts/verify-production.mjs https://SEU_DOMINIO` (opcional `VERIFY_HOST=IP_VPS` para confirmar 3000/3001 fechadas)
    - Confirmar nos logs da API o IP real do visitante (`x-corujinha-client-ip`)
    - [Google Search Console](https://search.google.com/search-console) → propriedade do domínio → **Sitemaps** → submeter `https://SEU_DOMINIO/sitemap.xml`
@@ -140,9 +140,11 @@ Com a stack a correr (`pnpm dev` ou compose):
 ```bash
 pnpm exec playwright install chromium   # uma vez
 pnpm test:e2e
-# inclui smoke, CSP (nonce, sem unsafe-eval) e axe (home, about, privacidade, admin/login)
+# inclui smoke, CSP (nonce, sem unsafe-eval) e axe (home, about, galeria, equipa,
+# noticias, privacidade, admin/login + painel se E2E_ADMIN_EMAIL/PASSWORD)
 # ou: E2E_BASE_URL=https://staging.exemplo pnpm test:e2e
 ```
+
 
 No CI, o job `compose-smoke` corre estes testes contra `http://127.0.0.1:3000` depois do stack estar up.
 

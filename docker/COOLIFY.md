@@ -24,7 +24,8 @@ Fluxo de rede: **Cliente → Traefik (TLS) → web → api**. A API deve ver o p
 - `SMTP_*` + `SMTP_FROM` no domínio verificado + `CONTACT_NOTIFY_TO`
 - `SENTRY_DSN` / `NEXT_PUBLIC_SENTRY_DSN` (recomendado)
 - `WEBAUTHN_RP_ID` = hostname público (sem protocolo)
-- `ALLOW_SEARCH_INDEXING=true` por omissão (robots/sitemap públicos; admin bloqueado). Staging: `false`. Com o domínio live: `node scripts/verify-production.mjs https://SEU_DOMINIO` → Search Console → submeter `/sitemap.xml`
+- `ALLOW_SEARCH_INDEXING` — default nos ficheiros de exemplo/compose é `false` (não indexar). Em produção no Coolify definir explicitamente `true` (robots/sitemap públicos; admin bloqueado). Com o domínio live: `node scripts/verify-production.mjs https://SEU_DOMINIO` → Search Console → submeter `/sitemap.xml`
+- `REVALIDATE_SECRET` — o mesmo valor no serviço **web** e **api**; a API usa-o para invalidar a Data Cache do Next (`/api/revalidate`) quando limpa a cache Redis
 
 ## Email (Resend)
 

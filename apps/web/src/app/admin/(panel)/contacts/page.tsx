@@ -27,8 +27,12 @@ const statusLabel: Record<string, string> = {
   FAILED: "Email falhou",
 };
 
+const PAGE_SIZE = 50;
+
 export default function AdminContactsPage() {
   const [rows, setRows] = useState<Contact[]>([]);
+  const [total, setTotal] = useState(0);
+  const [page, setPage] = useState(1);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [selected, setSelected] = useState<Contact | null>(null);
@@ -36,22 +40,33 @@ export default function AdminContactsPage() {
   const [saving, setSaving] = useState(false);
   const [toast, setToast] = useState("");
 
-  async function load() {
+  const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
+
+  async function load(nextPage = page) {
     setLoading(true);
     setError("");
     try {
-      const data = await adminFetch<Contact[]>("/api/admin/contacts");
-      setRows(Array.isArray(data) ? data : []);
+      const data = await adminFetch<{
+        items: Contact[];
+        total: number;
+        page: number;
+        pageSize: number;
+      }>(`/api/admin/contacts?page=${nextPage}&pageSize=${PAGE_SIZE}`);
+      setRows(Array.isArray(data.items) ? data.items : []);
+      setTotal(data.total ?? 0);
+      setPage(data.page ?? nextPage);
     } catch (e) {
       setError(e instanceof Error ? e.message : "Erro ao carregar contactos");
       setRows([]);
+      setTotal(0);
     } finally {
       setLoading(false);
     }
   }
 
   useEffect(() => {
-    load().catch(() => undefined);
+    load(1).catch(() => undefined);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   useEffect(() => {
@@ -135,9 +150,9 @@ export default function AdminContactsPage() {
         method: "POST",
         body: JSON.stringify({ confirm: true }),
       });
-      setRows((prev) => prev.filter((r) => r.id !== id));
       setSelected(null);
       setToast("Dados apagados (RGPD)");
+      await load(page);
     } catch (e) {
       setError(e instanceof Error ? e.message : "Erro ao apagar (RGPD)");
     } finally {
@@ -160,12 +175,12 @@ export default function AdminContactsPage() {
           <div>
             <h2 className="text-base font-bold text-slate-800">Contactos</h2>
             <p className="text-xs text-slate-400">
-              {rows.length} registo(s) · {unread} por ler
+              {total} registo(s) · {unread} por ler nesta página
             </p>
           </div>
           <button
             type="button"
-            onClick={() => load()}
+            onClick={() => load(page)}
             className="rounded-lg border border-slate-200 px-3 py-1.5 text-xs font-semibold text-slate-600 hover:bg-slate-50"
           >
             Atualizar
@@ -316,6 +331,32 @@ export default function AdminContactsPage() {
                 </tbody>
               </table>
             </div>
+
+            {totalPages > 1 && (
+              <div className="flex items-center justify-between gap-3 border-t border-slate-100 px-5 py-3">
+                <p className="text-xs text-slate-500">
+                  Página {page} de {totalPages}
+                </p>
+                <div className="flex gap-2">
+                  <button
+                    type="button"
+                    disabled={page <= 1 || loading}
+                    onClick={() => load(page - 1)}
+                    className="rounded-lg border border-slate-200 px-3 py-1.5 text-xs font-semibold text-slate-600 hover:bg-slate-50 disabled:opacity-40"
+                  >
+                    Anterior
+                  </button>
+                  <button
+                    type="button"
+                    disabled={page >= totalPages || loading}
+                    onClick={() => load(page + 1)}
+                    className="rounded-lg border border-slate-200 px-3 py-1.5 text-xs font-semibold text-slate-600 hover:bg-slate-50 disabled:opacity-40"
+                  >
+                    Seguinte
+                  </button>
+                </div>
+              </div>
+            )}
           </>
         )}
       </div>

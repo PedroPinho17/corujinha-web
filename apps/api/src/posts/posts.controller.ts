@@ -11,12 +11,14 @@ import {
 } from "@nestjs/common";
 import { Transform } from "class-transformer";
 import {
+  ArrayMaxSize,
   IsArray,
   IsBoolean,
   IsEmail,
   IsInt,
   IsOptional,
   IsString,
+  IsUrl,
   MaxLength,
 } from "class-validator";
 import { AdminGuard } from "../auth/auth.guard";
@@ -30,10 +32,13 @@ class PostDto {
 
   @IsOptional()
   @IsString()
+  @MaxLength(50_000)
   content?: string;
 
   @IsOptional()
-  @IsString()
+  @Transform(({ value }) => (value === "" || value === null ? undefined : value))
+  @IsUrl({ protocols: ["https"], require_protocol: true })
+  @MaxLength(2048)
   link?: string;
 
   @IsOptional()
@@ -68,6 +73,8 @@ class PostDto {
 
 class ReorderDto {
   @IsArray()
+  @ArrayMaxSize(500)
+  @IsString({ each: true })
   ids!: string[];
 }
 
@@ -89,6 +96,18 @@ export class PostsController {
     const data = await this.prisma.post.findMany({
       where: { published: true },
       orderBy: [{ featured: "desc" }, { sortOrder: "asc" }, { publishedAt: "desc" }],
+      select: {
+        id: true,
+        title: true,
+        content: true,
+        link: true,
+        phone: true,
+        email: true,
+        featured: true,
+        imageKey: true,
+        publishedAt: true,
+        sortOrder: true,
+      },
     });
     await this.redis.setJson("public:posts", data);
     return data;
@@ -101,6 +120,18 @@ export class PostsController {
     const data = await this.prisma.post.findMany({
       where: { published: true, featured: true },
       orderBy: { sortOrder: "asc" },
+      select: {
+        id: true,
+        title: true,
+        content: true,
+        link: true,
+        phone: true,
+        email: true,
+        featured: true,
+        imageKey: true,
+        publishedAt: true,
+        sortOrder: true,
+      },
     });
     await this.redis.setJson("public:posts:featured", data);
     return data;

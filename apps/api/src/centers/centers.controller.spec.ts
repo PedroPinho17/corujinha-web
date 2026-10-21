@@ -22,10 +22,13 @@ describe("CentersController", () => {
     redis.getJson.mockResolvedValue(null);
     prisma.center.findMany.mockResolvedValue([{ id: "c1", slug: "lobao" }]);
     await expect(ctrl.publicList()).resolves.toEqual([{ id: "c1", slug: "lobao" }]);
-    expect(prisma.center.findMany).toHaveBeenCalledWith({
-      where: { published: true },
-      orderBy: [{ isPrimary: "desc" }, { sortOrder: "asc" }],
-    });
+    expect(prisma.center.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: { published: true },
+        orderBy: [{ isPrimary: "desc" }, { sortOrder: "asc" }],
+        select: expect.any(Object),
+      }),
+    );
     expect(redis.setJson).toHaveBeenCalledWith("public:centers", [{ id: "c1", slug: "lobao" }]);
   });
 

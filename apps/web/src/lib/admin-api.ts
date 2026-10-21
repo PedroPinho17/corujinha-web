@@ -50,14 +50,16 @@ export async function adminFetch<T = unknown>(
 
 export async function uploadImage(file: File, folder = "uploads") {
   const contentType = file.type || "image/jpeg";
+  const size = file.size;
   const { key, uploadUrl, publicUrl } = await adminFetch<{
     key: string;
     uploadUrl: string;
     publicUrl: string;
   }>("/api/admin/media/presign", {
     method: "POST",
-    body: JSON.stringify({ contentType, folder }),
+    body: JSON.stringify({ contentType, folder, size }),
   });
+  // Browser sets Content-Length from the body (forbidden to set manually); must match signed size.
   const put = await fetch(uploadUrl, {
     method: "PUT",
     headers: { "Content-Type": contentType },

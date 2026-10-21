@@ -42,8 +42,8 @@ export function buildCsp(nonce: string): string {
 
   // script-src: nonce + strict-dynamic — Next applies the nonce to its scripts automatically.
   // No 'unsafe-inline' / 'unsafe-eval'.
-  // style-src: nonce for Next-injected styles; keep 'unsafe-inline' for Tailwind/CSS modules
-  // compatibility (browsers that honour style nonces ignore unsafe-inline when nonce is present).
+  // style-src: nonce for Next-injected <style>; 'unsafe-inline' is ignored by browsers that
+  // honour style nonces. style-src-attr keeps next/image (and similar) style="" attributes.
   const directives = [
     "default-src 'self'",
     "base-uri 'self'",
@@ -53,6 +53,7 @@ export function buildCsp(nonce: string): string {
     `img-src ${imgSrc}`,
     "font-src 'self' data:",
     `style-src 'self' 'nonce-${nonce}' 'unsafe-inline'`,
+    "style-src-attr 'unsafe-inline'",
     `script-src 'self' 'nonce-${nonce}' 'strict-dynamic'`,
     `connect-src ${connectSrc}`,
     ...(isProd ? ["upgrade-insecure-requests"] : []),

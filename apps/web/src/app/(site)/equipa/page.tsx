@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { fetchPublicList } from "@/lib/public-api";
 import { mediaUrl } from "@/lib/utils";
 
 export const metadata: Metadata = {
@@ -6,20 +7,14 @@ export const metadata: Metadata = {
   description: "Profissionais dedicados ao acompanhamento de cada criança na Corujinha.",
 };
 
-const api = process.env.INTERNAL_API_URL ?? "http://localhost:3001";
-
-async function getTeam() {
-  try {
-    const res = await fetch(`${api}/api/public/team`, { next: { revalidate: 60 } });
-    if (!res.ok) return [];
-    return res.json();
-  } catch {
-    return [];
-  }
-}
-
 export default async function EquipaPage() {
-  const team = await getTeam();
+  const team = await fetchPublicList<{
+    id: string;
+    name: string;
+    description?: string;
+    imageKey?: string;
+  }>("/api/public/team", ["team"]);
+
   return (
     <div className="hero-wash min-h-screen">
       <div className="mx-auto max-w-6xl px-4 py-16">
@@ -30,7 +25,7 @@ export default async function EquipaPage() {
           Profissionais dedicados ao acompanhamento de cada criança.
         </p>
         <div className="mt-12 grid gap-8 sm:grid-cols-2 md:grid-cols-3">
-          {team.map((m: { id: string; name: string; description?: string; imageKey?: string }) => (
+          {team.map((m) => (
             <article key={m.id} className="rounded-3xl bg-white p-6 text-center shadow-xl">
               {m.imageKey && (
                 // eslint-disable-next-line @next/next/no-img-element

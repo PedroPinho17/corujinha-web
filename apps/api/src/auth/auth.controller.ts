@@ -1,15 +1,19 @@
 import { Controller, Get, Put, Body, UseGuards } from "@nestjs/common";
 import { AuthGuard, CurrentUser, SessionUser } from "./auth.guard";
 import { PrismaService } from "../prisma/prisma.service";
-import { IsOptional, IsString, MinLength } from "class-validator";
+import { IsOptional, IsString, IsUrl, MaxLength, MinLength } from "class-validator";
+import { Transform } from "class-transformer";
 
 class UpdateProfileDto {
   @IsString()
   @MinLength(2)
+  @MaxLength(120)
   name!: string;
 
   @IsOptional()
-  @IsString()
+  @Transform(({ value }) => (value === "" || value === null ? undefined : value))
+  @IsUrl({ protocols: ["https"], require_protocol: true })
+  @MaxLength(2048)
   image?: string;
 }
 

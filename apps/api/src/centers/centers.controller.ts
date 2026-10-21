@@ -9,15 +9,7 @@ import {
   Put,
   UseGuards,
 } from "@nestjs/common";
-import {
-  IsArray,
-  IsBoolean,
-  IsInt,
-  IsOptional,
-  IsString,
-  Matches,
-  MaxLength,
-} from "class-validator";
+import { ArrayMaxSize, IsArray, IsBoolean, IsInt, IsOptional, IsString, Matches, MaxLength } from "class-validator";
 import { AdminGuard } from "../auth/auth.guard";
 import { PrismaService } from "../prisma/prisma.service";
 import { RedisService } from "../redis/redis.service";
@@ -76,6 +68,8 @@ class CenterDto {
 
 class ReorderDto {
   @IsArray()
+  @ArrayMaxSize(500)
+  @IsString({ each: true })
   ids!: string[];
 }
 
@@ -97,6 +91,18 @@ export class CentersController {
     const data = await this.prisma.center.findMany({
       where: { published: true },
       orderBy: [{ isPrimary: "desc" }, { sortOrder: "asc" }],
+      select: {
+        id: true,
+        slug: true,
+        name: true,
+        shortName: true,
+        address: true,
+        city: true,
+        postalCode: true,
+        phone: true,
+        email: true,
+        isPrimary: true,
+      },
     });
     await this.redis.setJson("public:centers", data);
     return data;

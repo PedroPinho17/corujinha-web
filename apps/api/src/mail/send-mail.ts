@@ -43,8 +43,8 @@ export async function sendMail(opts: SendMailOpts): Promise<"sent" | "logged"> {
   const from = process.env.SMTP_FROM ?? "noreply@corujinha.local";
   const transporter = getTransporter();
   if (!transporter) {
-    logFallback(`[mail] SMTP not configured — logged only: ${opts.subject} → ${opts.to}`);
-    logFallback(opts.text);
+    // Never log recipient addresses (PII) — subject only.
+    logFallback(`[mail] SMTP not configured — logged only: ${opts.subject}`);
     return "logged";
   }
   await transporter.sendMail({

@@ -27,7 +27,7 @@ describe("DashboardController", () => {
     expect(redis.setJson).toHaveBeenCalledWith("public:home", expect.any(Object));
   });
 
-  it("dashboard returns counts", async () => {
+  it("dashboard returns counts excluding erased contacts", async () => {
     prisma.user.count.mockResolvedValue(2);
     prisma.teamMember.count.mockResolvedValue(3);
     prisma.post.count.mockResolvedValue(4);
@@ -39,5 +39,11 @@ describe("DashboardController", () => {
     expect(res.users).toBe(2);
     expect(res.unreadContacts).toBe(1);
     expect(res.recentContacts).toHaveLength(1);
+    expect(prisma.contactMessage.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({ where: { erasedAt: null } }),
+    );
+    expect(prisma.contactMessage.count).toHaveBeenCalledWith(
+      expect.objectContaining({ where: expect.objectContaining({ erasedAt: null }) }),
+    );
   });
 });

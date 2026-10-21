@@ -1,5 +1,13 @@
 import { Body, Controller, Get, Put, UseGuards } from "@nestjs/common";
-import { IsObject, IsOptional, IsString } from "class-validator";
+import { Transform } from "class-transformer";
+import {
+  IsObject,
+  IsOptional,
+  IsString,
+  IsUrl,
+  MaxLength,
+  ValidateIf,
+} from "class-validator";
 import { DEFAULT_SITE_CONTENT, mergeSiteContent, type SiteContent } from "@corujinha/shared";
 import { AdminGuard } from "../auth/auth.guard";
 import { PrismaService } from "../prisma/prisma.service";
@@ -8,30 +16,41 @@ import { RedisService } from "../redis/redis.service";
 class UpdateSettingsDto {
   @IsOptional()
   @IsString()
+  @MaxLength(120)
   brandingName?: string;
 
   @IsOptional()
   @IsString()
+  @MaxLength(512)
   brandingLogoKey?: string | null;
 
   @IsOptional()
   @IsString()
+  @MaxLength(254)
   contactEmail?: string | null;
 
   @IsOptional()
   @IsString()
+  @MaxLength(40)
   contactPhone?: string | null;
 
   @IsOptional()
   @IsString()
+  @MaxLength(500)
   address?: string | null;
 
   @IsOptional()
-  @IsString()
+  @Transform(({ value }) => (value === "" ? null : value))
+  @ValidateIf((_, v) => v != null)
+  @IsUrl({ protocols: ["https"], require_protocol: true })
+  @MaxLength(2048)
   facebookUrl?: string | null;
 
   @IsOptional()
-  @IsString()
+  @Transform(({ value }) => (value === "" ? null : value))
+  @ValidateIf((_, v) => v != null)
+  @IsUrl({ protocols: ["https"], require_protocol: true })
+  @MaxLength(2048)
   instagramUrl?: string | null;
 
   @IsOptional()

@@ -69,12 +69,21 @@ export class ContactService {
     };
   }
 
-  list() {
-    return this.prisma.contactMessage.findMany({
-      where: { erasedAt: null },
-      orderBy: { createdAt: "desc" },
-      take: 100,
-    });
+  async list(page = 1, pageSize = 50) {
+    const take = Math.min(Math.max(pageSize, 1), 100);
+    const safePage = Math.max(page, 1);
+    const skip = (safePage - 1) * take;
+    const where = { erasedAt: null };
+    const [items, total] = await Promise.all([
+      this.prisma.contactMessage.findMany({
+        where,
+        orderBy: { createdAt: "desc" },
+        skip,
+        take,
+      }),
+      this.prisma.contactMessage.count({ where }),
+    ]);
+    return { items, total, page: safePage, pageSize: take };
   }
 
   async update(

@@ -15,7 +15,7 @@ test.describe("Corujinha public smoke", () => {
     await expect(page.locator("#contact form, form").first()).toBeVisible({ timeout: 15_000 });
   });
 
-  test("robots.txt is plain text and allows indexing by default", async ({ request }) => {
+  test("robots.txt is plain text and matches indexing switch", async ({ request }) => {
     const robots = await request.get(`${base}/robots.txt`);
     expect(robots.ok()).toBeTruthy();
     const ct = robots.headers()["content-type"] ?? "";
@@ -23,19 +23,26 @@ test.describe("Corujinha public smoke", () => {
     const robotsText = await robots.text();
     // Must not be an HTML page (old bug: redirect robots.txt → /).
     expect(robotsText).not.toMatch(/<html/i);
-    expect(robotsText).toMatch(/^Allow:\s*\/\s*$/m);
-    expect(robotsText).toMatch(/^Disallow:\s*\/admin/m);
-    expect(robotsText).not.toMatch(/^Disallow:\s*\/\s*$/m);
-    expect(robotsText).toMatch(/^Sitemap:\s*https?:\/\//m);
 
     const home = await request.get(base);
     const robotsTag = home.headers()["x-robots-tag"] ?? "";
-    expect(robotsTag).not.toMatch(/noindex/i);
+    const indexingOn = !/noindex/i.test(robotsTag);
 
-    const sitemap = await request.get(`${base}/sitemap.xml`);
-    expect(sitemap.ok()).toBeTruthy();
-    const xml = await sitemap.text();
-    expect(xml).toMatch(/\/(about|noticias|privacidade)/);
+    if (indexingOn) {
+      expect(robotsText).toMatch(/^Allow:\s*\/\s*$/m);
+      expect(robotsText).toMatch(/^Disallow:\s*\/admin/m);
+      expect(robotsText).not.toMatch(/^Disallow:\s*\/\s*$/m);
+      expect(robotsText).toMatch(/^Sitemap:\s*https?:\/\//m);
+      const sitemap = await request.get(`${base}/sitemap.xml`);
+      expect(sitemap.ok()).toBeTruthy();
+      const xml = await sitemap.text();
+      expect(xml).toMatch(/\/(about|noticias|privacidade)/);
+    } else {
+      // Default for example/compose: not indexed until Coolify sets true.
+      expect(robotsText).toMatch(/^Disallow:\s*\/\s*$/m);
+      expect(robotsText).not.toMatch(/^Allow:/m);
+      expect(robotsTag).toMatch(/noindex/i);
+    }
   });
 
   test("admin is present but not for indexing cues", async ({ page }) => {

@@ -10,6 +10,10 @@ export class MediaController {
 
   @Post("presign")
   presign(@Body() dto: PresignDto) {
-    return this.media.createPresignedUpload(dto.contentType, dto.folder || "uploads");
+    return this.media.createPresignedUpload(
+      dto.contentType,
+      dto.folder || "uploads",
+      dto.size,
+    );
   }
 }
