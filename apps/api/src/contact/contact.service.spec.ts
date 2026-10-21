@@ -44,12 +44,21 @@ describe("ContactService", () => {
     expect(prisma.contactMessage.create).not.toHaveBeenCalled();
   });
 
-  it("rate limits and requires privacyConsent", async () => {
+  it("rate limits by IP and by destination email, and requires privacyConsent", async () => {
     // check() reads current count — at/over limit blocks without incrementing.
     redis.client.get.mockResolvedValue("5");
     await expect(
       service.submit(
         { name: "A", email: "a@b.com", message: "hello!", privacyConsent: true } as never,
+        "ip",
+      ),
+    ).rejects.toBeInstanceOf(HttpException);
+
+    // IP ok, destination email over limit (second Redis get = email limiter).
+    redis.client.get.mockResolvedValueOnce(null).mockResolvedValueOnce("3");
+    await expect(
+      service.submit(
+        { name: "A", email: "flood@example.com", message: "hello!", privacyConsent: true } as never,
         "ip",
       ),
     ).rejects.toBeInstanceOf(HttpException);
@@ -143,5 +152,30 @@ describe("ContactService", () => {
 
     prisma.contactMessage.findUnique.mockResolvedValue({ ...row, erasedAt: new Date() });
     await expect(service.exportGdpr("1")).rejects.toBeInstanceOf(NotFoundException);
+  });
+
+  it("eraseExpired anonymizes messages older than retention window", async () => {
+    prisma.contactMessage.findMany.mockResolvedValue([{ id: "old-1" }, { id: "old-2" }]);
+    prisma.contactMessage.findUnique
+      .mockResolvedValueOnce({
+        id: "old-1",
+        erasedAt: null,
+      })
+      .mockResolvedValueOnce({
+        id: "old-2",
+        erasedAt: null,
+      });
+    prisma.contactMessage.update.mockResolvedValue({});
+
+    const result = await service.eraseExpired(24);
+    expect(result.erased).toBe(2);
+    expect(result.retentionMonths).toBe(24);
+    expect(prisma.contactMessage.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: expect.objectContaining({ erasedAt: null }),
+        take: 500,
+      }),
+    );
+    expect(prisma.contactMessage.update).toHaveBeenCalledTimes(2);
   });
 });

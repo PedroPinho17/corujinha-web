@@ -106,9 +106,10 @@ find /var/backups/corujinha -maxdepth 1 -mtime +14 -type d -exec rm -rf {} +
 
 ## Contacto e email
 
-- `POST /api/public/contact` — honeypot `website`, consentimento RGPD, rate limit 5/15min (Redis).
+- `POST /api/public/contact` — honeypot `website`, consentimento RGPD, rate limit 5/15min por IP e 3/hora por email de destino (Redis; limita abusos da confirmação automática).
 - `CONTACT_NOTIFY_TO` e SMTP obrigatórios em produção (`assertProductionEnv`).
 - `SMTP_SECURE=true|false` opcional; por omissão secure só na porta 465.
+- Retenção RGPD: a API anonimiza contactos com mais de `CONTACT_RETENTION_MONTHS` (default 24) cerca de uma vez por dia.
 
 ## Backups manuais
 
@@ -121,10 +122,10 @@ Sincronizar object storage (R2/Garage) à parte (ver cron acima).
 
 ## RGPD
 
-- Página pública: `/privacidade`
+- Página pública: `/privacidade` (prazo de 24 meses + anonimização automática)
 - Consentimento no formulário de contacto
 - Backoffice: export JSON e erase (anonimização) por contacto
-- Conservação típica: até 24 meses ou pedido de apagamento
+- Anonimização automática após 24 meses (`CONTACT_RETENTION_MONTHS`) ou pedido de apagamento
 
 ## Protecção do `main`
 

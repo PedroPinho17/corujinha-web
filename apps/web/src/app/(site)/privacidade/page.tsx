@@ -48,9 +48,12 @@ export default function PrivacidadePage() {
         <section>
           <h2 className="mb-2 text-lg font-semibold text-ink">4. Conservação</h2>
           <p>
-            As mensagens são conservadas enquanto forem necessárias para o contacto e gestão
-            interna, tipicamente até 24 meses após o último tratamento, ou até pedido de
-            apagamento. O administrador pode anonimizar / apagar um registo no backoffice (RGPD).
+            As mensagens do formulário de contacto / inscrição são conservadas enquanto forem
+            necessárias para responder e para a gestão interna. Decorridos{" "}
+            <strong>24 meses</strong> desde a criação do registo, os dados pessoais são{" "}
+            <strong>anonimizados automaticamente</strong> (nome, email, telefone e conteúdo da
+            mensagem deixam de identificar a pessoa). Pode pedir o apagamento antecipado a
+            qualquer momento; o administrador também pode anonimizar um registo no backoffice.
           </p>
         </section>
 
