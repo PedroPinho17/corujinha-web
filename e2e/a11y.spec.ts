@@ -33,10 +33,9 @@ function contrastRatio(fg: string, bg: string): number | null {
 
 async function expectNoSeriousViolations(page: import("@playwright/test").Page, path: string) {
   await page.goto(`${base}${path}`, { waitUntil: "domcontentloaded" });
-  // color-contrast: axe often mis-samples Tailwind v4 oklab + soft shadows; checked via getComputedStyle below.
+  // color-contrast is enabled; home CTAs are also checked via getComputedStyle below.
   const results = await new AxeBuilder({ page })
     .withTags(["wcag2a", "wcag2aa", "wcag21a", "wcag21aa"])
-    .disableRules(["color-contrast"])
     .analyze();
 
   const serious = results.violations.filter((v) => v.impact === "critical" || v.impact === "serious");
@@ -78,7 +77,13 @@ test.describe("Accessibility (axe)", () => {
   });
 
   test("admin panel after login has no serious/critical violations", async ({ page }) => {
-    test.skip(!adminEmail || !adminPassword, "Set E2E_ADMIN_EMAIL and E2E_ADMIN_PASSWORD (or ADMIN_*)");
+    // In CI, credentials are required (compose-smoke sets E2E_ADMIN_* after change-password → CiComposeAdmin99!).
+    if (process.env.CI) {
+      expect(adminEmail, "CI must set E2E_ADMIN_EMAIL").toBeTruthy();
+      expect(adminPassword, "CI must set E2E_ADMIN_PASSWORD").toBeTruthy();
+    } else {
+      test.skip(!adminEmail || !adminPassword, "Set E2E_ADMIN_EMAIL and E2E_ADMIN_PASSWORD (or ADMIN_*)");
+    }
 
     await page.goto(`${base}/admin/login`, { waitUntil: "domcontentloaded" });
     await page.locator("#email").fill(adminEmail);
@@ -86,8 +91,10 @@ test.describe("Accessibility (axe)", () => {
     await page.locator('button[type="submit"]').click();
     await page.waitForURL(/\/admin(\/|$)/, { timeout: 30_000 });
 
-    // Seed forces mustChangePassword — axe that screen; otherwise the dashboard.
+    // After media-smoke change-password, mustChangePassword is false → dashboard.
+    // Fresh seed without that step still lands on change-password — axe that screen.
     const path = new URL(page.url()).pathname;
+    expect(path, "login should leave /admin/login").not.toMatch(/\/admin\/login\/?$/);
     if (path.includes("change-password")) {
       await expectNoSeriousViolations(page, "/admin/change-password");
       return;

@@ -2,6 +2,8 @@ import { expect, test } from "@playwright/test";
 
 const base = process.env.E2E_BASE_URL ?? "http://localhost:3000";
 
+const publicPaths = ["/", "/galeria", "/equipa", "/noticias"] as const;
+
 test.describe("CSP", () => {
   test("home CSP uses nonce and has no unsafe-eval / unsafe-inline on scripts", async ({
     request,
@@ -17,19 +19,23 @@ test.describe("CSP", () => {
     expect(csp).toMatch(/style-src-attr[^;]*'unsafe-inline'/);
   });
 
-  test("home loads without CSP console violations", async ({ page }) => {
-    const cspErrors: string[] = [];
-    page.on("console", (msg) => {
-      if (msg.type() !== "error") return;
-      const text = msg.text();
-      if (/content security policy|csp/i.test(text)) cspErrors.push(text);
-    });
-    page.on("pageerror", (err) => {
-      if (/content security policy|csp/i.test(err.message)) cspErrors.push(err.message);
-    });
+  for (const path of publicPaths) {
+    test(`${path === "/" ? "home" : path} loads without CSP console violations`, async ({
+      page,
+    }) => {
+      const cspErrors: string[] = [];
+      page.on("console", (msg) => {
+        if (msg.type() !== "error") return;
+        const text = msg.text();
+        if (/content security policy|csp/i.test(text)) cspErrors.push(text);
+      });
+      page.on("pageerror", (err) => {
+        if (/content security policy|csp/i.test(err.message)) cspErrors.push(err.message);
+      });
 
-    await page.goto(base, { waitUntil: "networkidle" });
-    await expect(page.locator("body")).toBeVisible();
-    expect(cspErrors, cspErrors.join("\n")).toEqual([]);
-  });
+      await page.goto(`${base}${path}`, { waitUntil: "networkidle" });
+      await expect(page.locator("body")).toBeVisible();
+      expect(cspErrors, cspErrors.join("\n")).toEqual([]);
+    });
+  }
 });

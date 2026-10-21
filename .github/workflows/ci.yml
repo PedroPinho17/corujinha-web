@@ -391,7 +391,8 @@ jobs:
       - name: Playwright e2e smoke
         env:
           E2E_BASE_URL: http://127.0.0.1:3000
-          # Password after "Media upload smoke" change-password step
+          # Seed uses CiComposeAdmin12!; media smoke changes it to 99! and clears mustChangePassword.
+          # Admin axe must use 99! here — not the seed password — or login fails / skips the panel.
           E2E_ADMIN_EMAIL: admin@corujinha.local
           E2E_ADMIN_PASSWORD: CiComposeAdmin99!
         run: |
