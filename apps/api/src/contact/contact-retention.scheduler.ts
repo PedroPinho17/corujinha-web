@@ -1,33 +1,42 @@
-import { InjectQueue } from "@nestjs/bullmq";
-import { Injectable, Logger, OnModuleInit } from "@nestjs/common";
-import { Queue } from "bullmq";
-import { CONTACT_QUEUE, CONTACT_RETENTION_JOB } from "./contact.processor";
+import { Injectable, Logger, OnModuleDestroy, OnModuleInit } from "@nestjs/common";
+import { ContactService } from "./contact.service";
+
+const DAY_MS = 24 * 60 * 60 * 1000;
 
 /**
- * Schedules daily GDPR retention anonymization via BullMQ repeatable job.
- * Fixed jobId keeps a single schedule across API restarts / replicas.
+ * Runs GDPR contact anonymization shortly after boot, then about once a day.
+ * Idempotent — safe across API restarts / replicas.
  */
 @Injectable()
-export class ContactRetentionScheduler implements OnModuleInit {
+export class ContactRetentionScheduler implements OnModuleInit, OnModuleDestroy {
   private readonly logger = new Logger(ContactRetentionScheduler.name);
+  private timer?: ReturnType<typeof setInterval>;
+  private bootTimer?: ReturnType<typeof setTimeout>;
 
-  constructor(@InjectQueue(CONTACT_QUEUE) private readonly queue: Queue) {}
+  constructor(private readonly contacts: ContactService) {}
 
-  async onModuleInit() {
+  onModuleInit() {
+    // Delay first run so migrations / healthchecks finish.
+    this.bootTimer = setTimeout(() => void this.run(), 60_000);
+    this.timer = setInterval(() => void this.run(), DAY_MS);
+    this.logger.log("Contact GDPR retention scheduled (daily)");
+  }
+
+  onModuleDestroy() {
+    if (this.bootTimer) clearTimeout(this.bootTimer);
+    if (this.timer) clearInterval(this.timer);
+  }
+
+  private async run() {
     try {
-      await this.queue.add(
-        CONTACT_RETENTION_JOB,
-        {},
-        {
-          jobId: "contact-gdpr-retention-daily",
-          repeat: { pattern: "0 4 * * *" },
-          removeOnComplete: 20,
-          removeOnFail: 50,
-        },
-      );
-      this.logger.log("Scheduled daily contact GDPR retention (04:00)");
+      const result = await this.contacts.eraseExpired();
+      if (result.erased > 0) {
+        this.logger.log(
+          `GDPR retention: erased ${result.erased} (cutoff ${result.cutoff}, ${result.retentionMonths} months)`,
+        );
+      }
     } catch (err) {
-      this.logger.warn(`Could not schedule contact GDPR retention: ${String(err)}`);
+      this.logger.warn(`Contact GDPR retention failed: ${String(err)}`);
     }
   }
 }

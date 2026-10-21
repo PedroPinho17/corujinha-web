@@ -5,10 +5,8 @@ import { PrismaService } from "../prisma/prisma.service";
 import { MailService } from "../mail/mail.service";
 import { renderEmailHtml } from "../mail/email-layout";
 import { escapeHtml } from "../common/escape-html";
-import { ContactService } from "./contact.service";
 
 export const CONTACT_QUEUE = "contact-email";
-export const CONTACT_RETENTION_JOB = "gdpr-retention";
 
 @Processor(CONTACT_QUEUE)
 export class ContactProcessor extends WorkerHost {
@@ -17,25 +15,13 @@ export class ContactProcessor extends WorkerHost {
   constructor(
     private readonly prisma: PrismaService,
     private readonly mail: MailService,
-    private readonly contacts: ContactService,
   ) {
     super();
   }
 
-  async process(job: Job<{ contactId?: string }>) {
-    if (job.name === CONTACT_RETENTION_JOB) {
-      const result = await this.contacts.eraseExpired();
-      this.logger.log(
-        `GDPR retention: erased ${result.erased} (cutoff ${result.cutoff}, ${result.retentionMonths} months)`,
-      );
-      return result;
-    }
-
-    const contactId = job.data.contactId;
-    if (!contactId) return;
-
+  async process(job: Job<{ contactId: string }>) {
     const contact = await this.prisma.contactMessage.findUnique({
-      where: { id: contactId },
+      where: { id: job.data.contactId },
     });
     if (!contact || contact.erasedAt) return;
 

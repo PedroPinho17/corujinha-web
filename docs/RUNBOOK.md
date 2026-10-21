@@ -109,7 +109,7 @@ find /var/backups/corujinha -maxdepth 1 -mtime +14 -type d -exec rm -rf {} +
 - `POST /api/public/contact` — honeypot `website`, consentimento RGPD, rate limit 5/15min por IP e 3/hora por email de destino (Redis; limita abusos da confirmação automática).
 - `CONTACT_NOTIFY_TO` e SMTP obrigatórios em produção (`assertProductionEnv`).
 - `SMTP_SECURE=true|false` opcional; por omissão secure só na porta 465.
-- Retenção RGPD: job diário (04:00) anonimiza contactos com mais de `CONTACT_RETENTION_MONTHS` (default 24).
+- Retenção RGPD: a API anonimiza contactos com mais de `CONTACT_RETENTION_MONTHS` (default 24) cerca de uma vez por dia.
 
 ## Backups manuais
 
