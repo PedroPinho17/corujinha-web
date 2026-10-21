@@ -55,8 +55,8 @@ services:
     environment:
       NODE_ENV: production
       INTERNAL_API_URL: http://api:3001
-      # true por omissão — site indexável; use false só em staging
-      ALLOW_SEARCH_INDEXING: ${ALLOW_SEARCH_INDEXING:-true}
+      # false por omissão — cópias de teste não indexáveis; true só no Coolify em produção
+      ALLOW_SEARCH_INDEXING: ${ALLOW_SEARCH_INDEXING:-false}
     expose:
       - "3000"
     depends_on:

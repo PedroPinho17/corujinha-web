@@ -9,7 +9,7 @@ import {
   Put,
   UseGuards,
 } from "@nestjs/common";
-import { IsArray, IsBoolean, IsInt, IsOptional, IsString, MaxLength } from "class-validator";
+import { ArrayMaxSize, IsArray, IsBoolean, IsInt, IsOptional, IsString, MaxLength } from "class-validator";
 import { AdminGuard } from "../auth/auth.guard";
 import { PrismaService } from "../prisma/prisma.service";
 import { RedisService } from "../redis/redis.service";
@@ -49,6 +49,8 @@ class FormationDto {
 
 class ReorderDto {
   @IsArray()
+  @ArrayMaxSize(500)
+  @IsString({ each: true })
   ids!: string[];
 }
 
@@ -70,7 +72,15 @@ export class FormationsController {
     const data = await this.prisma.formation.findMany({
       where: { active: true },
       orderBy: { sortOrder: "asc" },
-      include: { entity: true },
+      select: {
+        id: true,
+        name: true,
+        description: true,
+        duration: true,
+        location: true,
+        entityId: true,
+        entity: { select: { id: true, name: true, website: true } },
+      },
     });
     await this.redis.setJson("public:formations", data);
     return data;

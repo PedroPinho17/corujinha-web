@@ -2,28 +2,30 @@ import { Suspense } from "react";
 import { LocalBusinessJsonLd } from "@/components/site/json-ld";
 import { SiteFooter } from "@/components/site/site-footer";
 import { SiteHeader } from "@/components/site/site-header";
+import { fetchPublicJson, fetchPublicList } from "@/lib/public-api";
 import { mergeSiteContent, type SiteContent } from "@/lib/site-content";
 
-const api = process.env.INTERNAL_API_URL ?? "http://localhost:3001";
-
 async function getSettings() {
-  try {
-    const res = await fetch(`${api}/api/public/settings`, { next: { revalidate: 30 } });
-    if (!res.ok) return null;
-    return res.json();
-  } catch {
-    return null;
-  }
+  return fetchPublicJson<{
+    brandingName?: string;
+    contactPhone?: string | null;
+    contactEmail?: string | null;
+    content?: unknown;
+  }>("/api/public/settings", ["settings"]);
 }
 
+type PublicCenter = {
+  name: string;
+  shortName?: string | null;
+  address?: string | null;
+  city?: string | null;
+  postalCode?: string | null;
+  phone?: string | null;
+  email?: string | null;
+};
+
 async function getCenters() {
-  try {
-    const res = await fetch(`${api}/api/public/centers`, { next: { revalidate: 60 } });
-    if (!res.ok) return [];
-    return res.json();
-  } catch {
-    return [];
-  }
+  return fetchPublicList<PublicCenter>("/api/public/centers", ["centers"]);
 }
 
 async function BrandHeader() {

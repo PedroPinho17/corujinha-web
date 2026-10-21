@@ -22,6 +22,9 @@ describe("UsersController", () => {
       findFirst: vi.fn(),
       update: vi.fn(),
     },
+    session: {
+      deleteMany: vi.fn().mockResolvedValue({ count: 0 }),
+    },
   };
   let controller: UsersController;
 
@@ -31,9 +34,13 @@ describe("UsersController", () => {
     controller = new UsersController(prisma as never);
   });
 
-  it("list and create with default password", async () => {
+  it("list and create requires password (no default)", async () => {
     expect(await controller.list()).toEqual([]);
-    await controller.create({ name: "Ed", email: "ed@example.com" });
+    await controller.create({
+      name: "Ed",
+      email: "ed@example.com",
+      password: "SecurePass12!",
+    });
     expect(prisma.user.create).toHaveBeenCalledWith(
       expect.objectContaining({
         data: expect.objectContaining({
@@ -47,8 +54,12 @@ describe("UsersController", () => {
     );
   });
 
-  it("update with optional password rotation", async () => {
-    prisma.user.findUniqueOrThrow.mockResolvedValue({ id: "1", role: UserRole.EDITOR });
+  it("update with optional password rotation revokes sessions", async () => {
+    prisma.user.findUniqueOrThrow.mockResolvedValue({
+      id: "1",
+      role: UserRole.EDITOR,
+      email: "ed@example.com",
+    });
     prisma.account.findFirst.mockResolvedValue({ id: "acc1" });
     await controller.update(
       "1",
@@ -64,9 +75,16 @@ describe("UsersController", () => {
       where: { id: "acc1" },
       data: { password: "hashed" },
     });
+    expect(prisma.session.deleteMany).toHaveBeenCalledWith({ where: { userId: "1" } });
 
     prisma.account.findFirst.mockResolvedValue(null);
-    await controller.update("1", { name: "Ed", email: "ed@example.com" }, { id: "me" } as never);
+    prisma.session.deleteMany.mockClear();
+    await controller.update(
+      "1",
+      { name: "Ed", email: "ed@example.com" },
+      { id: "me" } as never,
+    );
+    expect(prisma.session.deleteMany).not.toHaveBeenCalled();
   });
 
   it("remove blocks self-delete with 403", async () => {
@@ -89,7 +107,11 @@ describe("UsersController", () => {
   });
 
   it("update blocks demoting self", async () => {
-    prisma.user.findUniqueOrThrow.mockResolvedValue({ id: "me", role: UserRole.ADMIN });
+    prisma.user.findUniqueOrThrow.mockResolvedValue({
+      id: "me",
+      role: UserRole.ADMIN,
+      email: "me@example.com",
+    });
     await expect(
       controller.update(
         "me",
@@ -100,7 +122,11 @@ describe("UsersController", () => {
   });
 
   it("update blocks demoting last admin", async () => {
-    prisma.user.findUniqueOrThrow.mockResolvedValue({ id: "other", role: UserRole.ADMIN });
+    prisma.user.findUniqueOrThrow.mockResolvedValue({
+      id: "other",
+      role: UserRole.ADMIN,
+      email: "o@example.com",
+    });
     prisma.user.count.mockResolvedValue(1);
     await expect(
       controller.update(

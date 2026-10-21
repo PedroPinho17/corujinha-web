@@ -102,7 +102,8 @@ describe("ContactService", () => {
 
   it("list/update/export/erase with requireActive", async () => {
     prisma.contactMessage.findMany.mockResolvedValue([]);
-    expect(await service.list()).toEqual([]);
+    prisma.contactMessage.count.mockResolvedValue(0);
+    expect(await service.list()).toEqual({ items: [], total: 0, page: 1, pageSize: 50 });
 
     prisma.contactMessage.findUnique.mockResolvedValue(null);
     await expect(service.update("x", { read: true })).rejects.toBeInstanceOf(NotFoundException);

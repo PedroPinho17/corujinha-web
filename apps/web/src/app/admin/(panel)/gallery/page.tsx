@@ -30,8 +30,12 @@ const THEME_ALBUMS = [
   { value: "homepage", label: "Geral" },
 ];
 
+const PAGE_SIZE = 50;
+
 export default function AdminGalleryPage() {
   const [rows, setRows] = useState<Item[]>([]);
+  const [total, setTotal] = useState(0);
+  const [page, setPage] = useState(1);
   const [centers, setCenters] = useState<Center[]>([]);
   const [imageKey, setImageKey] = useState("");
   const [alt, setAlt] = useState("");
@@ -40,6 +44,8 @@ export default function AdminGalleryPage() {
   const [error, setError] = useState("");
   const [toast, setToast] = useState("");
   const [pendingDelete, setPendingDelete] = useState<string | null>(null);
+
+  const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
 
   const albumOptions = useMemo(() => {
     const fromCenters = centers.map((c) => ({
@@ -50,14 +56,18 @@ export default function AdminGalleryPage() {
     return [...fromCenters, ...THEME_ALBUMS.map((a) => ({ ...a, centerId: null as string | null }))];
   }, [centers]);
 
-  async function load() {
+  async function load(nextPage = page) {
     setError("");
     try {
       const [gallery, ctrs] = await Promise.all([
-        adminFetch<Item[]>("/api/admin/gallery"),
+        adminFetch<{ items: Item[]; total: number; page: number }>(
+          `/api/admin/gallery?page=${nextPage}&pageSize=${PAGE_SIZE}`,
+        ),
         adminFetch<Center[]>("/api/admin/centers"),
       ]);
-      setRows(gallery);
+      setRows(Array.isArray(gallery.items) ? gallery.items : []);
+      setTotal(gallery.total ?? 0);
+      setPage(gallery.page ?? nextPage);
       setCenters(ctrs);
     } catch (e) {
       setError(e instanceof Error ? e.message : "Erro ao carregar");
@@ -65,7 +75,7 @@ export default function AdminGalleryPage() {
   }
 
   useEffect(() => {
-    load().catch(() => undefined);
+    load(1).catch(() => undefined);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -97,7 +107,7 @@ export default function AdminGalleryPage() {
       setAlbum("homepage");
       setFormKey((k) => k + 1);
       setToast("Imagem adicionada");
-      await load();
+      await load(1);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Erro ao adicionar");
     }
@@ -110,7 +120,7 @@ export default function AdminGalleryPage() {
     try {
       await adminFetch(`/api/admin/gallery/${id}`, { method: "DELETE" });
       setToast("Imagem apagada");
-      await load();
+      await load(page);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Erro ao apagar");
     }
@@ -213,53 +223,84 @@ export default function AdminGalleryPage() {
       <div className="overflow-hidden rounded-2xl bg-white shadow-[0_20px_27px_rgba(0,0,0,0.05)]">
         <div className="border-b border-slate-100 px-5 py-4">
           <h2 className="text-base font-bold text-slate-800">Galeria</h2>
-          <p className="text-xs text-slate-600">{rows.length} imagem(ns)</p>
+          <p className="text-xs text-slate-600">
+            {total} imagem(ns) · página {page}/{totalPages}
+          </p>
         </div>
 
         {rows.length === 0 ? (
           <p className="px-5 py-10 text-center text-sm text-slate-500">Nenhuma imagem na galeria.</p>
         ) : (
-          <ul className="grid gap-4 p-5 sm:grid-cols-2 lg:grid-cols-3">
-            {rows.map((r) => {
-              const src = mediaUrl(r.imageKey);
-              const label = albumLabel(r);
-              return (
-                <li
-                  key={r.id}
-                  className="overflow-hidden rounded-xl border border-slate-100 bg-slate-50/50"
-                >
-                  <div className="aspect-[4/3] bg-slate-100">
-                    {src ? (
-                      // eslint-disable-next-line @next/next/no-img-element
-                      <img
-                        src={src}
-                        alt={r.alt || r.imageKey}
-                        className="h-full w-full object-cover"
-                        loading="lazy"
-                      />
-                    ) : (
-                      <div className="flex h-full items-center justify-center text-xs text-slate-400">
-                        Sem imagem
-                      </div>
-                    )}
-                  </div>
-                  <div className="flex items-start justify-between gap-2 p-3">
-                    <div className="min-w-0">
-                      <p className="truncate text-sm font-semibold text-slate-800">
-                        {r.alt || "Sem descrição"}
-                      </p>
-                      {label && (
-                        <p className="mt-0.5 text-[11px] font-medium text-pink-600">{label}</p>
+          <>
+            <ul className="grid gap-4 p-5 sm:grid-cols-2 lg:grid-cols-3">
+              {rows.map((r) => {
+                const src = mediaUrl(r.imageKey);
+                const label = albumLabel(r);
+                return (
+                  <li
+                    key={r.id}
+                    className="overflow-hidden rounded-xl border border-slate-100 bg-slate-50/50"
+                  >
+                    <div className="aspect-[4/3] bg-slate-100">
+                      {src ? (
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img
+                          src={src}
+                          alt={r.alt || r.imageKey}
+                          className="h-full w-full object-cover"
+                          loading="lazy"
+                        />
+                      ) : (
+                        <div className="flex h-full items-center justify-center text-xs text-slate-400">
+                          Sem imagem
+                        </div>
                       )}
                     </div>
-                    <Button size="sm" variant="outline" onClick={() => setPendingDelete(r.id)}>
-                      Apagar
-                    </Button>
-                  </div>
-                </li>
-              );
-            })}
-          </ul>
+                    <div className="flex items-start justify-between gap-2 p-3">
+                      <div className="min-w-0">
+                        <p className="truncate text-sm font-semibold text-slate-800">
+                          {r.alt || "Sem descrição"}
+                        </p>
+                        {label && (
+                          <p className="mt-0.5 text-[11px] font-medium text-pink-600">{label}</p>
+                        )}
+                      </div>
+                      <Button size="sm" variant="outline" onClick={() => setPendingDelete(r.id)}>
+                        Apagar
+                      </Button>
+                    </div>
+                  </li>
+                );
+              })}
+            </ul>
+            {totalPages > 1 && (
+              <div className="flex items-center justify-between gap-3 border-t border-slate-100 px-5 py-3">
+                <p className="text-xs text-slate-500">
+                  Página {page} de {totalPages}
+                </p>
+                <div className="flex gap-2">
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="outline"
+                    disabled={page <= 1}
+                    onClick={() => load(page - 1)}
+                  >
+                    Anterior
+                  </Button>
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="outline"
+                    disabled={page >= totalPages}
+                    onClick={() => load(page + 1)}
+                  >
+                    Seguinte
+                  </Button>
+                </div>
+              </div>
+            )}
+          </>
         )}
       </div>
     </div>

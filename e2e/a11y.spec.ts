@@ -2,6 +2,8 @@ import { expect, test } from "@playwright/test";
 import AxeBuilder from "@axe-core/playwright";
 
 const base = process.env.E2E_BASE_URL ?? "http://localhost:3000";
+const adminEmail = process.env.E2E_ADMIN_EMAIL ?? process.env.ADMIN_EMAIL ?? "";
+const adminPassword = process.env.E2E_ADMIN_PASSWORD ?? process.env.ADMIN_PASSWORD ?? "";
 
 /** Relative luminance (sRGB) for WCAG contrast. */
 function luminance(r: number, g: number, b: number): number {
@@ -55,12 +57,43 @@ test.describe("Accessibility (axe)", () => {
     await expectNoSeriousViolations(page, "/about");
   });
 
+  test("galeria has no serious/critical violations", async ({ page }) => {
+    await expectNoSeriousViolations(page, "/galeria");
+  });
+
+  test("equipa has no serious/critical violations", async ({ page }) => {
+    await expectNoSeriousViolations(page, "/equipa");
+  });
+
+  test("noticias has no serious/critical violations", async ({ page }) => {
+    await expectNoSeriousViolations(page, "/noticias");
+  });
+
   test("privacidade has no serious/critical violations", async ({ page }) => {
     await expectNoSeriousViolations(page, "/privacidade");
   });
 
   test("admin login has no serious/critical violations", async ({ page }) => {
     await expectNoSeriousViolations(page, "/admin/login");
+  });
+
+  test("admin panel after login has no serious/critical violations", async ({ page }) => {
+    test.skip(!adminEmail || !adminPassword, "Set E2E_ADMIN_EMAIL and E2E_ADMIN_PASSWORD (or ADMIN_*)");
+
+    await page.goto(`${base}/admin/login`, { waitUntil: "domcontentloaded" });
+    await page.locator("#email").fill(adminEmail);
+    await page.locator("#password").fill(adminPassword);
+    await page.locator('button[type="submit"]').click();
+    await page.waitForURL(/\/admin(\/|$)/, { timeout: 30_000 });
+
+    // Seed forces mustChangePassword — axe that screen; otherwise the dashboard.
+    const path = new URL(page.url()).pathname;
+    if (path.includes("change-password")) {
+      await expectNoSeriousViolations(page, "/admin/change-password");
+      return;
+    }
+
+    await expectNoSeriousViolations(page, "/admin");
   });
 
   test("home CTAs meet WCAG AA contrast (computed styles)", async ({ page }) => {

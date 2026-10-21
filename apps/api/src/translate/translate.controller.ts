@@ -1,19 +1,29 @@
 import { Body, Controller, Post, UseGuards } from "@nestjs/common";
-import { IsArray, IsOptional, IsString, ArrayMinSize } from "class-validator";
+import {
+  ArrayMaxSize,
+  ArrayMinSize,
+  IsArray,
+  IsOptional,
+  IsString,
+  MaxLength,
+} from "class-validator";
 import { AdminGuard } from "../auth/auth.guard";
 import { TranslateService } from "./translate.service";
 
 class TranslateDto {
   @IsString()
+  @MaxLength(5000)
   text!: string;
 
   @IsArray()
   @ArrayMinSize(1)
+  @ArrayMaxSize(10)
   @IsString({ each: true })
   targets!: string[];
 
   @IsOptional()
   @IsString()
+  @MaxLength(10)
   source_code?: string;
 }
 

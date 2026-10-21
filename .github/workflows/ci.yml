@@ -5,6 +5,9 @@ on:
     branches: [main, master]
   pull_request:
 
+permissions:
+  contents: read
+
 env:
   NODE_VERSION: "22"
 
@@ -12,7 +15,7 @@ jobs:
   audit:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
       - name: Dependency vuln scan (Trivy HIGH/CRITICAL)
         uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25
         with:
@@ -77,9 +80,9 @@ jobs:
       NEXT_PUBLIC_S3_BUCKET: corujinha-media
       NODE_ENV: test
     steps:
-      - uses: actions/checkout@v4
-      - uses: pnpm/action-setup@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+      - uses: pnpm/action-setup@f40ffcd9367d9f12939873eb1018b921a783ffaa # v4
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
         with:
           node-version: ${{ env.NODE_VERSION }}
           cache: pnpm
@@ -111,7 +114,7 @@ jobs:
   docker:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
       - name: Build API image
         run: |
           set -euo pipefail
@@ -141,9 +144,9 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
-      - uses: actions/checkout@v4
-      - uses: pnpm/action-setup@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+      - uses: pnpm/action-setup@f40ffcd9367d9f12939873eb1018b921a783ffaa # v4
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
         with:
           node-version: ${{ env.NODE_VERSION }}
           cache: pnpm
@@ -339,10 +342,14 @@ jobs:
           cat /tmp/cj-signin2.json || true
           test "$code" = "200"
 
+          # Minimal 1x1 PNG — size must be signed into the presign URL.
+          printf '\x89PNG\r\n\x1a\n\x00\x00\x00\rIHDR\x00\x00\x00\x01\x00\x00\x00\x01\x08\x02\x00\x00\x00\x90wS\xde\x00\x00\x00\x0cIDATx\x9cc\xf8\x0f\x00\x00\x01\x01\x00\x05\x18\xd8N\x00\x00\x00\x00IEND\xaeB`\x82' > /tmp/cj-smoke.png
+          SMOKE_SIZE=$(wc -c < /tmp/cj-smoke.png | tr -d ' ')
+
           code=$(curl -sS -c "$COOKIE_JAR" -b "$COOKIE_JAR" -o /tmp/cj-presign.json -w '%{http_code}' \
             -X POST http://127.0.0.1:3001/api/admin/media/presign \
             -H 'content-type: application/json' \
-            -d '{"contentType":"image/png","folder":"gallery"}')
+            -d "{\"contentType\":\"image/png\",\"folder\":\"gallery\",\"size\":${SMOKE_SIZE}}")
           echo "presign HTTP=$code"
           cat /tmp/cj-presign.json
           test "$code" = "201" -o "$code" = "200"
@@ -353,7 +360,6 @@ jobs:
 
           NETWORK=$(docker inspect -f '{{range $k, $_ := .NetworkSettings.Networks}}{{$k}}{{end}}' corujinha-api | head -n1)
           test -n "$NETWORK"
-          printf '\x89PNG\r\n\x1a\n\x00\x00\x00\rIHDR\x00\x00\x00\x01\x00\x00\x00\x01\x08\x02\x00\x00\x00\x90wS\xde\x00\x00\x00\x0cIDATx\x9cc\xf8\x0f\x00\x00\x01\x01\x00\x05\x18\xd8N\x00\x00\x00\x00IEND\xaeB`\x82' > /tmp/cj-smoke.png
 
           put_code=$(docker run --rm --network "$NETWORK" -v /tmp/cj-smoke.png:/smoke.png:ro curlimages/curl:8.12.1 \
             -sS -o /dev/null -w '%{http_code}' \
@@ -385,6 +391,9 @@ jobs:
       - name: Playwright e2e smoke
         env:
           E2E_BASE_URL: http://127.0.0.1:3000
+          # Password after "Media upload smoke" change-password step
+          E2E_ADMIN_EMAIL: admin@corujinha.local
+          E2E_ADMIN_PASSWORD: CiComposeAdmin99!
         run: |
           set -euo pipefail
           pnpm exec playwright install --with-deps chromium

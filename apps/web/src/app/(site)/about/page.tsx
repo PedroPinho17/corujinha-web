@@ -1,5 +1,6 @@
 import Image from "next/image";
 import type { Metadata } from "next";
+import { fetchPublicJson } from "@/lib/public-api";
 import { DEFAULT_SITE_CONTENT, type SiteContent } from "@/lib/site-content";
 import { mediaUrl } from "@/lib/utils";
 
@@ -9,16 +10,8 @@ export const metadata: Metadata = {
     "Conheça a história, a fundadora e a missão do Centro de Apoio Escolar Corujinha.",
 };
 
-const api = process.env.INTERNAL_API_URL ?? "http://localhost:3001";
-
 async function getSettings() {
-  try {
-    const res = await fetch(`${api}/api/public/settings`, { next: { revalidate: 30 } });
-    if (!res.ok) return null;
-    return res.json();
-  } catch {
-    return null;
-  }
+  return fetchPublicJson<{ content?: unknown }>("/api/public/settings", ["settings"]);
 }
 
 const toneCard = {

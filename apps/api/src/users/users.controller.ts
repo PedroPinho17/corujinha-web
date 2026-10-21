@@ -10,22 +10,52 @@ import {
   Put,
   UseGuards,
 } from "@nestjs/common";
-import { IsBoolean, IsEmail, IsEnum, IsOptional, IsString, MinLength } from "class-validator";
+import {
+  IsBoolean,
+  IsEmail,
+  IsEnum,
+  IsOptional,
+  IsString,
+  MaxLength,
+  MinLength,
+} from "class-validator";
 import { UserRole } from "@corujinha/database";
 import { hashPassword } from "better-auth/crypto";
 import { SuperAdminGuard, CurrentUser, SessionUser } from "../auth/auth.guard";
 import { PrismaService } from "../prisma/prisma.service";
 
-class UserDto {
+class CreateUserDto {
   @IsString()
+  @MaxLength(120)
   name!: string;
 
   @IsEmail()
+  @MaxLength(254)
+  email!: string;
+
+  @IsString()
+  @MinLength(12)
+  @MaxLength(128)
+  password!: string;
+
+  @IsOptional()
+  @IsEnum(UserRole)
+  role?: UserRole;
+}
+
+class UpdateUserDto {
+  @IsString()
+  @MaxLength(120)
+  name!: string;
+
+  @IsEmail()
+  @MaxLength(254)
   email!: string;
 
   @IsOptional()
   @IsString()
   @MinLength(12)
+  @MaxLength(128)
   password?: string;
 
   @IsOptional()
@@ -63,15 +93,15 @@ export class UsersController {
   }
 
   @Post()
-  async create(@Body() dto: UserDto) {
-    const password = dto.password ?? "ChangeMe123!";
-    const passwordHash = await hashPassword(password);
+  async create(@Body() dto: CreateUserDto) {
+    const passwordHash = await hashPassword(dto.password);
     return this.prisma.user.create({
       data: {
         name: dto.name,
         email: dto.email,
         role: dto.role ?? UserRole.EDITOR,
-        mustChangePassword: dto.mustChangePassword ?? true,
+        // Always force change on first login — never ship a known default password.
+        mustChangePassword: true,
         emailVerified: true,
         accounts: {
           create: {
@@ -94,7 +124,7 @@ export class UsersController {
   @Put(":id")
   async update(
     @Param("id") id: string,
-    @Body() dto: UserDto,
+    @Body() dto: UpdateUserDto,
     @CurrentUser() me: SessionUser,
   ) {
     const existing = await this.prisma.user.findUniqueOrThrow({ where: { id } });
@@ -112,17 +142,26 @@ export class UsersController {
       throw new BadRequestException("Tem de existir pelo menos um administrador.");
     }
 
+    const roleChanging = dto.role !== undefined && dto.role !== existing.role;
+    const emailChanging =
+      dto.email.trim().toLowerCase() !== existing.email.trim().toLowerCase();
+
     const data: {
       name: string;
       email: string;
       role?: UserRole;
       mustChangePassword?: boolean;
+      emailVerified?: boolean;
     } = {
       name: dto.name,
       email: dto.email,
       role: dto.role,
       mustChangePassword: dto.mustChangePassword,
     };
+    if (emailChanging) {
+      // Require re-verification after admin changes email.
+      data.emailVerified = false;
+    }
     const user = await this.prisma.user.update({
       where: { id },
       data,
@@ -145,6 +184,9 @@ export class UsersController {
           data: { password: passwordHash },
         });
       }
+    }
+    if (dto.password || roleChanging || emailChanging) {
+      await this.prisma.session.deleteMany({ where: { userId: id } });
     }
     return user;
   }

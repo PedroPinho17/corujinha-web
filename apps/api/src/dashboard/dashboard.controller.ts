@@ -19,32 +19,72 @@ export class DashboardController {
       this.prisma.formation.findMany({
         where: { active: true },
         orderBy: { sortOrder: "asc" },
-        include: { entity: true },
         take: 12,
+        select: {
+          id: true,
+          name: true,
+          description: true,
+          duration: true,
+          entity: { select: { name: true } },
+        },
       }),
       this.prisma.teamMember.findMany({
         where: { published: true },
         orderBy: { sortOrder: "asc" },
         take: 8,
+        select: { id: true, name: true, imageKey: true },
       }),
       this.prisma.post.findMany({
         where: { published: true, featured: true },
         orderBy: { sortOrder: "asc" },
         take: 6,
+        select: {
+          id: true,
+          title: true,
+          content: true,
+          imageKey: true,
+          publishedAt: true,
+          createdAt: true,
+        },
       }),
       this.prisma.schoolProtocol.findMany({
         where: { active: true },
         orderBy: { sortOrder: "asc" },
+        select: {
+          id: true,
+          schoolName: true,
+          link: true,
+          description: true,
+          documentKey: true,
+        },
       }),
       this.prisma.galleryImage.findMany({
         where: { published: true },
         orderBy: { sortOrder: "asc" },
         take: 8,
-        include: { center: true },
+        select: {
+          id: true,
+          imageKey: true,
+          alt: true,
+          album: true,
+          center: { select: { slug: true, name: true, shortName: true } },
+        },
       }),
       this.prisma.center.findMany({
         where: { published: true },
         orderBy: [{ isPrimary: "desc" }, { sortOrder: "asc" }],
+        select: {
+          id: true,
+          slug: true,
+          name: true,
+          shortName: true,
+          address: true,
+          city: true,
+          postalCode: true,
+          phone: true,
+          email: true,
+          isPrimary: true,
+        },
       }),
       this.prisma.siteSettings.findFirst({ orderBy: { createdAt: "asc" } }),
     ]);
@@ -57,6 +97,7 @@ export class DashboardController {
   @Get("api/admin/dashboard")
   @UseGuards(AdminGuard)
   async dashboard() {
+    const active = { erasedAt: null as Date | null };
     const [users, teams, posts, formations, protocols, contacts, unreadContacts, recentContacts] =
       await Promise.all([
         this.prisma.user.count(),
@@ -64,9 +105,10 @@ export class DashboardController {
         this.prisma.post.count(),
         this.prisma.formation.count(),
         this.prisma.schoolProtocol.count({ where: { active: true } }),
-        this.prisma.contactMessage.count({ where: { status: "NEW" } }),
-        this.prisma.contactMessage.count({ where: { readAt: null } }),
+        this.prisma.contactMessage.count({ where: { ...active, status: "NEW" } }),
+        this.prisma.contactMessage.count({ where: { ...active, readAt: null } }),
         this.prisma.contactMessage.findMany({
+          where: active,
           orderBy: { createdAt: "desc" },
           take: 5,
           select: {

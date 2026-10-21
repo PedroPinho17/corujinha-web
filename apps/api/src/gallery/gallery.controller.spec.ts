@@ -23,7 +23,12 @@ describe("GalleryController", () => {
   });
 
   it("admin CRUD", async () => {
-    expect(await controller.adminList()).toEqual([]);
+    expect(await controller.adminList()).toEqual({
+      items: [],
+      total: 0,
+      page: 1,
+      pageSize: 50,
+    });
     await controller.create({ imageKey: "k" });
     await controller.update("1", { imageKey: "k2", alt: "a" });
     expect(await controller.reorder({ ids: ["1"] })).toEqual({ success: true });

@@ -9,7 +9,7 @@ import {
   Put,
   UseGuards,
 } from "@nestjs/common";
-import { IsArray, IsBoolean, IsInt, IsOptional, IsString, MaxLength } from "class-validator";
+import { ArrayMaxSize, IsArray, IsBoolean, IsInt, IsOptional, IsString, MaxLength } from "class-validator";
 import { AdminGuard } from "../auth/auth.guard";
 import { PrismaService } from "../prisma/prisma.service";
 import { RedisService } from "../redis/redis.service";
@@ -45,6 +45,8 @@ class EntityDto {
 
 class ReorderDto {
   @IsArray()
+  @ArrayMaxSize(500)
+  @IsString({ each: true })
   ids!: string[];
 }
 
@@ -66,7 +68,24 @@ export class EntitiesController {
     const data = await this.prisma.entity.findMany({
       where: { published: true },
       orderBy: { sortOrder: "asc" },
-      include: { formations: { where: { active: true }, orderBy: { sortOrder: "asc" } } },
+      select: {
+        id: true,
+        name: true,
+        description: true,
+        location: true,
+        website: true,
+        formations: {
+          where: { active: true },
+          orderBy: { sortOrder: "asc" },
+          select: {
+            id: true,
+            name: true,
+            description: true,
+            duration: true,
+            location: true,
+          },
+        },
+      },
     });
     await this.redis.setJson("public:entities", data);
     return data;

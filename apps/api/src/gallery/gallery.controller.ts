@@ -6,12 +6,20 @@ import {
   Param,
   Post,
   Put,
+  Query,
   UseGuards,
 } from "@nestjs/common";
-import { IsArray, IsBoolean, IsInt, IsOptional, IsString } from "class-validator";
+import { ArrayMaxSize, IsArray, IsBoolean, IsInt, IsOptional, IsString } from "class-validator";
 import { AdminGuard } from "../auth/auth.guard";
 import { PrismaService } from "../prisma/prisma.service";
 import { RedisService } from "../redis/redis.service";
+
+const CENTER_PUBLIC_SELECT = {
+  id: true,
+  slug: true,
+  name: true,
+  shortName: true,
+} as const;
 
 class GalleryDto {
   @IsString()
@@ -40,6 +48,8 @@ class GalleryDto {
 
 class ReorderDto {
   @IsArray()
+  @ArrayMaxSize(500)
+  @IsString({ each: true })
   ids!: string[];
 }
 
@@ -54,7 +64,7 @@ export class GalleryController {
     await this.redis.del("public:gallery", "public:home");
   }
 
-  private galleryInclude = { center: true } as const;
+  private galleryInclude = { center: { select: CENTER_PUBLIC_SELECT } } as const;
 
   private async resolveCenterId(album?: string, centerId?: string | null) {
     if (centerId) return centerId;
@@ -76,7 +86,13 @@ export class GalleryController {
     const data = await this.prisma.galleryImage.findMany({
       where: { published: true },
       orderBy: { sortOrder: "asc" },
-      include: this.galleryInclude,
+      select: {
+        id: true,
+        imageKey: true,
+        alt: true,
+        album: true,
+        center: { select: CENTER_PUBLIC_SELECT },
+      },
     });
     await this.redis.setJson("public:gallery", data);
     return data;
@@ -84,11 +100,23 @@ export class GalleryController {
 
   @Get("api/admin/gallery")
   @UseGuards(AdminGuard)
-  adminList() {
-    return this.prisma.galleryImage.findMany({
-      orderBy: { sortOrder: "asc" },
-      include: this.galleryInclude,
-    });
+  async adminList(
+    @Query("page") pageRaw?: string,
+    @Query("pageSize") pageSizeRaw?: string,
+  ) {
+    const pageSize = Math.min(Math.max(Number(pageSizeRaw) || 50, 1), 100);
+    const page = Math.max(Number(pageRaw) || 1, 1);
+    const skip = (page - 1) * pageSize;
+    const [items, total] = await Promise.all([
+      this.prisma.galleryImage.findMany({
+        orderBy: [{ sortOrder: "asc" }, { id: "asc" }],
+        skip,
+        take: pageSize,
+        include: this.galleryInclude,
+      }),
+      this.prisma.galleryImage.count(),
+    ]);
+    return { items, total, page, pageSize };
   }
 
   @Post("api/admin/gallery")
