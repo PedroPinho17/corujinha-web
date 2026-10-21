@@ -136,7 +136,7 @@ export default function AdminDashboardPage() {
             <h2 className="text-base font-bold text-slate-800">Contactos recentes</h2>
             <p className="text-xs text-slate-600">{stats?.unreadContacts ?? 0} por ler</p>
           </div>
-          <Link href="/admin/contacts" className="text-xs font-bold text-pink hover:underline">
+          <Link href="/admin/contacts" className="text-xs font-bold text-[#be185d] hover:underline">
             Ver todos
           </Link>
         </div>
@@ -157,7 +157,7 @@ export default function AdminDashboardPage() {
                       </span>
                     )}
                     {c.kind === "ENROLLMENT" && (
-                      <span className="ml-2 rounded-full bg-pink-50 px-2 py-0.5 text-[10px] font-bold text-pink">
+                      <span className="ml-2 rounded-full bg-pink-50 px-2 py-0.5 text-[10px] font-bold text-[#be185d]">
                         Inscrição
                       </span>
                     )}
@@ -169,12 +169,12 @@ export default function AdminDashboardPage() {
                   </p>
                 </div>
                 <div className="flex items-center gap-3">
-                  <time className="text-[11px] text-slate-400">
+                  <time className="text-[11px] text-slate-600">
                     {new Date(c.createdAt).toLocaleString("pt-PT")}
                   </time>
                   <a
                     href={`mailto:${c.email}?subject=Re: Corujinha`}
-                    className="text-xs font-bold text-indigo-500 hover:underline"
+                    className="text-xs font-bold text-[#be185d] hover:underline"
                   >
                     Responder
                   </a>
