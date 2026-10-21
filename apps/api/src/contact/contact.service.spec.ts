@@ -73,6 +73,17 @@ describe("ContactService", () => {
     ).rejects.toBeInstanceOf(BadRequestException);
   });
 
+  it("rejects missing privacyConsent before spending rate-limit quota", async () => {
+    await expect(
+      service.submit(
+        { name: "A", email: "a@b.com", message: "hello!", privacyConsent: false } as never,
+        "ip",
+      ),
+    ).rejects.toBeInstanceOf(BadRequestException);
+    expect(redis.client.get).not.toHaveBeenCalled();
+    expect(redis.client.incr).not.toHaveBeenCalled();
+  });
+
   it("creates GENERAL and ENROLLMENT messages", async () => {
     prisma.contactMessage.create.mockResolvedValue({ id: "c1" });
     const general = await service.submit(
