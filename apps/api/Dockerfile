@@ -18,7 +18,6 @@ COPY packages/database ./packages/database
 COPY packages/shared ./packages/shared
 COPY docker/api-entrypoint.sh ./docker/api-entrypoint.sh
 RUN pnpm --filter @corujinha/shared build
-RUN pnpm --filter @corujinha/database generate
 RUN pnpm --filter @corujinha/database build
 RUN pnpm --filter @corujinha/api build
 

@@ -70,7 +70,8 @@ async function main() {
     await accounts.save(
       accounts.create({
         userId: admin.id,
-        accountId: email,
+        // better-auth 1.7+ credential lookup: accountId must equal user.id
+        accountId: admin.id,
         providerId: "credential",
         password: passwordHash,
       }),
@@ -85,12 +86,13 @@ async function main() {
     });
     if (existingAccount) {
       existingAccount.password = passwordHash;
+      existingAccount.accountId = admin.id;
       await accounts.save(existingAccount);
     } else {
       await accounts.save(
         accounts.create({
           userId: admin.id,
-          accountId: email,
+          accountId: admin.id,
           providerId: "credential",
           password: passwordHash,
         }),

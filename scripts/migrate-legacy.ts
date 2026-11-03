@@ -314,7 +314,7 @@ async function main() {
     await accounts.save(
       accounts.create({
         userId: user.id,
-        accountId: email,
+        accountId: user.id,
         providerId: "credential",
         password: passwordHash,
       }),
