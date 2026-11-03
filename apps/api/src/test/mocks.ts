@@ -9,33 +9,52 @@ export function mockRedis() {
   };
 }
 
-export function mockPrisma(modelExtras: Record<string, unknown> = {}) {
-  const model = () => ({
-    findMany: vi.fn().mockResolvedValue([]),
-    findUnique: vi.fn().mockResolvedValue(null),
-    findUniqueOrThrow: vi.fn().mockResolvedValue({ id: "1", published: true }),
-    findFirst: vi.fn().mockResolvedValue(null),
-    create: vi.fn().mockResolvedValue({ id: "1" }),
-    createMany: vi.fn().mockResolvedValue({ count: 0 }),
-    update: vi.fn().mockResolvedValue({ id: "1" }),
-    updateMany: vi.fn().mockResolvedValue({ count: 0 }),
-    delete: vi.fn().mockResolvedValue({ id: "1" }),
-    count: vi.fn().mockResolvedValue(0),
-    aggregate: vi.fn().mockResolvedValue({ _max: { sortOrder: 0 } }),
-    ...modelExtras,
-  });
-  return {
-    teamMember: model(),
-    galleryImage: model(),
-    center: model(),
-    post: model(),
-    entity: model(),
-    formation: model(),
-    schoolProtocol: model(),
-    contactMessage: model(),
-    siteSettings: model(),
-    user: model(),
-    account: model(),
-    $transaction: vi.fn(async (ops: unknown) => ops),
+function chainableQueryBuilder() {
+  const qb: Record<string, ReturnType<typeof vi.fn>> = {
+    select: vi.fn(),
+    getRawOne: vi.fn().mockResolvedValue({ max: null }),
+    leftJoinAndSelect: vi.fn(),
+    where: vi.fn(),
+    orderBy: vi.fn(),
+    addOrderBy: vi.fn(),
+    getMany: vi.fn().mockResolvedValue([]),
   };
+  qb.select.mockReturnValue(qb);
+  qb.leftJoinAndSelect.mockReturnValue(qb);
+  qb.where.mockReturnValue(qb);
+  qb.orderBy.mockReturnValue(qb);
+  qb.addOrderBy.mockReturnValue(qb);
+  return qb;
 }
+
+/** TypeORM Repository mock — intentionally loose for unit tests. */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export function mockRepo(extras: Record<string, unknown> = {}): any {
+  const qb = chainableQueryBuilder();
+  const repo: Record<string, unknown> = {
+    find: vi.fn().mockResolvedValue([]),
+    findOne: vi.fn().mockResolvedValue(null),
+    findOneBy: vi.fn().mockResolvedValue(null),
+    findOneByOrFail: vi.fn().mockResolvedValue({ id: "1", published: true }),
+    findOneOrFail: vi.fn().mockResolvedValue({ id: "1", center: null }),
+    findAndCount: vi.fn().mockResolvedValue([[], 0]),
+    create: vi.fn((entity?: object) => ({ ...(entity ?? {}) })),
+    save: vi.fn(async (entity: object) => ({ id: "1", ...(entity as object) })),
+    update: vi.fn().mockResolvedValue({ affected: 1 }),
+    delete: vi.fn().mockResolvedValue({ affected: 1 }),
+    count: vi.fn().mockResolvedValue(0),
+    createQueryBuilder: vi.fn(() => qb),
+    ...extras,
+  };
+
+  repo.manager = {
+    transaction: vi.fn(async (cb: (em: { getRepository: () => unknown }) => unknown) => {
+      const txRepo = mockRepo();
+      return cb({ getRepository: () => txRepo });
+    }),
+  };
+
+  return repo;
+}
+
+export type MockRepo = ReturnType<typeof mockRepo>;

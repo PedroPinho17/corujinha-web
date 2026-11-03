@@ -1,8 +1,10 @@
 import { Controller, Get, Put, Body, UseGuards } from "@nestjs/common";
-import { AuthGuard, CurrentUser, SessionUser } from "./auth.guard";
-import { PrismaService } from "../prisma/prisma.service";
+import { InjectRepository } from "@nestjs/typeorm";
+import { User } from "@corujinha/database";
 import { IsOptional, IsString, IsUrl, MaxLength, MinLength } from "class-validator";
 import { Transform } from "class-transformer";
+import { Repository } from "typeorm";
+import { AuthGuard, CurrentUser, SessionUser } from "./auth.guard";
 
 class UpdateProfileDto {
   @IsString()
@@ -19,12 +21,12 @@ class UpdateProfileDto {
 
 @Controller("api")
 export class AuthController {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(@InjectRepository(User) private readonly users: Repository<User>) {}
 
   @Get("me")
   @UseGuards(AuthGuard)
   async me(@CurrentUser() user: SessionUser) {
-    const full = await this.prisma.user.findUnique({
+    const full = await this.users.findOne({
       where: { id: user.id },
       select: {
         id: true,
@@ -44,21 +46,19 @@ export class AuthController {
     @CurrentUser() user: SessionUser,
     @Body() dto: UpdateProfileDto,
   ) {
-    const full = await this.prisma.user.update({
-      where: { id: user.id },
-      data: {
-        name: dto.name,
-        image: dto.image,
+    const full = await this.users.findOneByOrFail({ id: user.id });
+    full.name = dto.name;
+    if (dto.image !== undefined) full.image = dto.image;
+    await this.users.save(full);
+    return {
+      user: {
+        id: full.id,
+        email: full.email,
+        name: full.name,
+        role: full.role,
+        mustChangePassword: full.mustChangePassword,
+        image: full.image,
       },
-      select: {
-        id: true,
-        email: true,
-        name: true,
-        role: true,
-        mustChangePassword: true,
-        image: true,
-      },
-    });
-    return { user: full };
+    };
   }
 }

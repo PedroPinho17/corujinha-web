@@ -1,4 +1,4 @@
-/** Config estático do Better Auth — testável sem Prisma. */
+/** Config estático do Better Auth — testável sem DataSource. */
 export const authEmailPassword = {
   enabled: true,
   disableSignUp: true,

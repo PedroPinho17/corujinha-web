@@ -11,7 +11,7 @@ import { AppModule } from "./app.module";
 import { auth } from "./auth/auth";
 import { assertProductionEnv } from "./env";
 import { RedisRateLimiter, clientIp } from "./common/rate-limit";
-import { PrismaExceptionFilter } from "./common/prisma-exception.filter";
+import { TypeOrmExceptionFilter } from "./common/typeorm-exception.filter";
 import { RedisService } from "./redis/redis.service";
 
 function isLoginRateLimitedPath(method: string, path: string): boolean {
@@ -113,7 +113,7 @@ async function bootstrap() {
       forbidNonWhitelisted: true,
     }),
   );
-  app.useGlobalFilters(new PrismaExceptionFilter());
+  app.useGlobalFilters(new TypeOrmExceptionFilter());
 
   const port = Number(process.env.PORT ?? 3001);
   await app.listen(port);

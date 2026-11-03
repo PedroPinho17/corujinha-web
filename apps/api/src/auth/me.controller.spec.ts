@@ -14,16 +14,18 @@ vi.mock("better-auth/node", () => ({
 }));
 
 import { MeController } from "./me.controller";
+import { mockRepo } from "../test/mocks";
 
 describe("MeController", () => {
-  const prisma = { user: { update: vi.fn() } };
+  let users: ReturnType<typeof mockRepo>;
   let controller: MeController;
 
   beforeEach(() => {
     vi.clearAllMocks();
-    controller = new MeController(prisma as never);
+    users = mockRepo();
+    controller = new MeController(users as never);
     changePassword.mockResolvedValue({});
-    prisma.user.update.mockResolvedValue({});
+    users.update.mockResolvedValue({});
   });
 
   it("rejects same or weak passwords", async () => {
@@ -52,9 +54,6 @@ describe("MeController", () => {
     );
     expect(res).toEqual({ ok: true });
     expect(changePassword).toHaveBeenCalled();
-    expect(prisma.user.update).toHaveBeenCalledWith({
-      where: { id: "u1" },
-      data: { mustChangePassword: false },
-    });
+    expect(users.update).toHaveBeenCalledWith({ id: "u1" }, { mustChangePassword: false });
   });
 });

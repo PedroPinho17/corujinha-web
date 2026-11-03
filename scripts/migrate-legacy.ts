@@ -1,5 +1,5 @@
 /**
- * Migrate Laravel Corujinha (MySQL + public/) → Postgres (Prisma) + S3/MinIO.
+ * Migrate Laravel Corujinha (MySQL + public/) → Postgres (TypeORM) + S3/MinIO.
  *
  * Usage (from repo root, with Docker infra up):
  *   pnpm migrate:legacy
@@ -10,6 +10,7 @@
  *   LEGACY_USER_TEMP_PASSWORD=Migrated123!
  *   DATABASE_URL / S3_* from root .env
  */
+import "reflect-metadata";
 import { config as loadEnv } from "dotenv";
 import { resolve } from "path";
 import { createReadStream, existsSync } from "fs";
@@ -22,7 +23,24 @@ import {
   HeadBucketCommand,
   CreateBucketCommand,
 } from "@aws-sdk/client-s3";
-import { PrismaClient, UserRole } from "@prisma/client";
+import {
+  Account,
+  Center,
+  ContactMessage,
+  Entity,
+  Formation,
+  GalleryImage,
+  Passkey,
+  Post,
+  SchoolProtocol,
+  Session,
+  SiteSettings,
+  TeamMember,
+  User,
+  UserRole,
+  ensureDataSource,
+  AppDataSource,
+} from "@corujinha/database";
 import { hashPassword } from "better-auth/crypto";
 
 loadEnv({ path: resolve(process.cwd(), ".env") });
@@ -33,8 +51,6 @@ const LEGACY_MYSQL_URL =
 const LEGACY_PUBLIC_DIR =
   process.env.LEGACY_PUBLIC_DIR ?? "C:\\Projetos_WEB\\corujinha\\public";
 const TEMP_PASSWORD = process.env.LEGACY_USER_TEMP_PASSWORD ?? "Migrated123!";
-
-const prisma = new PrismaClient();
 
 const s3 = new S3Client({
   region: process.env.S3_REGION ?? "us-east-1",
@@ -101,6 +117,20 @@ function emptyToNull(v: unknown): string | null {
 }
 
 async function main() {
+  const ds = await ensureDataSource();
+  const contactMessages = ds.getRepository(ContactMessage);
+  const galleryImages = ds.getRepository(GalleryImage);
+  const schoolProtocols = ds.getRepository(SchoolProtocol);
+  const formations = ds.getRepository(Formation);
+  const entities = ds.getRepository(Entity);
+  const posts = ds.getRepository(Post);
+  const teamMembers = ds.getRepository(TeamMember);
+  const sessions = ds.getRepository(Session);
+  const accounts = ds.getRepository(Account);
+  const passkeys = ds.getRepository(Passkey);
+  const users = ds.getRepository(User);
+  const siteSettings = ds.getRepository(SiteSettings);
+
   console.log("Connecting to legacy MySQL…");
   const conn = await mysql.createConnection(LEGACY_MYSQL_URL);
 
@@ -109,47 +139,47 @@ async function main() {
 
   // --- Clear CMS data (keep auth if any, then recreate users from legacy) ---
   console.log("Clearing target CMS tables…");
-  await prisma.contactMessage.deleteMany();
-  await prisma.galleryImage.deleteMany();
-  await prisma.schoolProtocol.deleteMany();
-  await prisma.formation.deleteMany();
-  await prisma.entity.deleteMany();
-  await prisma.post.deleteMany();
-  await prisma.teamMember.deleteMany();
+  await contactMessages.clear();
+  await galleryImages.clear();
+  await schoolProtocols.clear();
+  await formations.clear();
+  await entities.clear();
+  await posts.clear();
+  await teamMembers.clear();
   // Remove non-seed approach: wipe all users + accounts + sessions + passkeys for clean import
-  await prisma.session.deleteMany();
-  await prisma.account.deleteMany();
-  await prisma.passkey.deleteMany();
-  await prisma.user.deleteMany();
+  await sessions.clear();
+  await accounts.clear();
+  await passkeys.clear();
+  await users.clear();
 
   // --- Entities ---
-  const [entities] = await conn.query<mysql.RowDataPacket[]>(
+  const [legacyEntities] = await conn.query<mysql.RowDataPacket[]>(
     "SELECT * FROM entities ORDER BY ordem ASC, id ASC",
   );
   const entityIdMap = new Map<number, string>();
-  for (const row of entities) {
-    const created = await prisma.entity.create({
-      data: {
+  for (const row of legacyEntities) {
+    const created = await entities.save(
+      entities.create({
         name: String(row.name),
         description: emptyToNull(row.description),
         location: emptyToNull(row.location),
         website: emptyToNull(row.website),
         sortOrder: Number(row.ordem) || 0,
         published: true,
-      },
-    });
+      }),
+    );
     entityIdMap.set(Number(row.id), created.id);
     console.log("entity:", created.name);
   }
 
   // --- Formations ---
-  const [formations] = await conn.query<mysql.RowDataPacket[]>(
+  const [legacyFormations] = await conn.query<mysql.RowDataPacket[]>(
     "SELECT * FROM formations ORDER BY ordem ASC, id ASC",
   );
-  for (const row of formations) {
+  for (const row of legacyFormations) {
     const entityId = entityIdMap.get(Number(row.id_entity)) ?? null;
-    await prisma.formation.create({
-      data: {
+    await formations.save(
+      formations.create({
         name: String(row.name),
         description: emptyToNull(row.description),
         duration: emptyToNull(row.duration),
@@ -157,8 +187,8 @@ async function main() {
         entityId,
         active: Boolean(row.active),
         sortOrder: Number(row.ordem) || 0,
-      },
-    });
+      }),
+    );
     console.log("formation:", row.name);
   }
 
@@ -173,23 +203,23 @@ async function main() {
       const local = join(LEGACY_PUBLIC_DIR, "img", "teams", filename);
       imageKey = await uploadFile(local, `teams/${filename}`);
     }
-    await prisma.teamMember.create({
-      data: {
+    await teamMembers.save(
+      teamMembers.create({
         name: String(row.name),
         description: emptyToNull(row.description),
         imageKey,
         sortOrder: Number(row.ordem) || 0,
         published: true,
-      },
-    });
+      }),
+    );
     console.log("team:", row.name, imageKey);
   }
 
   // --- Posts ---
-  const [posts] = await conn.query<mysql.RowDataPacket[]>(
+  const [legacyPosts] = await conn.query<mysql.RowDataPacket[]>(
     "SELECT * FROM posts ORDER BY ordem ASC, id ASC",
   );
-  for (const row of posts) {
+  for (const row of legacyPosts) {
     const filename = emptyToNull(row.image);
     let imageKey: string | null = null;
     if (filename) {
@@ -207,8 +237,8 @@ async function main() {
       if (!imageKey) console.warn(`  post image not found: ${filename}`);
     }
     const phone = row.phone != null && String(row.phone) !== "0" ? String(row.phone) : null;
-    await prisma.post.create({
-      data: {
+    await posts.save(
+      posts.create({
         title: String(row.title),
         content: emptyToNull(row.content),
         link: emptyToNull(row.link),
@@ -219,8 +249,8 @@ async function main() {
         published: true,
         publishedAt: row.published_at ? new Date(row.published_at) : new Date(),
         sortOrder: Number(row.ordem) || 0,
-      },
-    });
+      }),
+    );
     console.log("post:", row.title, imageKey);
   }
 
@@ -229,14 +259,14 @@ async function main() {
     "SELECT * FROM school_protocols ORDER BY ordem ASC, id ASC",
   );
   for (const row of protocols) {
-    await prisma.schoolProtocol.create({
-      data: {
+    await schoolProtocols.save(
+      schoolProtocols.create({
         schoolName: String(row.school_name),
         link: emptyToNull(row.link),
         active: Boolean(row.ativo),
         sortOrder: Number(row.ordem) || 0,
-      },
-    });
+      }),
+    );
     console.log("protocol:", row.school_name);
   }
 
@@ -250,68 +280,69 @@ async function main() {
     const key = await uploadFile(file, `gallery/${rel}`);
     if (!key) continue;
     gOrder += 1;
-    await prisma.galleryImage.create({
-      data: {
+    await galleryImages.save(
+      galleryImages.create({
         imageKey: key,
         alt: basename(file),
         album,
         sortOrder: gOrder,
         published: true,
-      },
-    });
+      }),
+    );
     console.log("gallery:", key);
   }
 
   // --- Users (Better Auth accounts; passwords re-hashed — set temp + mustChangePassword) ---
   const passwordHash = await hashPassword(TEMP_PASSWORD);
-  const [users] = await conn.query<mysql.RowDataPacket[]>(
+  const [legacyUsers] = await conn.query<mysql.RowDataPacket[]>(
     "SELECT * FROM utilizadores ORDER BY id ASC",
   );
-  for (const row of users) {
+  for (const row of legacyUsers) {
     const role = Number(row.id_permissao) === 1 ? UserRole.ADMIN : UserRole.EDITOR;
     const mustChange =
       Boolean(row.mudanca_password) || true; // force reset: bcrypt ≠ better-auth hash
     const email = String(row.email).toLowerCase();
-    const user = await prisma.user.create({
-      data: {
+    const user = await users.save(
+      users.create({
         email,
         name: String(row.nome),
         emailVerified: true,
         role,
         mustChangePassword: mustChange,
-        accounts: {
-          create: {
-            accountId: email,
-            providerId: "credential",
-            password: passwordHash,
-          },
-        },
-      },
-    });
+      }),
+    );
+    await accounts.save(
+      accounts.create({
+        userId: user.id,
+        accountId: email,
+        providerId: "credential",
+        password: passwordHash,
+      }),
+    );
     console.log("user:", user.email, role, `(temp password → must change)`);
   }
 
   // Site settings
-  const existingSettings = await prisma.siteSettings.findFirst();
+  const existingSettings = await siteSettings.find({ take: 1 }).then((r) => r[0] ?? null);
   if (!existingSettings) {
-    await prisma.siteSettings.create({
-      data: {
+    await siteSettings.save(
+      siteSettings.create({
         brandingName: "Corujinha",
         contactEmail: "pedro0409romariz@gmail.com",
-      },
-    });
+      }),
+    );
   }
 
   await conn.end();
 
   const summary = {
-    entities: await prisma.entity.count(),
-    formations: await prisma.formation.count(),
-    team: await prisma.teamMember.count(),
-    posts: await prisma.post.count(),
-    protocols: await prisma.schoolProtocol.count(),
-    gallery: await prisma.galleryImage.count(),
-    users: await prisma.user.count(),
+    entities: await entities.count(),
+    formations: await formations.count(),
+    team: await teamMembers.count(),
+    posts: await posts.count(),
+    protocols: await schoolProtocols.count(),
+    gallery: await galleryImages.count(),
+    users: await users.count(),
   };
   console.log("\nMigration complete:", summary);
   console.log(`Temp password for all users: ${TEMP_PASSWORD}`);
@@ -324,5 +355,5 @@ main()
     process.exit(1);
   })
   .finally(async () => {
-    await prisma.$disconnect();
+    if (AppDataSource.isInitialized) await AppDataSource.destroy();
   });

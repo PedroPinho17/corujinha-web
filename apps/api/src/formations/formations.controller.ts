@@ -9,9 +9,12 @@ import {
   Put,
   UseGuards,
 } from "@nestjs/common";
+import { InjectRepository } from "@nestjs/typeorm";
 import { ArrayMaxSize, IsArray, IsBoolean, IsInt, IsOptional, IsString, MaxLength } from "class-validator";
+import { Formation } from "@corujinha/database";
+import { Repository } from "typeorm";
 import { AdminGuard } from "../auth/auth.guard";
-import { PrismaService } from "../prisma/prisma.service";
+import { nextSortOrder } from "../common/sort-order";
 import { RedisService } from "../redis/redis.service";
 
 class FormationDto {
@@ -57,7 +60,7 @@ class ReorderDto {
 @Controller()
 export class FormationsController {
   constructor(
-    private readonly prisma: PrismaService,
+    @InjectRepository(Formation) private readonly formations: Repository<Formation>,
     private readonly redis: RedisService,
   ) {}
 
@@ -69,19 +72,22 @@ export class FormationsController {
   async publicList() {
     const cached = await this.redis.getJson("public:formations");
     if (cached) return cached;
-    const data = await this.prisma.formation.findMany({
+    const rows = await this.formations.find({
       where: { active: true },
-      orderBy: { sortOrder: "asc" },
-      select: {
-        id: true,
-        name: true,
-        description: true,
-        duration: true,
-        location: true,
-        entityId: true,
-        entity: { select: { id: true, name: true, website: true } },
-      },
+      order: { sortOrder: "ASC" },
+      relations: { entity: true },
     });
+    const data = rows.map((f) => ({
+      id: f.id,
+      name: f.name,
+      description: f.description,
+      duration: f.duration,
+      location: f.location,
+      entityId: f.entityId,
+      entity: f.entity
+        ? { id: f.entity.id, name: f.entity.name, website: f.entity.website }
+        : null,
+    }));
     await this.redis.setJson("public:formations", data);
     return data;
   }
@@ -89,28 +95,28 @@ export class FormationsController {
   @Get("api/admin/formations")
   @UseGuards(AdminGuard)
   adminList() {
-    return this.prisma.formation.findMany({
-      orderBy: { sortOrder: "asc" },
-      include: { entity: true },
+    return this.formations.find({
+      order: { sortOrder: "ASC" },
+      relations: { entity: true },
     });
   }
 
   @Post("api/admin/formations")
   @UseGuards(AdminGuard)
   async create(@Body() dto: FormationDto) {
-    const max = await this.prisma.formation.aggregate({ _max: { sortOrder: true } });
-    const row = await this.prisma.formation.create({
-      data: {
+    const sortOrder = dto.sortOrder ?? (await nextSortOrder(this.formations));
+    const row = await this.formations.save(
+      this.formations.create({
         name: dto.name,
         description: dto.description,
         duration: dto.duration,
         location: dto.location,
         entityId: dto.entityId || null,
-        translations: dto.translations as object | undefined,
+        translations: dto.translations as Record<string, unknown> | undefined,
         active: dto.active ?? true,
-        sortOrder: dto.sortOrder ?? (max._max.sortOrder ?? 0) + 1,
-      },
-    });
+        sortOrder,
+      }),
+    );
     await this.bust();
     return row;
   }
@@ -118,19 +124,18 @@ export class FormationsController {
   @Put("api/admin/formations/:id")
   @UseGuards(AdminGuard)
   async update(@Param("id") id: string, @Body() dto: FormationDto) {
-    const row = await this.prisma.formation.update({
-      where: { id },
-      data: {
-        name: dto.name,
-        description: dto.description,
-        duration: dto.duration,
-        location: dto.location,
-        entityId: dto.entityId || null,
-        translations: dto.translations as object | undefined,
-        active: dto.active,
-        sortOrder: dto.sortOrder,
-      },
+    const current = await this.formations.findOneByOrFail({ id });
+    Object.assign(current, {
+      name: dto.name,
+      description: dto.description,
+      duration: dto.duration,
+      location: dto.location,
+      entityId: dto.entityId || null,
+      translations: dto.translations as Record<string, unknown> | undefined,
+      active: dto.active,
+      sortOrder: dto.sortOrder,
     });
+    const row = await this.formations.save(current);
     await this.bust();
     return row;
   }
@@ -138,11 +143,9 @@ export class FormationsController {
   @Patch("api/admin/formations/:id/toggle")
   @UseGuards(AdminGuard)
   async toggle(@Param("id") id: string) {
-    const current = await this.prisma.formation.findUniqueOrThrow({ where: { id } });
-    const row = await this.prisma.formation.update({
-      where: { id },
-      data: { active: !current.active },
-    });
+    const current = await this.formations.findOneByOrFail({ id });
+    current.active = !current.active;
+    const row = await this.formations.save(current);
     await this.bust();
     return row;
   }
@@ -150,11 +153,12 @@ export class FormationsController {
   @Post("api/admin/formations/reorder")
   @UseGuards(AdminGuard)
   async reorder(@Body() dto: ReorderDto) {
-    await this.prisma.$transaction(
-      dto.ids.map((id, index) =>
-        this.prisma.formation.update({ where: { id }, data: { sortOrder: index + 1 } }),
-      ),
-    );
+    await this.formations.manager.transaction(async (em) => {
+      const repo = em.getRepository(Formation);
+      for (const [index, id] of dto.ids.entries()) {
+        await repo.update({ id }, { sortOrder: index + 1 });
+      }
+    });
     await this.bust();
     return { success: true };
   }
@@ -162,7 +166,8 @@ export class FormationsController {
   @Delete("api/admin/formations/:id")
   @UseGuards(AdminGuard)
   async remove(@Param("id") id: string) {
-    await this.prisma.formation.delete({ where: { id } });
+    await this.formations.findOneByOrFail({ id });
+    await this.formations.delete({ id });
     await this.bust();
     return { success: true };
   }

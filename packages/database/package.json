@@ -5,27 +5,29 @@
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
   "scripts": {
-    "generate": "prisma generate",
-    "migrate:dev": "prisma migrate dev",
-    "migrate:deploy": "prisma migrate deploy",
-    "studio": "prisma studio",
-    "seed": "tsx prisma/seed.ts",
-    "build": "prisma generate && tsc -p tsconfig.json",
+    "build": "tsc -p tsconfig.json",
     "dev": "tsc -p tsconfig.json --watch",
+    "typeorm": "tsx ./node_modules/typeorm/cli.js -d src/data-source.ts",
+    "migrate:dev": "pnpm typeorm migration:run",
+    "migrate:deploy": "pnpm typeorm migration:run",
+    "migrate:revert": "pnpm typeorm migration:revert",
+    "seed": "tsx src/seed.ts",
     "lint": "echo ok"
   },
   "dependencies": {
     "@corujinha/shared": "workspace:*",
-    "@prisma/client": "^6.11.1",
-    "better-auth": "^1.2.12"
+    "@hedystia/better-auth-typeorm": "^1.1.1",
+    "@paralleldrive/cuid2": "^3.3.0",
+    "better-auth": "^1.2.12",
+    "dotenv": "^17.4.2",
+    "pg": "^8.23.1",
+    "reflect-metadata": "^0.2.2",
+    "typeorm": "^1.1.2"
   },
   "devDependencies": {
     "@types/node": "^22.15.32",
-    "prisma": "^6.11.1",
+    "@types/pg": "^8.23.1",
     "tsx": "^4.20.3",
     "typescript": "^5.8.3"
-  },
-  "prisma": {
-    "seed": "tsx prisma/seed.ts"
   }
 }

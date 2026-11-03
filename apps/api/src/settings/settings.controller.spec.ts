@@ -1,9 +1,9 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { SettingsController } from "./settings.controller";
-import { mockPrisma, mockRedis } from "../test/mocks";
+import { mockRedis, mockRepo } from "../test/mocks";
 
 describe("SettingsController", () => {
-  let prisma: ReturnType<typeof mockPrisma>;
+  let siteSettings: ReturnType<typeof mockRepo>;
   let redis: ReturnType<typeof mockRedis>;
   let controller: SettingsController;
 
@@ -21,11 +21,11 @@ describe("SettingsController", () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
-    prisma = mockPrisma();
+    siteSettings = mockRepo();
     redis = mockRedis();
-    controller = new SettingsController(prisma as never, redis as never);
-    prisma.siteSettings.findFirst.mockResolvedValue(row);
-    prisma.siteSettings.update.mockResolvedValue(row);
+    controller = new SettingsController(siteSettings as never, redis as never);
+    siteSettings.find.mockResolvedValue([row]);
+    siteSettings.save.mockResolvedValue(row);
   });
 
   it("publicSettings returns cache with merged content", async () => {
@@ -36,16 +36,16 @@ describe("SettingsController", () => {
 
   it("publicSettings creates defaults when missing", async () => {
     redis.getJson.mockResolvedValue(null);
-    prisma.siteSettings.findFirst.mockResolvedValueOnce(null);
-    prisma.siteSettings.create.mockResolvedValue(row);
+    siteSettings.find.mockResolvedValueOnce([]);
+    siteSettings.save.mockResolvedValue(row);
     const res = await controller.publicSettings();
     expect(redis.setJson).toHaveBeenCalled();
-    expect(res.brandingName).toBe("Corujinha");
+    expect((res as { brandingName: string }).brandingName).toBe("Corujinha");
   });
 
   it("fills empty content and admin get/update", async () => {
-    prisma.siteSettings.findFirst.mockResolvedValue({ ...row, content: null });
-    prisma.siteSettings.update.mockResolvedValue(row);
+    siteSettings.find.mockResolvedValue([{ ...row, content: null }]);
+    siteSettings.save.mockResolvedValue(row);
     expect(await controller.adminGet()).toMatchObject({ id: "s1" });
 
     const updated = await controller.adminUpdate({

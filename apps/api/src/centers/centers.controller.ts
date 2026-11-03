@@ -9,9 +9,12 @@ import {
   Put,
   UseGuards,
 } from "@nestjs/common";
+import { InjectRepository } from "@nestjs/typeorm";
 import { ArrayMaxSize, IsArray, IsBoolean, IsInt, IsOptional, IsString, Matches, MaxLength } from "class-validator";
+import { Center } from "@corujinha/database";
+import { Not, Repository } from "typeorm";
 import { AdminGuard } from "../auth/auth.guard";
-import { PrismaService } from "../prisma/prisma.service";
+import { nextSortOrder } from "../common/sort-order";
 import { RedisService } from "../redis/redis.service";
 
 class CenterDto {
@@ -76,7 +79,7 @@ class ReorderDto {
 @Controller()
 export class CentersController {
   constructor(
-    private readonly prisma: PrismaService,
+    @InjectRepository(Center) private readonly centers: Repository<Center>,
     private readonly redis: RedisService,
   ) {}
 
@@ -88,9 +91,9 @@ export class CentersController {
   async publicList() {
     const cached = await this.redis.getJson("public:centers");
     if (cached) return cached;
-    const data = await this.prisma.center.findMany({
+    const data = await this.centers.find({
       where: { published: true },
-      orderBy: [{ isPrimary: "desc" }, { sortOrder: "asc" }],
+      order: { isPrimary: "DESC", sortOrder: "ASC" },
       select: {
         id: true,
         slug: true,
@@ -111,20 +114,20 @@ export class CentersController {
   @Get("api/admin/centers")
   @UseGuards(AdminGuard)
   adminList() {
-    return this.prisma.center.findMany({
-      orderBy: [{ sortOrder: "asc" }],
+    return this.centers.find({
+      order: { sortOrder: "ASC" },
     });
   }
 
   @Post("api/admin/centers")
   @UseGuards(AdminGuard)
   async create(@Body() dto: CenterDto) {
-    const max = await this.prisma.center.aggregate({ _max: { sortOrder: true } });
+    const sortOrder = dto.sortOrder ?? (await nextSortOrder(this.centers));
     if (dto.isPrimary) {
-      await this.prisma.center.updateMany({ data: { isPrimary: false } });
+      await this.centers.update({}, { isPrimary: false });
     }
-    const row = await this.prisma.center.create({
-      data: {
+    const row = await this.centers.save(
+      this.centers.create({
         slug: dto.slug,
         name: dto.name,
         shortName: dto.shortName,
@@ -135,9 +138,9 @@ export class CentersController {
         email: dto.email,
         isPrimary: dto.isPrimary ?? false,
         published: dto.published ?? true,
-        sortOrder: dto.sortOrder ?? (max._max.sortOrder ?? 0) + 1,
-      },
-    });
+        sortOrder,
+      }),
+    );
     await this.bust();
     return row;
   }
@@ -146,27 +149,23 @@ export class CentersController {
   @UseGuards(AdminGuard)
   async update(@Param("id") id: string, @Body() dto: CenterDto) {
     if (dto.isPrimary) {
-      await this.prisma.center.updateMany({
-        where: { id: { not: id } },
-        data: { isPrimary: false },
-      });
+      await this.centers.update({ id: Not(id) }, { isPrimary: false });
     }
-    const row = await this.prisma.center.update({
-      where: { id },
-      data: {
-        slug: dto.slug,
-        name: dto.name,
-        shortName: dto.shortName,
-        address: dto.address,
-        city: dto.city,
-        postalCode: dto.postalCode,
-        phone: dto.phone,
-        email: dto.email,
-        isPrimary: dto.isPrimary,
-        published: dto.published,
-        sortOrder: dto.sortOrder,
-      },
+    const current = await this.centers.findOneByOrFail({ id });
+    Object.assign(current, {
+      slug: dto.slug,
+      name: dto.name,
+      shortName: dto.shortName,
+      address: dto.address,
+      city: dto.city,
+      postalCode: dto.postalCode,
+      phone: dto.phone,
+      email: dto.email,
+      isPrimary: dto.isPrimary,
+      published: dto.published,
+      sortOrder: dto.sortOrder,
     });
+    const row = await this.centers.save(current);
     await this.bust();
     return row;
   }
@@ -174,11 +173,9 @@ export class CentersController {
   @Patch("api/admin/centers/:id/toggle")
   @UseGuards(AdminGuard)
   async toggle(@Param("id") id: string) {
-    const current = await this.prisma.center.findUniqueOrThrow({ where: { id } });
-    const row = await this.prisma.center.update({
-      where: { id },
-      data: { published: !current.published },
-    });
+    const current = await this.centers.findOneByOrFail({ id });
+    current.published = !current.published;
+    const row = await this.centers.save(current);
     await this.bust();
     return row;
   }
@@ -186,11 +183,12 @@ export class CentersController {
   @Post("api/admin/centers/reorder")
   @UseGuards(AdminGuard)
   async reorder(@Body() dto: ReorderDto) {
-    await this.prisma.$transaction(
-      dto.ids.map((id, index) =>
-        this.prisma.center.update({ where: { id }, data: { sortOrder: index + 1 } }),
-      ),
-    );
+    await this.centers.manager.transaction(async (em) => {
+      const repo = em.getRepository(Center);
+      for (const [index, id] of dto.ids.entries()) {
+        await repo.update({ id }, { sortOrder: index + 1 });
+      }
+    });
     await this.bust();
     return { success: true };
   }
@@ -198,7 +196,8 @@ export class CentersController {
   @Delete("api/admin/centers/:id")
   @UseGuards(AdminGuard)
   async remove(@Param("id") id: string) {
-    await this.prisma.center.delete({ where: { id } });
+    await this.centers.findOneByOrFail({ id });
+    await this.centers.delete({ id });
     await this.bust();
     return { success: true };
   }

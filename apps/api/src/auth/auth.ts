@@ -1,7 +1,7 @@
 import { betterAuth } from "better-auth";
-import { prismaAdapter } from "better-auth/adapters/prisma";
+import { typeormAdapter } from "@hedystia/better-auth-typeorm";
 import { passkey } from "@better-auth/passkey";
-import { prisma } from "@corujinha/database";
+import { AppDataSource, User } from "@corujinha/database";
 import { resolveAuthSecret } from "../env";
 import { sendMail } from "../mail/send-mail";
 import { authEmailPassword } from "./auth.config";
@@ -36,7 +36,7 @@ const trustedOrigins = isProd
  */
 export const auth = betterAuth({
   appName: "Corujinha",
-  database: prismaAdapter(prisma, { provider: "postgresql" }),
+  database: typeormAdapter(AppDataSource),
   secret: resolveAuthSecret(),
   baseURL: authUrl,
   basePath: "/api/auth",
@@ -56,10 +56,11 @@ export const auth = betterAuth({
       });
     },
     onPasswordReset: async ({ user }) => {
-      await prisma.user.update({
-        where: { id: user.id },
-        data: { mustChangePassword: false },
-      });
+      if (!AppDataSource.isInitialized) await AppDataSource.initialize();
+      await AppDataSource.getRepository(User).update(
+        { id: user.id },
+        { mustChangePassword: false },
+      );
     },
   },
   session: {

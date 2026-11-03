@@ -1,10 +1,10 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { BadRequestException, HttpException, NotFoundException } from "@nestjs/common";
 import { ContactService } from "./contact.service";
-import { mockPrisma } from "../test/mocks";
+import { mockRepo } from "../test/mocks";
 
 describe("ContactService", () => {
-  let prisma: ReturnType<typeof mockPrisma>;
+  let contacts: ReturnType<typeof mockRepo>;
   let queue: { add: ReturnType<typeof vi.fn> };
   let redis: {
     client: {
@@ -17,7 +17,7 @@ describe("ContactService", () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
-    prisma = mockPrisma();
+    contacts = mockRepo();
     queue = { add: vi.fn().mockResolvedValue(undefined) };
     redis = {
       client: {
@@ -26,7 +26,7 @@ describe("ContactService", () => {
         pexpire: vi.fn().mockResolvedValue(1),
       },
     };
-    service = new ContactService(prisma as never, redis as never, queue as never);
+    service = new ContactService(contacts as never, redis as never, queue as never);
   });
 
   it("honeypot returns success without persisting", async () => {
@@ -41,11 +41,10 @@ describe("ContactService", () => {
       "1.1.1.1",
     );
     expect(res.success).toBe(true);
-    expect(prisma.contactMessage.create).not.toHaveBeenCalled();
+    expect(contacts.save).not.toHaveBeenCalled();
   });
 
   it("rate limits by IP and by destination email, and requires privacyConsent", async () => {
-    // check() reads current count — at/over limit blocks without incrementing.
     redis.client.get.mockResolvedValue("5");
     await expect(
       service.submit(
@@ -54,7 +53,6 @@ describe("ContactService", () => {
       ),
     ).rejects.toBeInstanceOf(HttpException);
 
-    // IP ok, destination email over limit (second Redis get = email limiter).
     redis.client.get.mockResolvedValueOnce(null).mockResolvedValueOnce("3");
     await expect(
       service.submit(
@@ -85,7 +83,7 @@ describe("ContactService", () => {
   });
 
   it("creates GENERAL and ENROLLMENT messages", async () => {
-    prisma.contactMessage.create.mockResolvedValue({ id: "c1" });
+    contacts.save.mockResolvedValue({ id: "c1" });
     const general = await service.submit(
       {
         name: "Ana",
@@ -96,7 +94,11 @@ describe("ContactService", () => {
       "9.9.9.9",
     );
     expect(general.message).toMatch(/sucesso/);
-    expect(queue.add).toHaveBeenCalledWith("send", { contactId: "c1" });
+    expect(queue.add).toHaveBeenCalledWith(
+      "send",
+      { contactId: "c1" },
+      expect.objectContaining({ attempts: 3 }),
+    );
 
     const enroll = await service.submit(
       {
@@ -113,19 +115,16 @@ describe("ContactService", () => {
       "9.9.9.9",
     );
     expect(enroll.message).toMatch(/inscrição/);
-    expect(prisma.contactMessage.create).toHaveBeenLastCalledWith(
-      expect.objectContaining({
-        data: expect.objectContaining({ kind: "ENROLLMENT", privacyConsent: true }),
-      }),
+    expect(contacts.create).toHaveBeenLastCalledWith(
+      expect.objectContaining({ kind: "ENROLLMENT", privacyConsent: true }),
     );
   });
 
   it("list/update/export/erase with requireActive", async () => {
-    prisma.contactMessage.findMany.mockResolvedValue([]);
-    prisma.contactMessage.count.mockResolvedValue(0);
+    contacts.findAndCount.mockResolvedValue([[], 0]);
     expect(await service.list()).toEqual({ items: [], total: 0, page: 1, pageSize: 50 });
 
-    prisma.contactMessage.findUnique.mockResolvedValue(null);
+    contacts.findOneBy.mockResolvedValue(null);
     await expect(service.update("x", { read: true })).rejects.toBeInstanceOf(NotFoundException);
 
     const row = {
@@ -145,8 +144,8 @@ describe("ContactService", () => {
       updatedAt: new Date(),
       erasedAt: null,
     };
-    prisma.contactMessage.findUnique.mockResolvedValue(row);
-    prisma.contactMessage.update.mockResolvedValue(row);
+    contacts.findOneBy.mockResolvedValue(row);
+    contacts.save.mockResolvedValue(row);
 
     await service.update("1", { read: true, adminNotes: "ok" });
     await service.update("1", { read: false });
@@ -155,19 +154,20 @@ describe("ContactService", () => {
     expect(exported.contact.email).toBe("a@b.com");
 
     expect(await service.eraseGdpr("1")).toEqual({ ok: true });
-    expect(prisma.contactMessage.update).toHaveBeenCalledWith(
+    expect(contacts.save).toHaveBeenCalledWith(
       expect.objectContaining({
-        data: expect.objectContaining({ name: "Apagado (RGPD)", erasedAt: expect.any(Date) }),
+        name: "Apagado (RGPD)",
+        erasedAt: expect.any(Date),
       }),
     );
 
-    prisma.contactMessage.findUnique.mockResolvedValue({ ...row, erasedAt: new Date() });
+    contacts.findOneBy.mockResolvedValue({ ...row, erasedAt: new Date() });
     await expect(service.exportGdpr("1")).rejects.toBeInstanceOf(NotFoundException);
   });
 
   it("eraseExpired anonymizes messages older than retention window", async () => {
-    prisma.contactMessage.findMany.mockResolvedValue([{ id: "old-1" }, { id: "old-2" }]);
-    prisma.contactMessage.findUnique
+    contacts.find.mockResolvedValue([{ id: "old-1" }, { id: "old-2" }]);
+    contacts.findOneBy
       .mockResolvedValueOnce({
         id: "old-1",
         erasedAt: null,
@@ -176,17 +176,17 @@ describe("ContactService", () => {
         id: "old-2",
         erasedAt: null,
       });
-    prisma.contactMessage.update.mockResolvedValue({});
+    contacts.save.mockResolvedValue({});
 
     const result = await service.eraseExpired(24);
     expect(result.erased).toBe(2);
     expect(result.retentionMonths).toBe(24);
-    expect(prisma.contactMessage.findMany).toHaveBeenCalledWith(
+    expect(contacts.find).toHaveBeenCalledWith(
       expect.objectContaining({
-        where: expect.objectContaining({ erasedAt: null }),
+        where: expect.objectContaining({ erasedAt: expect.anything() }),
         take: 500,
       }),
     );
-    expect(prisma.contactMessage.update).toHaveBeenCalledTimes(2);
+    expect(contacts.save).toHaveBeenCalledTimes(2);
   });
 });

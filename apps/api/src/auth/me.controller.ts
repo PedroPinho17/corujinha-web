@@ -6,12 +6,14 @@ import {
   Req,
   UseGuards,
 } from "@nestjs/common";
+import { InjectRepository } from "@nestjs/typeorm";
 import { IsString, MinLength } from "class-validator";
 import { fromNodeHeaders } from "better-auth/node";
 import type { Request } from "express";
+import { User } from "@corujinha/database";
+import { Repository } from "typeorm";
 import { auth } from "./auth";
 import { AuthGuard, CurrentUser, type SessionUser } from "./auth.guard";
-import { PrismaService } from "../prisma/prisma.service";
 
 class ChangePasswordDto {
   @IsString()
@@ -45,7 +47,7 @@ function assertPasswordChangeAllowed(currentPassword: string, newPassword: strin
 
 @Controller("api/admin/me")
 export class MeController {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(@InjectRepository(User) private readonly users: Repository<User>) {}
 
   /** Change password even when mustChangePassword blocks AdminGuard. */
   @Post("change-password")
@@ -66,10 +68,7 @@ export class MeController {
       headers: fromNodeHeaders(req.headers),
     });
 
-    await this.prisma.user.update({
-      where: { id: user.id },
-      data: { mustChangePassword: false },
-    });
+    await this.users.update({ id: user.id }, { mustChangePassword: false });
 
     return { ok: true };
   }

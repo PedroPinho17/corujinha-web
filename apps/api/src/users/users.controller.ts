@@ -10,6 +10,7 @@ import {
   Put,
   UseGuards,
 } from "@nestjs/common";
+import { InjectRepository } from "@nestjs/typeorm";
 import {
   IsBoolean,
   IsEmail,
@@ -19,10 +20,10 @@ import {
   MaxLength,
   MinLength,
 } from "class-validator";
-import { UserRole } from "@corujinha/database";
+import { Account, Session, User, UserRole } from "@corujinha/database";
 import { hashPassword } from "better-auth/crypto";
+import { Repository } from "typeorm";
 import { SuperAdminGuard, CurrentUser, SessionUser } from "../auth/auth.guard";
-import { PrismaService } from "../prisma/prisma.service";
 
 class CreateUserDto {
   @IsString()
@@ -70,16 +71,20 @@ class UpdateUserDto {
 @Controller("api/admin/users")
 @UseGuards(SuperAdminGuard)
 export class UsersController {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    @InjectRepository(User) private readonly users: Repository<User>,
+    @InjectRepository(Account) private readonly accounts: Repository<Account>,
+    @InjectRepository(Session) private readonly sessions: Repository<Session>,
+  ) {}
 
   private async adminCount() {
-    return this.prisma.user.count({ where: { role: UserRole.ADMIN } });
+    return this.users.count({ where: { role: UserRole.ADMIN } });
   }
 
   @Get()
   list() {
-    return this.prisma.user.findMany({
-      orderBy: { createdAt: "desc" },
+    return this.users.find({
+      order: { createdAt: "DESC" },
       select: {
         id: true,
         name: true,
@@ -95,29 +100,33 @@ export class UsersController {
   @Post()
   async create(@Body() dto: CreateUserDto) {
     const passwordHash = await hashPassword(dto.password);
-    return this.prisma.user.create({
-      data: {
-        name: dto.name,
-        email: dto.email,
-        role: dto.role ?? UserRole.EDITOR,
-        // Always force change on first login — never ship a known default password.
-        mustChangePassword: true,
-        emailVerified: true,
-        accounts: {
-          create: {
-            accountId: dto.email,
-            providerId: "credential",
-            password: passwordHash,
-          },
-        },
-      },
-      select: {
-        id: true,
-        name: true,
-        email: true,
-        role: true,
-        mustChangePassword: true,
-      },
+    return this.users.manager.transaction(async (em) => {
+      const userRepo = em.getRepository(User);
+      const accountRepo = em.getRepository(Account);
+      const user = await userRepo.save(
+        userRepo.create({
+          name: dto.name,
+          email: dto.email,
+          role: dto.role ?? UserRole.EDITOR,
+          mustChangePassword: true,
+          emailVerified: true,
+        }),
+      );
+      await accountRepo.save(
+        accountRepo.create({
+          userId: user.id,
+          accountId: dto.email,
+          providerId: "credential",
+          password: passwordHash,
+        }),
+      );
+      return {
+        id: user.id,
+        name: user.name,
+        email: user.email,
+        role: user.role,
+        mustChangePassword: user.mustChangePassword,
+      };
     });
   }
 
@@ -127,7 +136,7 @@ export class UsersController {
     @Body() dto: UpdateUserDto,
     @CurrentUser() me: SessionUser,
   ) {
-    const existing = await this.prisma.user.findUniqueOrThrow({ where: { id } });
+    const existing = await this.users.findOneByOrFail({ id });
 
     if (me.id === id && dto.role && dto.role !== UserRole.ADMIN && existing.role === UserRole.ADMIN) {
       throw new ForbiddenException("Não pode remover as suas próprias permissões de administrador.");
@@ -146,49 +155,35 @@ export class UsersController {
     const emailChanging =
       dto.email.trim().toLowerCase() !== existing.email.trim().toLowerCase();
 
-    const data: {
-      name: string;
-      email: string;
-      role?: UserRole;
-      mustChangePassword?: boolean;
-      emailVerified?: boolean;
-    } = {
-      name: dto.name,
-      email: dto.email,
-      role: dto.role,
-      mustChangePassword: dto.mustChangePassword,
-    };
+    existing.name = dto.name;
+    existing.email = dto.email;
+    if (dto.role !== undefined) existing.role = dto.role;
+    if (dto.mustChangePassword !== undefined) existing.mustChangePassword = dto.mustChangePassword;
     if (emailChanging) {
-      // Require re-verification after admin changes email.
-      data.emailVerified = false;
+      existing.emailVerified = false;
     }
-    const user = await this.prisma.user.update({
-      where: { id },
-      data,
-      select: {
-        id: true,
-        name: true,
-        email: true,
-        role: true,
-        mustChangePassword: true,
-      },
-    });
+    await this.users.save(existing);
+
     if (dto.password) {
       const passwordHash = await hashPassword(dto.password);
-      const account = await this.prisma.account.findFirst({
+      const account = await this.accounts.findOne({
         where: { userId: id, providerId: "credential" },
       });
       if (account) {
-        await this.prisma.account.update({
-          where: { id: account.id },
-          data: { password: passwordHash },
-        });
+        account.password = passwordHash;
+        await this.accounts.save(account);
       }
     }
     if (dto.password || roleChanging || emailChanging) {
-      await this.prisma.session.deleteMany({ where: { userId: id } });
+      await this.sessions.delete({ userId: id });
     }
-    return user;
+    return {
+      id: existing.id,
+      name: existing.name,
+      email: existing.email,
+      role: existing.role,
+      mustChangePassword: existing.mustChangePassword,
+    };
   }
 
   @Delete(":id")
@@ -196,11 +191,11 @@ export class UsersController {
     if (me.id === id) {
       throw new ForbiddenException("Não pode apagar a própria conta.");
     }
-    const target = await this.prisma.user.findUniqueOrThrow({ where: { id } });
+    const target = await this.users.findOneByOrFail({ id });
     if (target.role === UserRole.ADMIN && (await this.adminCount()) <= 1) {
       throw new BadRequestException("Não pode apagar o último administrador.");
     }
-    await this.prisma.user.delete({ where: { id } });
+    await this.users.delete({ id });
     return { success: true };
   }
 }

@@ -1,4 +1,5 @@
 import { Body, Controller, Get, Put, UseGuards } from "@nestjs/common";
+import { InjectRepository } from "@nestjs/typeorm";
 import { Transform } from "class-transformer";
 import {
   IsObject,
@@ -8,9 +9,10 @@ import {
   MaxLength,
   ValidateIf,
 } from "class-validator";
+import { SiteSettings } from "@corujinha/database";
 import { DEFAULT_SITE_CONTENT, mergeSiteContent, type SiteContent } from "@corujinha/shared";
+import { Repository } from "typeorm";
 import { AdminGuard } from "../auth/auth.guard";
-import { PrismaService } from "../prisma/prisma.service";
 import { RedisService } from "../redis/redis.service";
 
 class UpdateSettingsDto {
@@ -61,7 +63,7 @@ class UpdateSettingsDto {
 @Controller()
 export class SettingsController {
   constructor(
-    private readonly prisma: PrismaService,
+    @InjectRepository(SiteSettings) private readonly settings: Repository<SiteSettings>,
     private readonly redis: RedisService,
   ) {}
 
@@ -70,21 +72,20 @@ export class SettingsController {
   }
 
   private async getOrCreate() {
-    let row = await this.prisma.siteSettings.findFirst({ orderBy: { createdAt: "asc" } });
+    let row =
+      (await this.settings.find({ order: { createdAt: "ASC" }, take: 1 }))[0] ?? null;
     if (!row) {
-      row = await this.prisma.siteSettings.create({
-        data: {
+      row = await this.settings.save(
+        this.settings.create({
           brandingName: "Corujinha",
           contactEmail: "Geral@ninhodacoruja.pt",
           contactPhone: "+351 916 280 509",
-          content: DEFAULT_SITE_CONTENT as object,
-        },
-      });
+          content: DEFAULT_SITE_CONTENT as unknown as Record<string, unknown>,
+        }),
+      );
     } else if (!row.content) {
-      row = await this.prisma.siteSettings.update({
-        where: { id: row.id },
-        data: { content: DEFAULT_SITE_CONTENT as object },
-      });
+      row.content = DEFAULT_SITE_CONTENT as unknown as Record<string, unknown>;
+      row = await this.settings.save(row);
     }
     return row;
   }
@@ -124,19 +125,18 @@ export class SettingsController {
     const nextContent = dto.content
       ? this.mergeContent(dto.content)
       : this.mergeContent(current.content);
-    const row = await this.prisma.siteSettings.update({
-      where: { id: current.id },
-      data: {
-        brandingName: dto.brandingName ?? current.brandingName,
-        brandingLogoKey: dto.brandingLogoKey === undefined ? current.brandingLogoKey : dto.brandingLogoKey,
-        contactEmail: dto.contactEmail === undefined ? current.contactEmail : dto.contactEmail,
-        contactPhone: dto.contactPhone === undefined ? current.contactPhone : dto.contactPhone,
-        address: dto.address === undefined ? current.address : dto.address,
-        facebookUrl: dto.facebookUrl === undefined ? current.facebookUrl : dto.facebookUrl,
-        instagramUrl: dto.instagramUrl === undefined ? current.instagramUrl : dto.instagramUrl,
-        content: nextContent as object,
-      },
+    Object.assign(current, {
+      brandingName: dto.brandingName ?? current.brandingName,
+      brandingLogoKey:
+        dto.brandingLogoKey === undefined ? current.brandingLogoKey : dto.brandingLogoKey,
+      contactEmail: dto.contactEmail === undefined ? current.contactEmail : dto.contactEmail,
+      contactPhone: dto.contactPhone === undefined ? current.contactPhone : dto.contactPhone,
+      address: dto.address === undefined ? current.address : dto.address,
+      facebookUrl: dto.facebookUrl === undefined ? current.facebookUrl : dto.facebookUrl,
+      instagramUrl: dto.instagramUrl === undefined ? current.instagramUrl : dto.instagramUrl,
+      content: nextContent as unknown as Record<string, unknown>,
     });
+    const row = await this.settings.save(current);
     await this.redis.del("public:settings", "public:home");
     return {
       ...row,
