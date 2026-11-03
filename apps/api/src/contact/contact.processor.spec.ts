@@ -1,20 +1,16 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { ContactProcessor } from "./contact.processor";
+import { mockRepo } from "../test/mocks";
 
 describe("ContactProcessor", () => {
-  const prisma = {
-    contactMessage: {
-      findUnique: vi.fn(),
-      update: vi.fn(),
-    },
-  };
+  const contacts = mockRepo();
   const mail = { send: vi.fn() };
   let processor: ContactProcessor;
   const prevNotify = process.env.CONTACT_NOTIFY_TO;
 
   beforeEach(() => {
     vi.clearAllMocks();
-    processor = new ContactProcessor(prisma as never, mail as never);
+    processor = new ContactProcessor(contacts as never, mail as never);
     process.env.CONTACT_NOTIFY_TO = "notify@example.com";
   });
 
@@ -23,19 +19,32 @@ describe("ContactProcessor", () => {
     else process.env.CONTACT_NOTIFY_TO = prevNotify;
   });
 
-  it("no-ops when contact missing or erased", async () => {
-    prisma.contactMessage.findUnique.mockResolvedValue(null);
+  it("no-ops when contact missing, erased, or already SENT", async () => {
+    contacts.findOneBy.mockResolvedValue(null);
     await processor.process({ data: { contactId: "1" } } as never);
     expect(mail.send).not.toHaveBeenCalled();
 
-    prisma.contactMessage.findUnique.mockResolvedValue({ id: "1", erasedAt: new Date() });
+    contacts.findOneBy.mockResolvedValue({ id: "1", erasedAt: new Date() });
     await processor.process({ data: { contactId: "1" } } as never);
+    expect(mail.send).not.toHaveBeenCalled();
+
+    contacts.findOneBy.mockResolvedValue({
+      id: "1",
+      erasedAt: null,
+      status: "SENT",
+    });
+    await processor.process({ data: { contactId: "1" } } as never);
+    expect(mail.send).not.toHaveBeenCalled();
+  });
+
+  it("rejects invalid job payload", async () => {
+    await expect(processor.process({ data: {} } as never)).rejects.toThrow();
     expect(mail.send).not.toHaveBeenCalled();
   });
 
   it("requires CONTACT_NOTIFY_TO", async () => {
     delete process.env.CONTACT_NOTIFY_TO;
-    prisma.contactMessage.findUnique.mockResolvedValue({
+    contacts.findOneBy.mockResolvedValue({
       id: "1",
       erasedAt: null,
       kind: "GENERAL",
@@ -63,9 +72,9 @@ describe("ContactProcessor", () => {
       schoolYear: "5º",
       location: "LX",
     };
-    prisma.contactMessage.findUnique.mockResolvedValue({ ...base, kind: "GENERAL" });
+    contacts.findOneBy.mockResolvedValue({ ...base, kind: "GENERAL" });
     mail.send.mockResolvedValue(undefined);
-    prisma.contactMessage.update.mockResolvedValue({});
+    contacts.update.mockResolvedValue({});
     await processor.process({ data: { contactId: "1" } } as never);
     expect(mail.send).toHaveBeenCalledWith(
       expect.objectContaining({ subject: expect.stringMatching(/contacto/i) }),
@@ -76,7 +85,6 @@ describe("ContactProcessor", () => {
     expect(generalHtml).toContain("Centro de Apoio Escolar Corujinha");
     expect(generalHtml).toContain("Nova mensagem de contacto");
     expect(generalHtml).toContain("Ana");
-    // 2.ª chamada = confirmação à família
     expect(mail.send.mock.calls[1][0]).toEqual(
       expect.objectContaining({
         to: "ana@example.com",
@@ -85,7 +93,7 @@ describe("ContactProcessor", () => {
     );
 
     mail.send.mockClear();
-    prisma.contactMessage.findUnique.mockResolvedValue({ ...base, kind: "ENROLLMENT" });
+    contacts.findOneBy.mockResolvedValue({ ...base, kind: "ENROLLMENT" });
     await processor.process({ data: { contactId: "1" } } as never);
     expect(mail.send).toHaveBeenCalledWith(
       expect.objectContaining({ subject: expect.stringContaining("inscrição") }),
@@ -94,13 +102,11 @@ describe("ContactProcessor", () => {
     expect(enrollHtml).toContain("/logo-email.png");
     expect(enrollHtml).toContain("Pedido de inscrição");
     expect(mail.send.mock.calls[1][0].to).toBe("ana@example.com");
-    expect(prisma.contactMessage.update).toHaveBeenCalledWith(
-      expect.objectContaining({ data: { status: "SENT" } }),
-    );
+    expect(contacts.update).toHaveBeenCalledWith({ id: "1" }, { status: "SENT" });
   });
 
   it("still marks SENT if family confirmation fails", async () => {
-    prisma.contactMessage.findUnique.mockResolvedValue({
+    contacts.findOneBy.mockResolvedValue({
       id: "1",
       erasedAt: null,
       kind: "GENERAL",
@@ -116,16 +122,14 @@ describe("ContactProcessor", () => {
     mail.send
       .mockResolvedValueOnce(undefined)
       .mockRejectedValueOnce(new Error("family smtp"));
-    prisma.contactMessage.update.mockResolvedValue({});
+    contacts.update.mockResolvedValue({});
     await processor.process({ data: { contactId: "1" } } as never);
-    expect(prisma.contactMessage.update).toHaveBeenCalledWith(
-      expect.objectContaining({ data: { status: "SENT" } }),
-    );
+    expect(contacts.update).toHaveBeenCalledWith({ id: "1" }, { status: "SENT" });
   });
 
   it("escapes user content in branded HTML body", async () => {
     process.env.NEXT_PUBLIC_APP_URL = "https://corujinha.example";
-    prisma.contactMessage.findUnique.mockResolvedValue({
+    contacts.findOneBy.mockResolvedValue({
       id: "1",
       erasedAt: null,
       kind: "GENERAL",
@@ -139,7 +143,7 @@ describe("ContactProcessor", () => {
       location: null,
     });
     mail.send.mockResolvedValue(undefined);
-    prisma.contactMessage.update.mockResolvedValue({});
+    contacts.update.mockResolvedValue({});
     await processor.process({ data: { contactId: "1" } } as never);
     const html = mail.send.mock.calls[0][0].html as string;
     expect(html).not.toContain("<img src=x");
@@ -149,7 +153,7 @@ describe("ContactProcessor", () => {
   });
 
   it("marks FAILED and rethrows on mail error", async () => {
-    prisma.contactMessage.findUnique.mockResolvedValue({
+    contacts.findOneBy.mockResolvedValue({
       id: "1",
       erasedAt: null,
       kind: "GENERAL",
@@ -166,8 +170,6 @@ describe("ContactProcessor", () => {
     await expect(processor.process({ data: { contactId: "1" } } as never)).rejects.toThrow(
       /smtp down/,
     );
-    expect(prisma.contactMessage.update).toHaveBeenCalledWith(
-      expect.objectContaining({ data: { status: "FAILED" } }),
-    );
+    expect(contacts.update).toHaveBeenCalledWith({ id: "1" }, { status: "FAILED" });
   });
 });

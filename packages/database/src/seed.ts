@@ -1,9 +1,22 @@
+import "reflect-metadata";
 import { config as loadEnv } from "dotenv";
 import { existsSync } from "node:fs";
 import { resolve } from "path";
-import { PrismaClient, UserRole } from "@prisma/client";
 import { hashPassword } from "better-auth/crypto";
 import { DEFAULT_SITE_CONTENT } from "@corujinha/shared";
+import {
+  Account,
+  Center,
+  Entity,
+  Formation,
+  Post,
+  SchoolProtocol,
+  SiteSettings,
+  TeamMember,
+  User,
+  UserRole,
+  ensureDataSource,
+} from "./index";
 
 for (const path of [
   resolve(__dirname, "../../../.env"),
@@ -13,9 +26,18 @@ for (const path of [
   if (existsSync(path)) loadEnv({ path });
 }
 
-const prisma = new PrismaClient();
-
 async function main() {
+  const ds = await ensureDataSource();
+  const users = ds.getRepository(User);
+  const accounts = ds.getRepository(Account);
+  const settingsRepo = ds.getRepository(SiteSettings);
+  const teamMembers = ds.getRepository(TeamMember);
+  const entities = ds.getRepository(Entity);
+  const formations = ds.getRepository(Formation);
+  const posts = ds.getRepository(Post);
+  const protocols = ds.getRepository(SchoolProtocol);
+  const centers = ds.getRepository(Center);
+
   const email = process.env.ADMIN_EMAIL?.trim();
   const password = process.env.ADMIN_PASSWORD?.trim();
   const name = process.env.ADMIN_NAME?.trim() || "Admin Corujinha";
@@ -34,67 +56,64 @@ async function main() {
 
   const passwordHash = await hashPassword(password);
 
-  let admin = await prisma.user.findUnique({ where: { email } });
+  let admin = await users.findOneBy({ email });
   if (!admin) {
-    admin = await prisma.user.create({
-      data: {
+    admin = await users.save(
+      users.create({
         email,
         name,
         emailVerified: true,
         role: UserRole.ADMIN,
         mustChangePassword: true,
-        accounts: {
-          create: {
-            accountId: email,
-            providerId: "credential",
-            password: passwordHash,
-          },
-        },
-      },
-    });
+      }),
+    );
+    await accounts.save(
+      accounts.create({
+        userId: admin.id,
+        // better-auth 1.7+ credential lookup: accountId must equal user.id
+        accountId: admin.id,
+        providerId: "credential",
+        password: passwordHash,
+      }),
+    );
   } else {
-    await prisma.user.update({
-      where: { id: admin.id },
-      data: { name, role: UserRole.ADMIN, mustChangePassword: true },
-    });
-    const existingAccount = await prisma.account.findFirst({
+    admin.name = name;
+    admin.role = UserRole.ADMIN;
+    admin.mustChangePassword = true;
+    await users.save(admin);
+    const existingAccount = await accounts.findOne({
       where: { userId: admin.id, providerId: "credential" },
     });
     if (existingAccount) {
-      await prisma.account.update({
-        where: { id: existingAccount.id },
-        data: { password: passwordHash },
-      });
+      existingAccount.password = passwordHash;
+      existingAccount.accountId = admin.id;
+      await accounts.save(existingAccount);
     } else {
-      await prisma.account.create({
-        data: {
+      await accounts.save(
+        accounts.create({
           userId: admin.id,
-          accountId: email,
+          accountId: admin.id,
           providerId: "credential",
           password: passwordHash,
-        },
-      });
+        }),
+      );
     }
   }
 
-  const settings = await prisma.siteSettings.findFirst();
+  const settings = await settingsRepo.find({ take: 1 }).then((r) => r[0] ?? null);
   if (!settings) {
-    await prisma.siteSettings.create({
-      data: {
+    await settingsRepo.save(
+      settingsRepo.create({
         brandingName: process.env.BRANDING_NAME ?? "Corujinha",
         contactEmail: "Geral@ninhodacoruja.pt",
         contactPhone: "+351 916 280 509",
-        content: DEFAULT_SITE_CONTENT as object,
-      },
-    });
+        content: DEFAULT_SITE_CONTENT as unknown as Record<string, unknown>,
+      }),
+    );
   } else if (!settings.content) {
-    await prisma.siteSettings.update({
-      where: { id: settings.id },
-      data: { content: DEFAULT_SITE_CONTENT as object },
-    });
+    settings.content = DEFAULT_SITE_CONTENT as unknown as Record<string, unknown>;
+    await settingsRepo.save(settings);
   } else {
-    // Replace placeholder testimonials (Ana M. / Ricardo S. / Carla P.) with real Google reviews.
-    // Strip trailing "5⭐…" from Sandra but keep «Recomendo.» (stars already shown on the card).
     const content = settings.content as {
       social?: { testimonials?: { author?: string; quote?: string }[] };
     };
@@ -104,8 +123,7 @@ async function main() {
       ["Ana M.", "Ricardo S.", "Carla P."].includes(a),
     );
     const starSuffix = /\s*Recomendo\s*5⭐️?(?:⭐️?){0,4}\s*$/u;
-    const missingRecomendo =
-      /\s*estudar e conviver\.?\s*$/u;
+    const missingRecomendo = /\s*estudar e conviver\.?\s*$/u;
     const needsSandraFix = testimonials.some((t) => {
       if (t.author !== "Sandra Gomes" || !t.quote) return false;
       return starSuffix.test(t.quote) || (missingRecomendo.test(t.quote) && !/Recomendo/i.test(t.quote));
@@ -126,48 +144,43 @@ async function main() {
             }
             return t;
           });
-      const next = {
+      settings.content = {
         ...(content as object),
         social: {
           ...(content.social ?? {}),
           testimonials: nextTestimonials,
         },
-      };
-      await prisma.siteSettings.update({
-        where: { id: settings.id },
-        data: { content: next as object },
-      });
+      } as Record<string, unknown>;
+      await settingsRepo.save(settings);
     }
   }
 
-  if ((await prisma.teamMember.count()) === 0) {
-    await prisma.teamMember.createMany({
-      data: [
-        {
-          name: "Equipa pedagógica",
-          description: "Profissionais dedicados ao apoio escolar e desenvolvimento das crianças.",
-          sortOrder: 1,
-        },
-        {
-          name: "Direção",
-          description: "Coordenação do Centro de Apoio Escolar Corujinha.",
-          sortOrder: 2,
-        },
-      ],
-    });
+  if ((await teamMembers.count()) === 0) {
+    await teamMembers.save([
+      teamMembers.create({
+        name: "Equipa pedagógica",
+        description: "Profissionais dedicados ao apoio escolar e desenvolvimento das crianças.",
+        sortOrder: 1,
+      }),
+      teamMembers.create({
+        name: "Direção",
+        description: "Coordenação do Centro de Apoio Escolar Corujinha.",
+        sortOrder: 2,
+      }),
+    ]);
   }
 
-  if ((await prisma.entity.count()) === 0) {
-    const entity = await prisma.entity.create({
-      data: {
+  if ((await entities.count()) === 0) {
+    const entity = await entities.save(
+      entities.create({
         name: "Corujinha — Centro de Apoio Escolar",
         description: "Apoio escolar, formações e acompanhamento pedagógico.",
         location: "Portugal",
         sortOrder: 1,
-      },
-    });
-    await prisma.formation.create({
-      data: {
+      }),
+    );
+    await formations.save(
+      formations.create({
         name: "Apoio ao estudo",
         description: "Acompanhamento personalizado nas disciplinas escolares.",
         duration: "Anual",
@@ -175,67 +188,65 @@ async function main() {
         entityId: entity.id,
         sortOrder: 1,
         active: true,
-      },
-    });
+      }),
+    );
   }
 
-  if ((await prisma.post.count()) === 0) {
-    await prisma.post.create({
-      data: {
+  if ((await posts.count()) === 0) {
+    await posts.save(
+      posts.create({
         title: "Bem-vindo à Corujinha",
         content: "O novo portal do Centro de Apoio Escolar Corujinha está online.",
         featured: true,
         published: true,
         publishedAt: new Date(),
         sortOrder: 1,
-      },
-    });
+      }),
+    );
   }
 
-  if ((await prisma.schoolProtocol.count()) === 0) {
-    await prisma.schoolProtocol.create({
-      data: {
+  if ((await protocols.count()) === 0) {
+    await protocols.save(
+      protocols.create({
         schoolName: "Protocolo exemplo",
         link: "https://example.com",
         sortOrder: 1,
         active: true,
-      },
-    });
+      }),
+    );
   }
 
-  if ((await prisma.center.count()) === 0) {
-    await prisma.center.createMany({
-      data: [
-        {
-          slug: "lobao",
-          name: "Centro Lobão",
-          shortName: "Lobão",
-          address: "R. Namorados 566",
-          city: "Lobão",
-          postalCode: "4505-444",
-          isPrimary: true,
-          sortOrder: 1,
-        },
-        {
-          slug: "sao-joao-de-ver",
-          name: "Centro São João de Ver",
-          shortName: "São João de Ver",
-          address: "Av. Dr. Francisco Sá Carneiro 1192 Loja H",
-          city: "São João de Ver",
-          postalCode: "4520-617",
-          isPrimary: false,
-          sortOrder: 2,
-        },
-        {
-          slug: "sanguedo",
-          name: "Centro Sanguedo",
-          shortName: "Sanguedo",
-          city: "Sanguedo",
-          isPrimary: false,
-          sortOrder: 3,
-        },
-      ],
-    });
+  if ((await centers.count()) === 0) {
+    await centers.save([
+      centers.create({
+        slug: "lobao",
+        name: "Centro Lobão",
+        shortName: "Lobão",
+        address: "R. Namorados 566",
+        city: "Lobão",
+        postalCode: "4505-444",
+        isPrimary: true,
+        sortOrder: 1,
+      }),
+      centers.create({
+        slug: "sao-joao-de-ver",
+        name: "Centro São João de Ver",
+        shortName: "São João de Ver",
+        address: "Av. Dr. Francisco Sá Carneiro 1192 Loja H",
+        city: "São João de Ver",
+        postalCode: "4520-617",
+        isPrimary: false,
+        sortOrder: 2,
+      }),
+      centers.create({
+        slug: "sanguedo",
+        name: "Centro Sanguedo",
+        shortName: "Sanguedo",
+        city: "Sanguedo",
+        isPrimary: false,
+        sortOrder: 3,
+      }),
+    ]);
   }
 
   console.log("Seed complete. Admin:", email);
@@ -247,5 +258,6 @@ main()
     process.exit(1);
   })
   .finally(async () => {
-    await prisma.$disconnect();
+    const { AppDataSource } = await import("./index");
+    if (AppDataSource.isInitialized) await AppDataSource.destroy();
   });

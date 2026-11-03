@@ -1,7 +1,7 @@
 import { Module } from "@nestjs/common";
 import { ConfigModule } from "@nestjs/config";
 import { BullModule } from "@nestjs/bullmq";
-import { PrismaModule } from "./prisma/prisma.module";
+import { DatabaseModule } from "./database/database.module";
 import { RedisModule } from "./redis/redis.module";
 import { MailModule } from "./mail/mail.module";
 import { AuthModule } from "./auth/auth.module";
@@ -29,7 +29,7 @@ import { GooglePlacesModule } from "./google-places/google-places.module";
         url: process.env.REDIS_URL ?? "redis://localhost:6379",
       },
     }),
-    PrismaModule,
+    DatabaseModule,
     RedisModule,
     MailModule,
     AuthModule,
@@ -51,4 +51,3 @@ import { GooglePlacesModule } from "./google-places/google-places.module";
   ],
 })
 export class AppModule {}
-

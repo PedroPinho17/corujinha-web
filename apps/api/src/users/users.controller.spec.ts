@@ -7,31 +7,39 @@ vi.mock("better-auth/crypto", () => ({
 
 import { UsersController } from "./users.controller";
 import { UserRole } from "@corujinha/database";
+import { mockRepo } from "../test/mocks";
 
 describe("UsersController", () => {
-  const prisma = {
-    user: {
-      findMany: vi.fn().mockResolvedValue([]),
-      findUniqueOrThrow: vi.fn(),
-      create: vi.fn().mockResolvedValue({ id: "1", email: "a@b.com" }),
-      update: vi.fn().mockResolvedValue({ id: "1", email: "a@b.com" }),
-      delete: vi.fn().mockResolvedValue({ id: "2" }),
-      count: vi.fn().mockResolvedValue(2),
-    },
-    account: {
-      findFirst: vi.fn(),
-      update: vi.fn(),
-    },
-    session: {
-      deleteMany: vi.fn().mockResolvedValue({ count: 0 }),
-    },
-  };
+  let users: ReturnType<typeof mockRepo>;
+  let accounts: ReturnType<typeof mockRepo>;
+  let sessions: ReturnType<typeof mockRepo>;
+  let txUserRepo: ReturnType<typeof mockRepo>;
+  let txAccountRepo: ReturnType<typeof mockRepo>;
   let controller: UsersController;
 
   beforeEach(() => {
     vi.clearAllMocks();
-    prisma.user.count.mockResolvedValue(2);
-    controller = new UsersController(prisma as never);
+    users = mockRepo();
+    accounts = mockRepo();
+    sessions = mockRepo();
+    txUserRepo = mockRepo();
+    txAccountRepo = mockRepo();
+    txUserRepo.save.mockImplementation(async (u: object) => ({
+      id: "1",
+      ...(u as object),
+    }));
+    let repoCall = 0;
+    users.manager.transaction.mockImplementation(async (cb: (em: { getRepository: () => unknown }) => unknown) => {
+      repoCall = 0;
+      return cb({
+        getRepository: () => {
+          repoCall += 1;
+          return repoCall === 1 ? txUserRepo : txAccountRepo;
+        },
+      });
+    });
+    users.count.mockResolvedValue(2);
+    controller = new UsersController(users as never, accounts as never, sessions as never);
   });
 
   it("list and create requires password (no default)", async () => {
@@ -41,26 +49,28 @@ describe("UsersController", () => {
       email: "ed@example.com",
       password: "SecurePass12!",
     });
-    expect(prisma.user.create).toHaveBeenCalledWith(
+    expect(txUserRepo.save).toHaveBeenCalledWith(
       expect.objectContaining({
-        data: expect.objectContaining({
-          role: UserRole.EDITOR,
-          mustChangePassword: true,
-          accounts: expect.objectContaining({
-            create: expect.objectContaining({ password: "hashed" }),
-          }),
-        }),
+        role: UserRole.EDITOR,
+        mustChangePassword: true,
+        email: "ed@example.com",
+      }),
+    );
+    expect(txAccountRepo.save).toHaveBeenCalledWith(
+      expect.objectContaining({
+        password: "hashed",
+        providerId: "credential",
       }),
     );
   });
 
   it("update with optional password rotation revokes sessions", async () => {
-    prisma.user.findUniqueOrThrow.mockResolvedValue({
+    users.findOneByOrFail.mockResolvedValue({
       id: "1",
       role: UserRole.EDITOR,
       email: "ed@example.com",
     });
-    prisma.account.findFirst.mockResolvedValue({ id: "acc1" });
+    accounts.findOne.mockResolvedValue({ id: "acc1", password: "old" });
     await controller.update(
       "1",
       {
@@ -71,20 +81,19 @@ describe("UsersController", () => {
       },
       { id: "me" } as never,
     );
-    expect(prisma.account.update).toHaveBeenCalledWith({
-      where: { id: "acc1" },
-      data: { password: "hashed" },
-    });
-    expect(prisma.session.deleteMany).toHaveBeenCalledWith({ where: { userId: "1" } });
+    expect(accounts.save).toHaveBeenCalledWith(
+      expect.objectContaining({ password: "hashed" }),
+    );
+    expect(sessions.delete).toHaveBeenCalledWith({ userId: "1" });
 
-    prisma.account.findFirst.mockResolvedValue(null);
-    prisma.session.deleteMany.mockClear();
+    accounts.findOne.mockResolvedValue(null);
+    sessions.delete.mockClear();
     await controller.update(
       "1",
       { name: "Ed", email: "ed@example.com" },
       { id: "me" } as never,
     );
-    expect(prisma.session.deleteMany).not.toHaveBeenCalled();
+    expect(sessions.delete).not.toHaveBeenCalled();
   });
 
   it("remove blocks self-delete with 403", async () => {
@@ -94,20 +103,20 @@ describe("UsersController", () => {
   });
 
   it("remove blocks last admin", async () => {
-    prisma.user.findUniqueOrThrow.mockResolvedValue({ id: "other", role: UserRole.ADMIN });
-    prisma.user.count.mockResolvedValue(1);
+    users.findOneByOrFail.mockResolvedValue({ id: "other", role: UserRole.ADMIN });
+    users.count.mockResolvedValue(1);
     await expect(controller.remove("other", { id: "me" } as never)).rejects.toBeInstanceOf(
       BadRequestException,
     );
   });
 
   it("remove succeeds for non-self non-last-admin", async () => {
-    prisma.user.findUniqueOrThrow.mockResolvedValue({ id: "other", role: UserRole.EDITOR });
+    users.findOneByOrFail.mockResolvedValue({ id: "other", role: UserRole.EDITOR });
     expect(await controller.remove("other", { id: "me" } as never)).toEqual({ success: true });
   });
 
   it("update blocks demoting self", async () => {
-    prisma.user.findUniqueOrThrow.mockResolvedValue({
+    users.findOneByOrFail.mockResolvedValue({
       id: "me",
       role: UserRole.ADMIN,
       email: "me@example.com",
@@ -122,12 +131,12 @@ describe("UsersController", () => {
   });
 
   it("update blocks demoting last admin", async () => {
-    prisma.user.findUniqueOrThrow.mockResolvedValue({
+    users.findOneByOrFail.mockResolvedValue({
       id: "other",
       role: UserRole.ADMIN,
       email: "o@example.com",
     });
-    prisma.user.count.mockResolvedValue(1);
+    users.count.mockResolvedValue(1);
     await expect(
       controller.update(
         "other",

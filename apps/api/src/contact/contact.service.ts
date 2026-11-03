@@ -6,11 +6,13 @@ import {
   NotFoundException,
 } from "@nestjs/common";
 import { InjectQueue } from "@nestjs/bullmq";
+import { InjectRepository } from "@nestjs/typeorm";
+import { ContactKind, ContactMessage } from "@corujinha/database";
+import { CONTACT_QUEUE } from "@corujinha/shared";
 import { Queue } from "bullmq";
-import { PrismaService } from "../prisma/prisma.service";
+import { IsNull, LessThan, Repository } from "typeorm";
 import { RedisService } from "../redis/redis.service";
 import { RedisRateLimiter } from "../common/rate-limit";
-import { CONTACT_QUEUE } from "./contact.processor";
 import type { ContactDto } from "./contact.dto";
 
 /** Default RGPD retention for contact messages (months). Override with CONTACT_RETENTION_MONTHS. */
@@ -23,7 +25,7 @@ export class ContactService {
   private readonly emailLimiter: RedisRateLimiter;
 
   constructor(
-    private readonly prisma: PrismaService,
+    @InjectRepository(ContactMessage) private readonly contacts: Repository<ContactMessage>,
     private readonly redis: RedisService,
     @InjectQueue(CONTACT_QUEUE) private readonly queue: Queue,
   ) {
@@ -63,9 +65,9 @@ export class ContactService {
       );
     }
 
-    const kind = dto.kind === "ENROLLMENT" ? "ENROLLMENT" : "GENERAL";
-    const row = await this.prisma.contactMessage.create({
-      data: {
+    const kind = dto.kind === "ENROLLMENT" ? ContactKind.ENROLLMENT : ContactKind.GENERAL;
+    const row = await this.contacts.save(
+      this.contacts.create({
         name: dto.name,
         email: dto.email,
         phone: dto.phone,
@@ -76,13 +78,20 @@ export class ContactService {
         location: dto.location,
         privacyConsent: true,
         consentAt: new Date(),
+      }),
+    );
+    await this.queue.add(
+      "send",
+      { contactId: row.id },
+      {
+        attempts: 3,
+        backoff: { type: "exponential", delay: 2000 },
       },
-    });
-    await this.queue.add("send", { contactId: row.id });
+    );
     return {
       success: true,
       message:
-        kind === "ENROLLMENT"
+        kind === ContactKind.ENROLLMENT
           ? "Pedido de inscrição enviado! Entraremos em contacto em breve."
           : "Mensagem enviada com sucesso!",
     };
@@ -92,16 +101,12 @@ export class ContactService {
     const take = Math.min(Math.max(pageSize, 1), 100);
     const safePage = Math.max(page, 1);
     const skip = (safePage - 1) * take;
-    const where = { erasedAt: null };
-    const [items, total] = await Promise.all([
-      this.prisma.contactMessage.findMany({
-        where,
-        orderBy: { createdAt: "desc" },
-        skip,
-        take,
-      }),
-      this.prisma.contactMessage.count({ where }),
-    ]);
+    const [items, total] = await this.contacts.findAndCount({
+      where: { erasedAt: IsNull() },
+      order: { createdAt: "DESC" },
+      skip,
+      take,
+    });
     return { items, total, page: safePage, pageSize: take };
   }
 
@@ -109,15 +114,11 @@ export class ContactService {
     id: string,
     dto: { read?: boolean; adminNotes?: string },
   ) {
-    await this.requireActive(id);
-    return this.prisma.contactMessage.update({
-      where: { id },
-      data: {
-        ...(dto.read === true ? { readAt: new Date() } : {}),
-        ...(dto.read === false ? { readAt: null } : {}),
-        ...(dto.adminNotes !== undefined ? { adminNotes: dto.adminNotes } : {}),
-      },
-    });
+    const existing = await this.requireActive(id);
+    if (dto.read === true) existing.readAt = new Date();
+    if (dto.read === false) existing.readAt = null;
+    if (dto.adminNotes !== undefined) existing.adminNotes = dto.adminNotes;
+    return this.contacts.save(existing);
   }
 
   async exportGdpr(id: string) {
@@ -146,21 +147,17 @@ export class ContactService {
 
   async eraseGdpr(id: string) {
     const existing = await this.requireActive(id);
-    await this.prisma.contactMessage.update({
-      where: { id: existing.id },
-      data: {
-        name: "Apagado (RGPD)",
-        email: `erased-${existing.id}@anon.corujinha.local`,
-        phone: null,
-        message: "[apagado]",
-        subject: null,
-        schoolYear: null,
-        location: null,
-        privacyConsent: false,
-        consentAt: null,
-        erasedAt: new Date(),
-      },
-    });
+    existing.name = "Apagado (RGPD)";
+    existing.email = `erased-${existing.id}@anon.corujinha.local`;
+    existing.phone = null;
+    existing.message = "[apagado]";
+    existing.subject = null;
+    existing.schoolYear = null;
+    existing.location = null;
+    existing.privacyConsent = false;
+    existing.consentAt = null;
+    existing.erasedAt = new Date();
+    await this.contacts.save(existing);
     return { ok: true };
   }
 
@@ -175,11 +172,11 @@ export class ContactService {
     const cutoff = new Date();
     cutoff.setMonth(cutoff.getMonth() - Math.max(1, months));
 
-    const stale = await this.prisma.contactMessage.findMany({
-      where: { erasedAt: null, createdAt: { lt: cutoff } },
+    const stale = await this.contacts.find({
+      where: { erasedAt: IsNull(), createdAt: LessThan(cutoff) },
       select: { id: true },
       take: 500,
-      orderBy: { createdAt: "asc" },
+      order: { createdAt: "ASC" },
     });
 
     let erased = 0;
@@ -192,7 +189,7 @@ export class ContactService {
   }
 
   private async requireActive(id: string) {
-    const existing = await this.prisma.contactMessage.findUnique({ where: { id } });
+    const existing = await this.contacts.findOneBy({ id });
     if (!existing || existing.erasedAt) {
       throw new NotFoundException("Contacto não encontrado");
     }

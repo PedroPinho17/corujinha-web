@@ -2,7 +2,7 @@
 
 Portal e CMS da **Corujinha** — centro de apoio escolar / explicações.
 
-Monorepo **Next.js 15** + **NestJS** + PostgreSQL + Prisma + Redis + BullMQ + S3/R2 + Better Auth (passkeys) + shadcn/ui + Docker/Coolify + Sentry.
+Monorepo **Next.js 15** + **NestJS** + PostgreSQL + TypeORM + Redis + BullMQ + S3/R2 + Better Auth (passkeys) + shadcn/ui + Docker/Coolify + Sentry.
 
 ---
 
@@ -11,7 +11,7 @@ Monorepo **Next.js 15** + **NestJS** + PostgreSQL + Prisma + Redis + BullMQ + S3
 ```
 apps/web/           Next.js 15 — site público + /admin
 apps/api/           NestJS — Better Auth, CMS API, BullMQ, S3, RGPD
-packages/database/  Prisma schema + migrations + seed
+packages/database/  TypeORM entities + migrations + seed
 packages/shared/    tipos + DEFAULT_SITE_CONTENT
 docker/             entrypoints + COOLIFY.md
 e2e/                Playwright (smoke, CSP, acessibilidade)
@@ -26,7 +26,6 @@ docs/               RUNBOOK (go-live, backups, RGPD)
 cp .env.example .env          # preencher ADMIN_PASSWORD (≥12) e BETTER_AUTH_SECRET (≥32)
 pnpm install
 pnpm docker:up                # Postgres, Redis, Garage (S3), Mailpit
-pnpm db:generate
 pnpm db:deploy
 pnpm db:seed
 pnpm --filter @corujinha/shared build
@@ -136,7 +135,7 @@ Resumo:
 | `pnpm dev` | Web + API em desenvolvimento |
 | `pnpm build` | Build monorepo (Turbo) |
 | `pnpm docker:up` / `docker:down` | Infra local |
-| `pnpm db:studio` | Prisma Studio |
+| `pnpm db:migrate` | TypeORM migrations (dev) |
 | `pnpm generate:favicons` | Favicons a partir do logo |
 
 ---

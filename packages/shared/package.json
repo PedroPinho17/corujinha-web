@@ -9,7 +9,11 @@
     "dev": "tsc -p tsconfig.json --watch",
     "lint": "echo ok"
   },
+  "dependencies": {
+    "zod": "^3.24.2"
+  },
   "devDependencies": {
+    "@types/node": "^22.15.32",
     "typescript": "^5.8.3"
   }
 }

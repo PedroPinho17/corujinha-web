@@ -9,9 +9,12 @@ import {
   Put,
   UseGuards,
 } from "@nestjs/common";
+import { InjectRepository } from "@nestjs/typeorm";
 import { ArrayMaxSize, IsArray, IsBoolean, IsInt, IsOptional, IsString, MaxLength } from "class-validator";
+import { Entity, Formation } from "@corujinha/database";
+import { Repository } from "typeorm";
 import { AdminGuard } from "../auth/auth.guard";
-import { PrismaService } from "../prisma/prisma.service";
+import { nextSortOrder } from "../common/sort-order";
 import { RedisService } from "../redis/redis.service";
 
 class EntityDto {
@@ -53,7 +56,8 @@ class ReorderDto {
 @Controller()
 export class EntitiesController {
   constructor(
-    private readonly prisma: PrismaService,
+    @InjectRepository(Entity) private readonly entities: Repository<Entity>,
+    @InjectRepository(Formation) private readonly formations: Repository<Formation>,
     private readonly redis: RedisService,
   ) {}
 
@@ -65,56 +69,62 @@ export class EntitiesController {
   async publicList() {
     const cached = await this.redis.getJson("public:entities");
     if (cached) return cached;
-    const data = await this.prisma.entity.findMany({
-      where: { published: true },
-      orderBy: { sortOrder: "asc" },
-      select: {
-        id: true,
-        name: true,
-        description: true,
-        location: true,
-        website: true,
-        formations: {
-          where: { active: true },
-          orderBy: { sortOrder: "asc" },
-          select: {
-            id: true,
-            name: true,
-            description: true,
-            duration: true,
-            location: true,
-          },
-        },
-      },
-    });
+    const rows = await this.entities
+      .createQueryBuilder("e")
+      .leftJoinAndSelect("e.formations", "f", "f.active = :active", { active: true })
+      .where("e.published = :published", { published: true })
+      .orderBy("e.sortOrder", "ASC")
+      .addOrderBy("f.sortOrder", "ASC")
+      .getMany();
+
+    const data = rows.map((e) => ({
+      id: e.id,
+      name: e.name,
+      description: e.description,
+      location: e.location,
+      website: e.website,
+      formations: (e.formations ?? []).map((f) => ({
+        id: f.id,
+        name: f.name,
+        description: f.description,
+        duration: f.duration,
+        location: f.location,
+      })),
+    }));
     await this.redis.setJson("public:entities", data);
     return data;
   }
 
   @Get("api/admin/entities")
   @UseGuards(AdminGuard)
-  adminList() {
-    return this.prisma.entity.findMany({
-      orderBy: { sortOrder: "asc" },
-      include: { _count: { select: { formations: true } } },
+  async adminList() {
+    const rows = await this.entities.find({
+      order: { sortOrder: "ASC" },
     });
+    const counts = await Promise.all(
+      rows.map((e) => this.formations.count({ where: { entityId: e.id } })),
+    );
+    return rows.map((e, i) => ({
+      ...e,
+      _count: { formations: counts[i] },
+    }));
   }
 
   @Post("api/admin/entities")
   @UseGuards(AdminGuard)
   async create(@Body() dto: EntityDto) {
-    const max = await this.prisma.entity.aggregate({ _max: { sortOrder: true } });
-    const row = await this.prisma.entity.create({
-      data: {
+    const sortOrder = dto.sortOrder ?? (await nextSortOrder(this.entities));
+    const row = await this.entities.save(
+      this.entities.create({
         name: dto.name,
         description: dto.description,
         location: dto.location,
         website: dto.website,
-        translations: dto.translations as object | undefined,
+        translations: dto.translations as Record<string, unknown> | undefined,
         published: dto.published ?? true,
-        sortOrder: dto.sortOrder ?? (max._max.sortOrder ?? 0) + 1,
-      },
-    });
+        sortOrder,
+      }),
+    );
     await this.bust();
     return row;
   }
@@ -122,18 +132,17 @@ export class EntitiesController {
   @Put("api/admin/entities/:id")
   @UseGuards(AdminGuard)
   async update(@Param("id") id: string, @Body() dto: EntityDto) {
-    const row = await this.prisma.entity.update({
-      where: { id },
-      data: {
-        name: dto.name,
-        description: dto.description,
-        location: dto.location,
-        website: dto.website,
-        translations: dto.translations as object | undefined,
-        published: dto.published,
-        sortOrder: dto.sortOrder,
-      },
+    const current = await this.entities.findOneByOrFail({ id });
+    Object.assign(current, {
+      name: dto.name,
+      description: dto.description,
+      location: dto.location,
+      website: dto.website,
+      translations: dto.translations as Record<string, unknown> | undefined,
+      published: dto.published,
+      sortOrder: dto.sortOrder,
     });
+    const row = await this.entities.save(current);
     await this.bust();
     return row;
   }
@@ -141,11 +150,9 @@ export class EntitiesController {
   @Patch("api/admin/entities/:id/toggle")
   @UseGuards(AdminGuard)
   async toggle(@Param("id") id: string) {
-    const current = await this.prisma.entity.findUniqueOrThrow({ where: { id } });
-    const row = await this.prisma.entity.update({
-      where: { id },
-      data: { published: !current.published },
-    });
+    const current = await this.entities.findOneByOrFail({ id });
+    current.published = !current.published;
+    const row = await this.entities.save(current);
     await this.bust();
     return row;
   }
@@ -153,11 +160,12 @@ export class EntitiesController {
   @Post("api/admin/entities/reorder")
   @UseGuards(AdminGuard)
   async reorder(@Body() dto: ReorderDto) {
-    await this.prisma.$transaction(
-      dto.ids.map((id, index) =>
-        this.prisma.entity.update({ where: { id }, data: { sortOrder: index + 1 } }),
-      ),
-    );
+    await this.entities.manager.transaction(async (em) => {
+      const repo = em.getRepository(Entity);
+      for (const [index, id] of dto.ids.entries()) {
+        await repo.update({ id }, { sortOrder: index + 1 });
+      }
+    });
     await this.bust();
     return { success: true };
   }
@@ -165,7 +173,8 @@ export class EntitiesController {
   @Delete("api/admin/entities/:id")
   @UseGuards(AdminGuard)
   async remove(@Param("id") id: string) {
-    await this.prisma.entity.delete({ where: { id } });
+    await this.entities.findOneByOrFail({ id });
+    await this.entities.delete({ id });
     await this.bust();
     return { success: true };
   }

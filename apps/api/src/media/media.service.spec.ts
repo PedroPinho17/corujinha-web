@@ -85,7 +85,7 @@ describe("MediaService.createPresignedUpload", () => {
     const svc = new MediaService();
     expect(svc.getPublicUrl("gallery/a.png")).toContain("/corujinha-media/gallery/a.png");
     const send = vi.spyOn((svc as unknown as { client: { send: typeof vi.fn } }).client, "send");
-    send.mockResolvedValueOnce({});
+    send.mockResolvedValueOnce({} as never);
     expect(await svc.pingBucket()).toBe(true);
     send.mockRejectedValueOnce(new Error("down"));
     expect(await svc.pingBucket()).toBe(false);
@@ -96,7 +96,7 @@ describe("MediaService.createPresignedUpload", () => {
     const { MediaService } = await import("./media.service");
     const svc = new MediaService();
     const send = vi.spyOn((svc as unknown as { client: { send: typeof vi.fn } }).client, "send");
-    send.mockRejectedValueOnce(new Error("missing")).mockResolvedValue({});
+    send.mockRejectedValueOnce(new Error("missing")).mockResolvedValue({} as never);
     await svc.onModuleInit();
     expect(send.mock.calls.length).toBeGreaterThan(1);
   });

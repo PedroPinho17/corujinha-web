@@ -9,9 +9,12 @@ import {
   Put,
   UseGuards,
 } from "@nestjs/common";
+import { InjectRepository } from "@nestjs/typeorm";
 import { ArrayMaxSize, IsArray, IsBoolean, IsInt, IsOptional, IsString, MaxLength } from "class-validator";
+import { SchoolProtocol } from "@corujinha/database";
+import { Repository } from "typeorm";
 import { AdminGuard } from "../auth/auth.guard";
-import { PrismaService } from "../prisma/prisma.service";
+import { nextSortOrder } from "../common/sort-order";
 import { RedisService } from "../redis/redis.service";
 
 class ProtocolDto {
@@ -50,7 +53,7 @@ class ReorderDto {
 @Controller()
 export class ProtocolsController {
   constructor(
-    private readonly prisma: PrismaService,
+    @InjectRepository(SchoolProtocol) private readonly protocols: Repository<SchoolProtocol>,
     private readonly redis: RedisService,
   ) {}
 
@@ -62,9 +65,9 @@ export class ProtocolsController {
   async publicList() {
     const cached = await this.redis.getJson("public:protocols");
     if (cached) return cached;
-    const data = await this.prisma.schoolProtocol.findMany({
+    const data = await this.protocols.find({
       where: { active: true },
-      orderBy: { sortOrder: "asc" },
+      order: { sortOrder: "ASC" },
       select: {
         id: true,
         schoolName: true,
@@ -80,23 +83,23 @@ export class ProtocolsController {
   @Get("api/admin/protocols")
   @UseGuards(AdminGuard)
   adminList() {
-    return this.prisma.schoolProtocol.findMany({ orderBy: { sortOrder: "asc" } });
+    return this.protocols.find({ order: { sortOrder: "ASC" } });
   }
 
   @Post("api/admin/protocols")
   @UseGuards(AdminGuard)
   async create(@Body() dto: ProtocolDto) {
-    const max = await this.prisma.schoolProtocol.aggregate({ _max: { sortOrder: true } });
-    const row = await this.prisma.schoolProtocol.create({
-      data: {
+    const sortOrder = dto.sortOrder ?? (await nextSortOrder(this.protocols));
+    const row = await this.protocols.save(
+      this.protocols.create({
         schoolName: dto.schoolName,
         link: dto.link,
         description: dto.description,
         documentKey: dto.documentKey,
         active: dto.active ?? true,
-        sortOrder: dto.sortOrder ?? (max._max.sortOrder ?? 0) + 1,
-      },
-    });
+        sortOrder,
+      }),
+    );
     await this.bust();
     return row;
   }
@@ -104,17 +107,16 @@ export class ProtocolsController {
   @Put("api/admin/protocols/:id")
   @UseGuards(AdminGuard)
   async update(@Param("id") id: string, @Body() dto: ProtocolDto) {
-    const row = await this.prisma.schoolProtocol.update({
-      where: { id },
-      data: {
-        schoolName: dto.schoolName,
-        link: dto.link,
-        description: dto.description,
-        documentKey: dto.documentKey,
-        active: dto.active,
-        sortOrder: dto.sortOrder,
-      },
+    const current = await this.protocols.findOneByOrFail({ id });
+    Object.assign(current, {
+      schoolName: dto.schoolName,
+      link: dto.link,
+      description: dto.description,
+      documentKey: dto.documentKey,
+      active: dto.active,
+      sortOrder: dto.sortOrder,
     });
+    const row = await this.protocols.save(current);
     await this.bust();
     return row;
   }
@@ -122,11 +124,9 @@ export class ProtocolsController {
   @Patch("api/admin/protocols/:id/toggle")
   @UseGuards(AdminGuard)
   async toggle(@Param("id") id: string) {
-    const current = await this.prisma.schoolProtocol.findUniqueOrThrow({ where: { id } });
-    const row = await this.prisma.schoolProtocol.update({
-      where: { id },
-      data: { active: !current.active },
-    });
+    const current = await this.protocols.findOneByOrFail({ id });
+    current.active = !current.active;
+    const row = await this.protocols.save(current);
     await this.bust();
     return row;
   }
@@ -134,11 +134,12 @@ export class ProtocolsController {
   @Post("api/admin/protocols/reorder")
   @UseGuards(AdminGuard)
   async reorder(@Body() dto: ReorderDto) {
-    await this.prisma.$transaction(
-      dto.ids.map((id, index) =>
-        this.prisma.schoolProtocol.update({ where: { id }, data: { sortOrder: index + 1 } }),
-      ),
-    );
+    await this.protocols.manager.transaction(async (em) => {
+      const repo = em.getRepository(SchoolProtocol);
+      for (const [index, id] of dto.ids.entries()) {
+        await repo.update({ id }, { sortOrder: index + 1 });
+      }
+    });
     await this.bust();
     return { success: true };
   }
@@ -146,7 +147,8 @@ export class ProtocolsController {
   @Delete("api/admin/protocols/:id")
   @UseGuards(AdminGuard)
   async remove(@Param("id") id: string) {
-    await this.prisma.schoolProtocol.delete({ where: { id } });
+    await this.protocols.findOneByOrFail({ id });
+    await this.protocols.delete({ id });
     await this.bust();
     return { success: true };
   }

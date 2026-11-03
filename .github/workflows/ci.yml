@@ -87,7 +87,6 @@ jobs:
           node-version: ${{ env.NODE_VERSION }}
           cache: pnpm
       - run: pnpm install --frozen-lockfile
-      - run: pnpm db:generate
       - run: pnpm --filter @corujinha/shared build
       - run: pnpm --filter @corujinha/database build
       - name: Migrate + seed
@@ -275,7 +274,8 @@ jobs:
         run: |
           set -euo pipefail
           pnpm --filter @corujinha/shared build
-          pnpm db:generate
+          pnpm --filter @corujinha/database build
+          pnpm db:deploy
           pnpm db:seed
 
       - name: API smoke (health, signup closed, contact)

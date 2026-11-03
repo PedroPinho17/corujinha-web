@@ -1,5 +1,5 @@
 import { escapeHtml } from "../common/escape-html";
-import { renderEmailHtml } from "../mail/email-layout";
+import { renderEmailHtml } from "@corujinha/shared";
 
 /** Copy for password-reset emails (formal «você»). */
 export function buildResetPasswordMail(name: string, url: string) {

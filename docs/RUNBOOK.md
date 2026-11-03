@@ -15,7 +15,7 @@
 1. `cp .env.example .env` e preencher `ADMIN_PASSWORD` (≥12), `BETTER_AUTH_SECRET` (≥32).
 2. Gerar chaves Garage: `S3_ACCESS_KEY=GK` + `openssl rand -hex 15`; `S3_SECRET_KEY` e `GARAGE_RPC_SECRET` com `openssl rand -hex 32`.
 3. `pnpm docker:up` (perfil `local`: Garage + Mailpit + Postgres + Redis).
-4. `pnpm install && pnpm db:generate && pnpm db:deploy && pnpm db:seed`
+4. `pnpm install && pnpm db:deploy && pnpm db:seed`
 5. `pnpm dev` — health: `http://localhost:3001/api/health`
 
 ## Checklist de go-live (produção)

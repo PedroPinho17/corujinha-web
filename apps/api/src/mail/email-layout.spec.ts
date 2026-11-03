@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it } from "vitest";
-import { emailLogoUrl, renderEmailHtml } from "./email-layout";
+import { emailLogoUrl, renderEmailHtml } from "@corujinha/shared";
 
 describe("email-layout", () => {
   const prevApp = process.env.NEXT_PUBLIC_APP_URL;

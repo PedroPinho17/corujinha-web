@@ -1,36 +1,42 @@
 import { Processor, WorkerHost } from "@nestjs/bullmq";
 import { Logger } from "@nestjs/common";
+import { InjectRepository } from "@nestjs/typeorm";
 import { Job } from "bullmq";
-import { PrismaService } from "../prisma/prisma.service";
-import { MailService } from "../mail/mail.service";
-import { renderEmailHtml } from "../mail/email-layout";
-import { escapeHtml } from "../common/escape-html";
+import {
+  CONTACT_QUEUE,
+  contactEmailJobSchema,
+  escapeHtml,
+  renderEmailHtml,
+} from "@corujinha/shared";
+import { ContactKind, ContactMessage, ContactStatus } from "@corujinha/database";
+import { Repository } from "typeorm";
 
-export const CONTACT_QUEUE = "contact-email";
+import { MailService } from "../mail/mail.service";
 
 @Processor(CONTACT_QUEUE)
 export class ContactProcessor extends WorkerHost {
   private readonly logger = new Logger(ContactProcessor.name);
 
   constructor(
-    private readonly prisma: PrismaService,
+    @InjectRepository(ContactMessage) private readonly contacts: Repository<ContactMessage>,
     private readonly mail: MailService,
   ) {
     super();
   }
 
-  async process(job: Job<{ contactId: string }>) {
-    const contact = await this.prisma.contactMessage.findUnique({
-      where: { id: job.data.contactId },
-    });
-    if (!contact || contact.erasedAt) return;
+  async process(job: Job) {
+    const { contactId } = contactEmailJobSchema.parse(job.data);
+
+    const contact = await this.contacts.findOneBy({ id: contactId });
+    // Já enviado ou apagado → não envia outra vez (idempotência)
+    if (!contact || contact.erasedAt || contact.status === ContactStatus.SENT) return;
 
     const to = process.env.CONTACT_NOTIFY_TO?.trim();
     if (!to) {
       throw new Error("CONTACT_NOTIFY_TO não está definido — aviso de contacto não enviado.");
     }
 
-    const isEnrollment = contact.kind === "ENROLLMENT";
+    const isEnrollment = contact.kind === ContactKind.ENROLLMENT;
     const name = escapeHtml(contact.name);
     const email = escapeHtml(contact.email);
     const phone = escapeHtml(contact.phone ?? "-");
@@ -38,11 +44,11 @@ export class ContactProcessor extends WorkerHost {
     const schoolYear = contact.schoolYear ? escapeHtml(contact.schoolYear) : null;
     const location = contact.location ? escapeHtml(contact.location) : null;
     const messageHtml = escapeHtml(contact.message).replace(/\n/g, "<br/>");
-    const site =
-      (process.env.NEXT_PUBLIC_APP_URL ?? process.env.BETTER_AUTH_URL ?? "http://localhost:3000").replace(
-        /\/$/,
-        "",
-      );
+    const site = (
+      process.env.NEXT_PUBLIC_APP_URL ??
+      process.env.BETTER_AUTH_URL ??
+      "http://localhost:3000"
+    ).replace(/\/$/, "");
 
     try {
       await this.mail.send({
@@ -85,7 +91,6 @@ export class ContactProcessor extends WorkerHost {
         }),
       });
 
-      // Confirmação para a família (não bloqueia o aviso à equipa se falhar)
       try {
         await this.mail.send({
           to: contact.email,
@@ -117,19 +122,14 @@ export class ContactProcessor extends WorkerHost {
           }),
         });
       } catch (confirmErr) {
+        // Só contactId no log — sem email/nome
         this.logger.warn(`Confirmação à família falhou (contact ${contact.id}): ${String(confirmErr)}`);
       }
 
-      await this.prisma.contactMessage.update({
-        where: { id: contact.id },
-        data: { status: "SENT" },
-      });
+      await this.contacts.update({ id: contact.id }, { status: ContactStatus.SENT });
     } catch (err) {
-      this.logger.error(err);
-      await this.prisma.contactMessage.update({
-        where: { id: contact.id },
-        data: { status: "FAILED" },
-      });
+      this.logger.error(`Falha no envio (contact ${contact.id})`);
+      await this.contacts.update({ id: contact.id }, { status: ContactStatus.FAILED });
       throw err;
     }
   }

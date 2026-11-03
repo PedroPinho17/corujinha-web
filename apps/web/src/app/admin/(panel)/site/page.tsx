@@ -67,7 +67,7 @@ export default function AdminSiteContentPage() {
     setSaving(true);
     setMsg("");
     try {
-      // ValidationPipe rejecta campos do Prisma (id/createdAt/updatedAt)
+      // ValidationPipe rejecta campos da entity (id/createdAt/updatedAt)
       const { id: _id, createdAt: _c, updatedAt: _u, ...payload } = settings as Settings & {
         id?: string;
         createdAt?: string;

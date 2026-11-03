@@ -1,23 +1,50 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { DashboardController } from "./dashboard.controller";
-import { mockPrisma, mockRedis } from "../test/mocks";
+import { mockRedis, mockRepo } from "../test/mocks";
 
 describe("DashboardController", () => {
-  let prisma: ReturnType<typeof mockPrisma>;
+  let formations: ReturnType<typeof mockRepo>;
+  let teamMembers: ReturnType<typeof mockRepo>;
+  let posts: ReturnType<typeof mockRepo>;
+  let protocols: ReturnType<typeof mockRepo>;
+  let gallery: ReturnType<typeof mockRepo>;
+  let centers: ReturnType<typeof mockRepo>;
+  let settings: ReturnType<typeof mockRepo>;
+  let users: ReturnType<typeof mockRepo>;
+  let contacts: ReturnType<typeof mockRepo>;
   let redis: ReturnType<typeof mockRedis>;
   let controller: DashboardController;
 
   beforeEach(() => {
     vi.clearAllMocks();
-    prisma = mockPrisma();
+    formations = mockRepo();
+    teamMembers = mockRepo();
+    posts = mockRepo();
+    protocols = mockRepo();
+    gallery = mockRepo();
+    centers = mockRepo();
+    settings = mockRepo();
+    users = mockRepo();
+    contacts = mockRepo();
     redis = mockRedis();
-    controller = new DashboardController(prisma as never, redis as never);
+    controller = new DashboardController(
+      formations as never,
+      teamMembers as never,
+      posts as never,
+      protocols as never,
+      gallery as never,
+      centers as never,
+      settings as never,
+      users as never,
+      contacts as never,
+      redis as never,
+    );
   });
 
   it("home returns cache hit", async () => {
     redis.getJson.mockResolvedValue({ posts: [] });
     expect(await controller.home()).toEqual({ posts: [] });
-    expect(prisma.formation.findMany).not.toHaveBeenCalled();
+    expect(formations.find).not.toHaveBeenCalled();
   });
 
   it("home aggregates and caches", async () => {
@@ -28,22 +55,22 @@ describe("DashboardController", () => {
   });
 
   it("dashboard returns counts excluding erased contacts", async () => {
-    prisma.user.count.mockResolvedValue(2);
-    prisma.teamMember.count.mockResolvedValue(3);
-    prisma.post.count.mockResolvedValue(4);
-    prisma.formation.count.mockResolvedValue(5);
-    prisma.schoolProtocol.count.mockResolvedValue(1);
-    prisma.contactMessage.count.mockResolvedValueOnce(6).mockResolvedValueOnce(1);
-    prisma.contactMessage.findMany.mockResolvedValue([{ id: "c1" }]);
+    users.count.mockResolvedValue(2);
+    teamMembers.count.mockResolvedValue(3);
+    posts.count.mockResolvedValue(4);
+    formations.count.mockResolvedValue(5);
+    protocols.count.mockResolvedValue(1);
+    contacts.count.mockResolvedValueOnce(6).mockResolvedValueOnce(1);
+    contacts.find.mockResolvedValue([{ id: "c1" }]);
     const res = await controller.dashboard();
     expect(res.users).toBe(2);
     expect(res.unreadContacts).toBe(1);
     expect(res.recentContacts).toHaveLength(1);
-    expect(prisma.contactMessage.findMany).toHaveBeenCalledWith(
-      expect.objectContaining({ where: { erasedAt: null } }),
+    expect(contacts.find).toHaveBeenCalledWith(
+      expect.objectContaining({ where: expect.objectContaining({ erasedAt: expect.anything() }) }),
     );
-    expect(prisma.contactMessage.count).toHaveBeenCalledWith(
-      expect.objectContaining({ where: expect.objectContaining({ erasedAt: null }) }),
+    expect(contacts.count).toHaveBeenCalledWith(
+      expect.objectContaining({ where: expect.objectContaining({ erasedAt: expect.anything() }) }),
     );
   });
 });

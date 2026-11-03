@@ -15,6 +15,6 @@ if [ -n "${REDIS_HOST:-}" ]; then
 fi
 
 cd /app/packages/database
-npx prisma migrate deploy
+pnpm migrate:deploy
 cd /app/apps/api
 exec node dist/main.js

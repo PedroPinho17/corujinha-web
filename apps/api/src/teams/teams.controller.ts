@@ -9,9 +9,12 @@ import {
   Put,
   UseGuards,
 } from "@nestjs/common";
+import { InjectRepository } from "@nestjs/typeorm";
 import { ArrayMaxSize, IsArray, IsBoolean, IsInt, IsOptional, IsString, MaxLength } from "class-validator";
+import { TeamMember } from "@corujinha/database";
+import { Repository } from "typeorm";
 import { AdminGuard } from "../auth/auth.guard";
-import { PrismaService } from "../prisma/prisma.service";
+import { nextSortOrder } from "../common/sort-order";
 import { RedisService } from "../redis/redis.service";
 
 class TeamDto {
@@ -49,7 +52,7 @@ class ReorderDto {
 @Controller()
 export class TeamsController {
   constructor(
-    private readonly prisma: PrismaService,
+    @InjectRepository(TeamMember) private readonly teamMembers: Repository<TeamMember>,
     private readonly redis: RedisService,
   ) {}
 
@@ -61,9 +64,9 @@ export class TeamsController {
   async publicList() {
     const cached = await this.redis.getJson("public:team");
     if (cached) return cached;
-    const data = await this.prisma.teamMember.findMany({
+    const data = await this.teamMembers.find({
       where: { published: true },
-      orderBy: { sortOrder: "asc" },
+      order: { sortOrder: "ASC" },
       select: {
         id: true,
         name: true,
@@ -78,23 +81,23 @@ export class TeamsController {
   @Get("api/admin/teams")
   @UseGuards(AdminGuard)
   adminList() {
-    return this.prisma.teamMember.findMany({ orderBy: { sortOrder: "asc" } });
+    return this.teamMembers.find({ order: { sortOrder: "ASC" } });
   }
 
   @Post("api/admin/teams")
   @UseGuards(AdminGuard)
   async create(@Body() dto: TeamDto) {
-    const max = await this.prisma.teamMember.aggregate({ _max: { sortOrder: true } });
-    const row = await this.prisma.teamMember.create({
-      data: {
+    const sortOrder = dto.sortOrder ?? (await nextSortOrder(this.teamMembers));
+    const row = await this.teamMembers.save(
+      this.teamMembers.create({
         name: dto.name,
         description: dto.description,
         imageKey: dto.imageKey,
-        translations: dto.translations as object | undefined,
+        translations: dto.translations as Record<string, unknown> | undefined,
         published: dto.published ?? true,
-        sortOrder: dto.sortOrder ?? (max._max.sortOrder ?? 0) + 1,
-      },
-    });
+        sortOrder,
+      }),
+    );
     await this.bust();
     return row;
   }
@@ -102,17 +105,16 @@ export class TeamsController {
   @Put("api/admin/teams/:id")
   @UseGuards(AdminGuard)
   async update(@Param("id") id: string, @Body() dto: TeamDto) {
-    const row = await this.prisma.teamMember.update({
-      where: { id },
-      data: {
-        name: dto.name,
-        description: dto.description,
-        imageKey: dto.imageKey,
-        translations: dto.translations as object | undefined,
-        published: dto.published,
-        sortOrder: dto.sortOrder,
-      },
+    const current = await this.teamMembers.findOneByOrFail({ id });
+    Object.assign(current, {
+      name: dto.name,
+      description: dto.description,
+      imageKey: dto.imageKey,
+      translations: dto.translations as Record<string, unknown> | undefined,
+      published: dto.published,
+      sortOrder: dto.sortOrder,
     });
+    const row = await this.teamMembers.save(current);
     await this.bust();
     return row;
   }
@@ -120,11 +122,9 @@ export class TeamsController {
   @Patch("api/admin/teams/:id/toggle")
   @UseGuards(AdminGuard)
   async toggle(@Param("id") id: string) {
-    const current = await this.prisma.teamMember.findUniqueOrThrow({ where: { id } });
-    const row = await this.prisma.teamMember.update({
-      where: { id },
-      data: { published: !current.published },
-    });
+    const current = await this.teamMembers.findOneByOrFail({ id });
+    current.published = !current.published;
+    const row = await this.teamMembers.save(current);
     await this.bust();
     return row;
   }
@@ -132,11 +132,12 @@ export class TeamsController {
   @Post("api/admin/teams/reorder")
   @UseGuards(AdminGuard)
   async reorder(@Body() dto: ReorderDto) {
-    await this.prisma.$transaction(
-      dto.ids.map((id, index) =>
-        this.prisma.teamMember.update({ where: { id }, data: { sortOrder: index + 1 } }),
-      ),
-    );
+    await this.teamMembers.manager.transaction(async (em) => {
+      const repo = em.getRepository(TeamMember);
+      for (const [index, id] of dto.ids.entries()) {
+        await repo.update({ id }, { sortOrder: index + 1 });
+      }
+    });
     await this.bust();
     return { success: true };
   }
@@ -144,7 +145,8 @@ export class TeamsController {
   @Delete("api/admin/teams/:id")
   @UseGuards(AdminGuard)
   async remove(@Param("id") id: string) {
-    await this.prisma.teamMember.delete({ where: { id } });
+    await this.teamMembers.findOneByOrFail({ id });
+    await this.teamMembers.delete({ id });
     await this.bust();
     return { success: true };
   }

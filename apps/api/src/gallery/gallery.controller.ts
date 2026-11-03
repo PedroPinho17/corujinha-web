@@ -9,17 +9,13 @@ import {
   Query,
   UseGuards,
 } from "@nestjs/common";
+import { InjectRepository } from "@nestjs/typeorm";
 import { ArrayMaxSize, IsArray, IsBoolean, IsInt, IsOptional, IsString } from "class-validator";
+import { Center, GalleryImage } from "@corujinha/database";
+import { Repository } from "typeorm";
 import { AdminGuard } from "../auth/auth.guard";
-import { PrismaService } from "../prisma/prisma.service";
+import { nextSortOrder } from "../common/sort-order";
 import { RedisService } from "../redis/redis.service";
-
-const CENTER_PUBLIC_SELECT = {
-  id: true,
-  slug: true,
-  name: true,
-  shortName: true,
-} as const;
 
 class GalleryDto {
   @IsString()
@@ -56,7 +52,8 @@ class ReorderDto {
 @Controller()
 export class GalleryController {
   constructor(
-    private readonly prisma: PrismaService,
+    @InjectRepository(GalleryImage) private readonly gallery: Repository<GalleryImage>,
+    @InjectRepository(Center) private readonly centers: Repository<Center>,
     private readonly redis: RedisService,
   ) {}
 
@@ -64,7 +61,15 @@ export class GalleryController {
     await this.redis.del("public:gallery", "public:home");
   }
 
-  private galleryInclude = { center: { select: CENTER_PUBLIC_SELECT } } as const;
+  private pickCenter(center: Center | null | undefined) {
+    if (!center) return null;
+    return {
+      id: center.id,
+      slug: center.slug,
+      name: center.name,
+      shortName: center.shortName,
+    };
+  }
 
   private async resolveCenterId(album?: string, centerId?: string | null) {
     if (centerId) return centerId;
@@ -75,7 +80,7 @@ export class GalleryController {
       "sao-joao": "sao-joao-de-ver",
     };
     const slug = legacy[album] ?? album;
-    const center = await this.prisma.center.findUnique({ where: { slug } });
+    const center = await this.centers.findOneBy({ slug });
     return center?.id ?? null;
   }
 
@@ -83,17 +88,18 @@ export class GalleryController {
   async publicList() {
     const cached = await this.redis.getJson("public:gallery");
     if (cached) return cached;
-    const data = await this.prisma.galleryImage.findMany({
+    const rows = await this.gallery.find({
       where: { published: true },
-      orderBy: { sortOrder: "asc" },
-      select: {
-        id: true,
-        imageKey: true,
-        alt: true,
-        album: true,
-        center: { select: CENTER_PUBLIC_SELECT },
-      },
+      order: { sortOrder: "ASC" },
+      relations: { center: true },
     });
+    const data = rows.map((g) => ({
+      id: g.id,
+      imageKey: g.imageKey,
+      alt: g.alt,
+      album: g.album,
+      center: this.pickCenter(g.center),
+    }));
     await this.redis.setJson("public:gallery", data);
     return data;
   }
@@ -107,66 +113,74 @@ export class GalleryController {
     const pageSize = Math.min(Math.max(Number(pageSizeRaw) || 50, 1), 100);
     const page = Math.max(Number(pageRaw) || 1, 1);
     const skip = (page - 1) * pageSize;
-    const [items, total] = await Promise.all([
-      this.prisma.galleryImage.findMany({
-        orderBy: [{ sortOrder: "asc" }, { id: "asc" }],
-        skip,
-        take: pageSize,
-        include: this.galleryInclude,
-      }),
-      this.prisma.galleryImage.count(),
-    ]);
-    return { items, total, page, pageSize };
+    const [items, total] = await this.gallery.findAndCount({
+      order: { sortOrder: "ASC", id: "ASC" },
+      skip,
+      take: pageSize,
+      relations: { center: true },
+    });
+    return {
+      items: items.map((g) => ({ ...g, center: this.pickCenter(g.center) })),
+      total,
+      page,
+      pageSize,
+    };
   }
 
   @Post("api/admin/gallery")
   @UseGuards(AdminGuard)
   async create(@Body() dto: GalleryDto) {
-    const max = await this.prisma.galleryImage.aggregate({ _max: { sortOrder: true } });
+    const sortOrder = dto.sortOrder ?? (await nextSortOrder(this.gallery));
     const centerId = await this.resolveCenterId(dto.album, dto.centerId);
-    const row = await this.prisma.galleryImage.create({
-      data: {
+    const saved = await this.gallery.save(
+      this.gallery.create({
         imageKey: dto.imageKey,
         alt: dto.alt,
         album: dto.album,
         centerId,
         published: dto.published ?? true,
-        sortOrder: dto.sortOrder ?? (max._max.sortOrder ?? 0) + 1,
-      },
-      include: this.galleryInclude,
+        sortOrder,
+      }),
+    );
+    const row = await this.gallery.findOneOrFail({
+      where: { id: saved.id },
+      relations: { center: true },
     });
     await this.bust();
-    return row;
+    return { ...row, center: this.pickCenter(row.center) };
   }
 
   @Put("api/admin/gallery/:id")
   @UseGuards(AdminGuard)
   async update(@Param("id") id: string, @Body() dto: GalleryDto) {
     const centerId = await this.resolveCenterId(dto.album, dto.centerId);
-    const row = await this.prisma.galleryImage.update({
+    const current = await this.gallery.findOneByOrFail({ id });
+    Object.assign(current, {
+      imageKey: dto.imageKey,
+      alt: dto.alt,
+      album: dto.album,
+      centerId,
+      published: dto.published,
+      sortOrder: dto.sortOrder,
+    });
+    await this.gallery.save(current);
+    const row = await this.gallery.findOneOrFail({
       where: { id },
-      data: {
-        imageKey: dto.imageKey,
-        alt: dto.alt,
-        album: dto.album,
-        centerId,
-        published: dto.published,
-        sortOrder: dto.sortOrder,
-      },
-      include: this.galleryInclude,
+      relations: { center: true },
     });
     await this.bust();
-    return row;
+    return { ...row, center: this.pickCenter(row.center) };
   }
 
   @Post("api/admin/gallery/reorder")
   @UseGuards(AdminGuard)
   async reorder(@Body() dto: ReorderDto) {
-    await this.prisma.$transaction(
-      dto.ids.map((id, index) =>
-        this.prisma.galleryImage.update({ where: { id }, data: { sortOrder: index + 1 } }),
-      ),
-    );
+    await this.gallery.manager.transaction(async (em) => {
+      const repo = em.getRepository(GalleryImage);
+      for (const [index, id] of dto.ids.entries()) {
+        await repo.update({ id }, { sortOrder: index + 1 });
+      }
+    });
     await this.bust();
     return { success: true };
   }
@@ -174,7 +188,8 @@ export class GalleryController {
   @Delete("api/admin/gallery/:id")
   @UseGuards(AdminGuard)
   async remove(@Param("id") id: string) {
-    await this.prisma.galleryImage.delete({ where: { id } });
+    await this.gallery.findOneByOrFail({ id });
+    await this.gallery.delete({ id });
     await this.bust();
     return { success: true };
   }

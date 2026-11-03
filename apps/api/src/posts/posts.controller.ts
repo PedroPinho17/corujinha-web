@@ -9,6 +9,7 @@ import {
   Put,
   UseGuards,
 } from "@nestjs/common";
+import { InjectRepository } from "@nestjs/typeorm";
 import { Transform } from "class-transformer";
 import {
   ArrayMaxSize,
@@ -21,8 +22,10 @@ import {
   IsUrl,
   MaxLength,
 } from "class-validator";
+import { Post as PostEntity } from "@corujinha/database";
+import { Repository } from "typeorm";
 import { AdminGuard } from "../auth/auth.guard";
-import { PrismaService } from "../prisma/prisma.service";
+import { nextSortOrder } from "../common/sort-order";
 import { RedisService } from "../redis/redis.service";
 
 class PostDto {
@@ -81,7 +84,7 @@ class ReorderDto {
 @Controller()
 export class PostsController {
   constructor(
-    private readonly prisma: PrismaService,
+    @InjectRepository(PostEntity) private readonly posts: Repository<PostEntity>,
     private readonly redis: RedisService,
   ) {}
 
@@ -93,9 +96,9 @@ export class PostsController {
   async publicList() {
     const cached = await this.redis.getJson("public:posts");
     if (cached) return cached;
-    const data = await this.prisma.post.findMany({
+    const data = await this.posts.find({
       where: { published: true },
-      orderBy: [{ featured: "desc" }, { sortOrder: "asc" }, { publishedAt: "desc" }],
+      order: { featured: "DESC", sortOrder: "ASC", publishedAt: "DESC" },
       select: {
         id: true,
         title: true,
@@ -117,9 +120,9 @@ export class PostsController {
   async featured() {
     const cached = await this.redis.getJson("public:posts:featured");
     if (cached) return cached;
-    const data = await this.prisma.post.findMany({
+    const data = await this.posts.find({
       where: { published: true, featured: true },
-      orderBy: { sortOrder: "asc" },
+      order: { sortOrder: "ASC" },
       select: {
         id: true,
         title: true,
@@ -140,17 +143,17 @@ export class PostsController {
   @Get("api/admin/posts")
   @UseGuards(AdminGuard)
   adminList() {
-    return this.prisma.post.findMany({
-      orderBy: [{ sortOrder: "asc" }, { createdAt: "desc" }],
+    return this.posts.find({
+      order: { sortOrder: "ASC", createdAt: "DESC" },
     });
   }
 
   @Post("api/admin/posts")
   @UseGuards(AdminGuard)
   async create(@Body() dto: PostDto) {
-    const max = await this.prisma.post.aggregate({ _max: { sortOrder: true } });
-    const row = await this.prisma.post.create({
-      data: {
+    const sortOrder = dto.sortOrder ?? (await nextSortOrder(this.posts));
+    const row = await this.posts.save(
+      this.posts.create({
         title: dto.title,
         content: dto.content,
         link: dto.link,
@@ -158,12 +161,12 @@ export class PostsController {
         email: dto.email,
         featured: dto.featured ?? false,
         imageKey: dto.imageKey,
-        translations: dto.translations as object | undefined,
+        translations: dto.translations as Record<string, unknown> | undefined,
         published: dto.published ?? true,
         publishedAt: dto.published === false ? null : new Date(),
-        sortOrder: dto.sortOrder ?? (max._max.sortOrder ?? 0) + 1,
-      },
-    });
+        sortOrder,
+      }),
+    );
     await this.bust();
     return row;
   }
@@ -171,21 +174,20 @@ export class PostsController {
   @Put("api/admin/posts/:id")
   @UseGuards(AdminGuard)
   async update(@Param("id") id: string, @Body() dto: PostDto) {
-    const row = await this.prisma.post.update({
-      where: { id },
-      data: {
-        title: dto.title,
-        content: dto.content,
-        link: dto.link,
-        phone: dto.phone,
-        email: dto.email,
-        featured: dto.featured,
-        imageKey: dto.imageKey,
-        translations: dto.translations as object | undefined,
-        published: dto.published,
-        sortOrder: dto.sortOrder,
-      },
+    const current = await this.posts.findOneByOrFail({ id });
+    Object.assign(current, {
+      title: dto.title,
+      content: dto.content,
+      link: dto.link,
+      phone: dto.phone,
+      email: dto.email,
+      featured: dto.featured,
+      imageKey: dto.imageKey,
+      translations: dto.translations as Record<string, unknown> | undefined,
+      published: dto.published,
+      sortOrder: dto.sortOrder,
     });
+    const row = await this.posts.save(current);
     await this.bust();
     return row;
   }
@@ -193,14 +195,10 @@ export class PostsController {
   @Patch("api/admin/posts/:id/toggle")
   @UseGuards(AdminGuard)
   async toggle(@Param("id") id: string) {
-    const current = await this.prisma.post.findUniqueOrThrow({ where: { id } });
-    const row = await this.prisma.post.update({
-      where: { id },
-      data: {
-        published: !current.published,
-        publishedAt: !current.published ? new Date() : current.publishedAt,
-      },
-    });
+    const current = await this.posts.findOneByOrFail({ id });
+    current.published = !current.published;
+    current.publishedAt = current.published ? new Date() : current.publishedAt;
+    const row = await this.posts.save(current);
     await this.bust();
     return row;
   }
@@ -208,11 +206,9 @@ export class PostsController {
   @Patch("api/admin/posts/:id/feature")
   @UseGuards(AdminGuard)
   async feature(@Param("id") id: string) {
-    const current = await this.prisma.post.findUniqueOrThrow({ where: { id } });
-    const row = await this.prisma.post.update({
-      where: { id },
-      data: { featured: !current.featured },
-    });
+    const current = await this.posts.findOneByOrFail({ id });
+    current.featured = !current.featured;
+    const row = await this.posts.save(current);
     await this.bust();
     return row;
   }
@@ -220,11 +216,12 @@ export class PostsController {
   @Post("api/admin/posts/reorder")
   @UseGuards(AdminGuard)
   async reorder(@Body() dto: ReorderDto) {
-    await this.prisma.$transaction(
-      dto.ids.map((id, index) =>
-        this.prisma.post.update({ where: { id }, data: { sortOrder: index + 1 } }),
-      ),
-    );
+    await this.posts.manager.transaction(async (em) => {
+      const repo = em.getRepository(PostEntity);
+      for (const [index, id] of dto.ids.entries()) {
+        await repo.update({ id }, { sortOrder: index + 1 });
+      }
+    });
     await this.bust();
     return { success: true };
   }
@@ -232,7 +229,8 @@ export class PostsController {
   @Delete("api/admin/posts/:id")
   @UseGuards(AdminGuard)
   async remove(@Param("id") id: string) {
-    await this.prisma.post.delete({ where: { id } });
+    await this.posts.findOneByOrFail({ id });
+    await this.posts.delete({ id });
     await this.bust();
     return { success: true };
   }
