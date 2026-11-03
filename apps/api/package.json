@@ -14,7 +14,7 @@
   "dependencies": {
     "@aws-sdk/client-s3": "^3.840.0",
     "@aws-sdk/s3-request-presigner": "^3.840.0",
-    "@better-auth/passkey": "^1.6.24",
+    "@better-auth/passkey": "^1.7.15",
     "@corujinha/database": "workspace:*",
     "@corujinha/shared": "workspace:*",
     "@hedystia/better-auth-typeorm": "^1.1.1",
@@ -26,7 +26,7 @@
     "@nestjs/typeorm": "^12.0.2",
     "@paralleldrive/cuid2": "^3.3.0",
     "@sentry/nestjs": "^10.67.0",
-    "better-auth": "^1.2.12",
+    "better-auth": "^1.7.7",
     "bullmq": "^5.56.0",
     "class-transformer": "^0.5.1",
     "class-validator": "^0.14.2",
