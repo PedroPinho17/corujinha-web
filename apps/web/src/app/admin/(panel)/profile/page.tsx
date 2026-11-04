@@ -69,7 +69,7 @@ export default function AdminProfilePage() {
   }
 
   if (!me) {
-    return <p className="text-center text-sm text-slate-500">A carregar…</p>;
+    return <p className="text-center text-sm text-slate-600">A carregar…</p>;
   }
 
   return (
@@ -96,7 +96,7 @@ export default function AdminProfilePage() {
             required
           />
         </div>
-        <p className="text-xs text-slate-500">Permissão: {me.role}</p>
+        <p className="text-xs text-slate-600">Permissão: {me.role}</p>
         <Button type="submit">Guardar perfil</Button>
       </form>
 
@@ -134,7 +134,7 @@ export default function AdminProfilePage() {
 
       <div className="rounded-2xl bg-white p-5 shadow-[0_20px_27px_rgba(0,0,0,0.05)]">
         <h2 className="text-base font-bold text-slate-800">Passkey</h2>
-        <p className="mt-1 text-sm text-slate-500">
+        <p className="mt-1 text-sm text-slate-600">
           Entra no backoffice com biometria ou PIN — sem password no login.
         </p>
         <div className="mt-4">

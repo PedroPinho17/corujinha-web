@@ -102,13 +102,10 @@ export default function AdminUsersPage() {
 
   return (
     <div className="max-w-3xl space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold text-slate-900">Utilizadores</h1>
-        <p className="mt-1 text-sm text-slate-500">
-          Cria editores ou administradores do backoffice. A password inicial deve ter pelo menos 12
-          caracteres.
-        </p>
-      </div>
+      <p className="text-sm text-slate-600">
+        Cria editores ou administradores do backoffice. A password inicial deve ter pelo menos 12
+        caracteres.
+      </p>
       {error && (
         <p className="rounded-xl bg-rose-50 px-4 py-2 text-sm text-rose-700" role="alert">
           {error}
@@ -181,7 +178,7 @@ export default function AdminUsersPage() {
                 <p className="font-medium text-slate-900">
                   {u.name} · <span className="font-normal text-slate-600">{u.email}</span>
                   {isSelf ? (
-                    <span className="ml-2 text-xs font-semibold text-pink-600">(você)</span>
+                    <span className="ml-2 text-xs font-semibold text-pink-700">(você)</span>
                   ) : null}
                 </p>
                 <p className="mt-0.5 text-xs text-slate-600">

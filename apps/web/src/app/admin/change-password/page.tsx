@@ -85,7 +85,7 @@ export default function ChangePasswordPage() {
       <div className="flex min-h-screen items-center justify-center bg-[#f6f7fb] px-4">
         <div className="w-full max-w-md space-y-4 rounded-xl border border-slate-100 bg-white p-7 text-center shadow-lg">
           <h1 className="text-2xl font-bold text-slate-800">Password alterada</h1>
-          <p className="text-sm text-slate-500">Inicia sessão com a nova password.</p>
+          <p className="text-sm text-slate-600">Inicia sessão com a nova password.</p>
           <Button
             type="button"
             className="w-full"
@@ -103,7 +103,7 @@ export default function ChangePasswordPage() {
 
   if (isPending || !session) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-[#f6f7fb] text-slate-500">
+      <div className="flex min-h-screen items-center justify-center bg-[#f6f7fb] text-slate-600">
         A carregar...
       </div>
     );
@@ -116,7 +116,7 @@ export default function ChangePasswordPage() {
         className="w-full max-w-md space-y-4 rounded-xl border border-slate-100 bg-white p-7 shadow-lg"
       >
         <h1 className="text-2xl font-bold text-slate-800">Alterar password</h1>
-        <p className="text-sm text-slate-500">
+        <p className="text-sm text-slate-600">
           A conta foi criada com uma password temporária. Define uma nova antes de
           continuar. Depois terás de iniciar sessão com a nova password.
         </p>

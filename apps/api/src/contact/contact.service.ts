@@ -137,6 +137,7 @@ export class ContactService {
         schoolYear: contact.schoolYear,
         location: contact.location,
         status: contact.status,
+        adminNotes: contact.adminNotes,
         privacyConsent: contact.privacyConsent,
         consentAt: contact.consentAt,
         createdAt: contact.createdAt,
@@ -154,6 +155,7 @@ export class ContactService {
     existing.subject = null;
     existing.schoolYear = null;
     existing.location = null;
+    existing.adminNotes = null;
     existing.privacyConsent = false;
     existing.consentAt = null;
     existing.erasedAt = new Date();

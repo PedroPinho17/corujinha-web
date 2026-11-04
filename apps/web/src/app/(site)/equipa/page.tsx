@@ -1,4 +1,6 @@
+import Image from "next/image";
 import type { Metadata } from "next";
+import { PageHeading } from "@/components/site/page-heading";
 import { fetchPublicList } from "@/lib/public-api";
 import { mediaUrl } from "@/lib/utils";
 
@@ -17,21 +19,24 @@ export default async function EquipaPage() {
 
   return (
     <div className="hero-wash min-h-screen">
-      <div className="mx-auto max-w-6xl px-4 py-16">
-        <h1 className="text-center text-4xl font-bold md:text-5xl">
-          A Nossa <span className="text-pink">Equipa</span>
-        </h1>
-        <p className="mx-auto mt-3 max-w-2xl text-center text-xl text-muted">
-          Profissionais dedicados ao acompanhamento de cada criança.
-        </p>
-        <div className="mt-12 grid gap-8 sm:grid-cols-2 md:grid-cols-3">
+      <div className="page-container py-16">
+        <PageHeading
+          title="A Nossa"
+          accent="Equipa"
+          subtitle="Profissionais dedicados ao acompanhamento de cada criança."
+        />
+        {team.length === 0 && (
+          <p className="mt-12 text-center text-muted">A equipa será apresentada aqui em breve.</p>
+        )}
+        <div className="mt-12 grid gap-6 sm:grid-cols-2 lg:grid-cols-3 lg:gap-8">
           {team.map((m) => (
             <article key={m.id} className="rounded-3xl bg-white p-6 text-center shadow-xl">
-              {m.imageKey && (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img
-                  src={mediaUrl(m.imageKey) ?? undefined}
+              {mediaUrl(m.imageKey) && (
+                <Image
+                  src={mediaUrl(m.imageKey)!}
                   alt={m.name}
+                  width={176}
+                  height={176}
                   className="mx-auto mb-4 h-44 w-44 rounded-full object-cover ring-4 ring-pink/20"
                 />
               )}

@@ -28,11 +28,19 @@
   --color-blush: var(--blush);
   --color-peach: var(--peach);
   --font-sans: var(--font-body);
-  --font-display: var(--font-display-face), ui-serif, Georgia, serif;
+  --font-display: var(--font-body), ui-sans-serif, system-ui, sans-serif;
 }
 
-.font-display {
-  font-family: var(--font-display);
+@utility page-container {
+  @apply mx-auto w-full max-w-6xl px-4;
+}
+
+@layer base {
+  button:not(:disabled),
+  summary,
+  [role="switch"]:not(:disabled) {
+    cursor: pointer;
+  }
 }
 
 .sr-only {
@@ -53,6 +61,32 @@
 
 html {
   scroll-behavior: smooth;
+  /* Keeps anchored sections clear of the sticky site header. */
+  scroll-padding-top: 4.5rem;
+}
+
+/* Unlayered on purpose: must beat text-sm. iOS zooms on focus below 16px. */
+@media (max-width: 639px) {
+  input:not([type="checkbox"]):not([type="radio"]):not([type="file"]),
+  select,
+  textarea {
+    font-size: 16px;
+    min-height: 44px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+
+  *,
+  ::before,
+  ::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
 }
 
 body {

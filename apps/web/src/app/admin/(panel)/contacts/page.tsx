@@ -172,31 +172,28 @@ export default function AdminContactsPage() {
 
       <div className="overflow-hidden rounded-2xl bg-white shadow-[0_20px_27px_rgba(0,0,0,0.05)]">
         <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-100 px-5 py-4">
-          <div>
-            <h2 className="text-base font-bold text-slate-800">Contactos</h2>
-            <p className="text-xs text-slate-400">
-              {total} registo(s) · {unread} por ler nesta página
-            </p>
-          </div>
+          <p className="text-sm text-slate-600">
+            {total} registo(s) · {unread} por ler nesta página
+          </p>
           <button
             type="button"
             onClick={() => load(page)}
-            className="rounded-lg border border-slate-200 px-3 py-1.5 text-xs font-semibold text-slate-600 hover:bg-slate-50"
+            className="min-h-11 rounded-lg border border-slate-200 px-3 py-1.5 text-xs font-semibold text-slate-600 hover:bg-slate-50 sm:min-h-0"
           >
             Atualizar
           </button>
         </div>
 
-        {loading && <p className="px-5 py-10 text-center text-sm text-slate-500">A carregar…</p>}
+        {loading && <p className="px-5 py-10 text-center text-sm text-slate-600">A carregar…</p>}
         {!loading && error && (
-          <p className="px-5 py-10 text-center text-sm text-rose-600" role="alert">
+          <p className="px-5 py-10 text-center text-sm text-rose-700" role="alert">
             {error}
           </p>
         )}
         {!loading && !error && rows.length === 0 && (
           <div className="px-5 py-14 text-center">
             <p className="text-sm font-semibold text-slate-700">Ainda não há mensagens</p>
-            <p className="mx-auto mt-2 max-w-md text-sm text-slate-500">
+            <p className="mx-auto mt-2 max-w-md text-sm text-slate-600">
               Pedidos de inscrição e mensagens do site aparecem aqui.
             </p>
           </div>
@@ -204,7 +201,7 @@ export default function AdminContactsPage() {
 
         {!loading && !error && rows.length > 0 && (
           <>
-            <ul className="divide-y divide-slate-100 md:hidden">
+            <ul className="divide-y divide-slate-100 xl:hidden">
               {rows.map((c) => (
                 <li key={c.id} className={`space-y-2 px-4 py-4 ${!c.readAt ? "bg-amber-50/40" : ""}`}>
                   <div className="flex items-start justify-between gap-2">
@@ -217,22 +214,27 @@ export default function AdminContactsPage() {
                         {c.kind === "ENROLLMENT" ? "Inscrição" : "Mensagem"} ·{" "}
                         {statusLabel[c.status] ?? c.status}
                       </p>
+                      <p className="mt-1 line-clamp-2 text-sm text-slate-700">
+                        {(c.kind === "ENROLLMENT" &&
+                          [c.subject, c.schoolYear, c.location].filter(Boolean).join(" · ")) ||
+                          c.message}
+                      </p>
                     </div>
-                    <time className="shrink-0 text-[11px] text-slate-500">
+                    <time className="shrink-0 text-[11px] text-slate-600">
                       {new Date(c.createdAt).toLocaleDateString("pt-PT")}
                     </time>
                   </div>
                   <div className="flex gap-2">
                     <button
                       type="button"
-                      className="flex-1 rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-xs font-bold text-indigo-600"
+                      className="min-h-11 flex-1 rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-sm font-bold text-indigo-700"
                       onClick={() => open(c)}
                     >
                       Abrir
                     </button>
                     <a
                       href={`mailto:${c.email}`}
-                      className="flex-1 rounded-lg border border-pink-100 bg-pink-50 px-2.5 py-1.5 text-center text-xs font-bold text-pink-700"
+                      className="flex min-h-11 flex-1 items-center justify-center rounded-lg border border-pink-100 bg-pink-50 px-2.5 py-1.5 text-sm font-bold text-pink-700"
                     >
                       Responder
                     </a>
@@ -241,10 +243,10 @@ export default function AdminContactsPage() {
               ))}
             </ul>
 
-            <div className="hidden overflow-x-auto md:block">
+            <div className="hidden overflow-x-auto xl:block">
               <table className="w-full min-w-[800px] text-left text-sm">
                 <thead>
-                  <tr className="border-b border-slate-100 text-[10px] uppercase tracking-wide text-slate-500">
+                  <tr className="border-b border-slate-100 text-[10px] uppercase tracking-wide text-slate-600">
                     <th className="px-4 py-3 font-bold">Data</th>
                     <th className="px-4 py-3 font-bold">Tipo</th>
                     <th className="px-4 py-3 font-bold">Nome</th>
@@ -261,7 +263,7 @@ export default function AdminContactsPage() {
                         !c.readAt ? "bg-amber-50/40" : ""
                       }`}
                     >
-                      <td className="whitespace-nowrap px-4 py-3 text-xs text-slate-500">
+                      <td className="whitespace-nowrap px-4 py-3 text-xs text-slate-600">
                         {new Date(c.createdAt).toLocaleString("pt-PT")}
                       </td>
                       <td className="px-4 py-3">
@@ -280,7 +282,7 @@ export default function AdminContactsPage() {
                           {!c.readAt && <span className="mr-1 text-amber-500">●</span>}
                           {c.name}
                         </p>
-                        <p className="text-xs text-slate-500">{c.email}</p>
+                        <p className="text-xs text-slate-600">{c.email}</p>
                       </td>
                       <td className="max-w-xs px-4 py-3 text-sm text-slate-700">
                         {c.kind === "ENROLLMENT" ? (
@@ -298,7 +300,7 @@ export default function AdminContactsPage() {
                             c.status === "NEW"
                               ? "bg-amber-50 text-amber-700"
                               : c.status === "FAILED"
-                                ? "bg-rose-50 text-rose-600"
+                                ? "bg-rose-50 text-rose-700"
                                 : "bg-emerald-50 text-emerald-600"
                           }`}
                         >
@@ -309,7 +311,7 @@ export default function AdminContactsPage() {
                         <div className="flex flex-row items-center justify-end gap-2">
                           <button
                             type="button"
-                            className="rounded-lg border border-slate-200 bg-white px-2.5 py-1 text-xs font-bold text-indigo-600 hover:bg-indigo-50"
+                            className="rounded-lg border border-slate-200 bg-white px-2.5 py-1 text-xs font-bold text-indigo-700 hover:bg-indigo-50"
                             onClick={() => open(c)}
                           >
                             Abrir
@@ -334,7 +336,7 @@ export default function AdminContactsPage() {
 
             {totalPages > 1 && (
               <div className="flex items-center justify-between gap-3 border-t border-slate-100 px-5 py-3">
-                <p className="text-xs text-slate-500">
+                <p className="text-xs text-slate-600">
                   Página {page} de {totalPages}
                 </p>
                 <div className="flex gap-2">
@@ -342,7 +344,7 @@ export default function AdminContactsPage() {
                     type="button"
                     disabled={page <= 1 || loading}
                     onClick={() => load(page - 1)}
-                    className="rounded-lg border border-slate-200 px-3 py-1.5 text-xs font-semibold text-slate-600 hover:bg-slate-50 disabled:opacity-40"
+                    className="min-h-11 rounded-lg border border-slate-200 px-3 py-1.5 text-xs font-semibold text-slate-600 hover:bg-slate-50 disabled:opacity-40 sm:min-h-0"
                   >
                     Anterior
                   </button>
@@ -350,7 +352,7 @@ export default function AdminContactsPage() {
                     type="button"
                     disabled={page >= totalPages || loading}
                     onClick={() => load(page + 1)}
-                    className="rounded-lg border border-slate-200 px-3 py-1.5 text-xs font-semibold text-slate-600 hover:bg-slate-50 disabled:opacity-40"
+                    className="min-h-11 rounded-lg border border-slate-200 px-3 py-1.5 text-xs font-semibold text-slate-600 hover:bg-slate-50 disabled:opacity-40 sm:min-h-0"
                   >
                     Seguinte
                   </button>
@@ -370,7 +372,7 @@ export default function AdminContactsPage() {
           onClick={() => setSelected(null)}
         >
           <div
-            className="max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-2xl bg-white p-5 shadow-xl"
+            className="max-h-[90dvh] w-full max-w-lg overflow-y-auto rounded-2xl bg-white p-5 shadow-xl"
             onClick={(e) => e.stopPropagation()}
           >
             <div className="flex items-start justify-between gap-3">
@@ -378,12 +380,12 @@ export default function AdminContactsPage() {
                 <h3 id="contact-detail-title" className="text-lg font-bold text-slate-800">
                   {selected.name}
                 </h3>
-                <p className="text-sm text-slate-500">{selected.email}</p>
-                {selected.phone && <p className="text-sm text-slate-500">{selected.phone}</p>}
+                <p className="text-sm text-slate-600">{selected.email}</p>
+                {selected.phone && <p className="text-sm text-slate-600">{selected.phone}</p>}
               </div>
               <button
                 type="button"
-                className="text-sm text-slate-400 hover:text-slate-700"
+                className="min-h-11 shrink-0 px-2 text-sm text-slate-600 hover:text-slate-900"
                 onClick={() => setSelected(null)}
               >
                 Fechar
@@ -450,7 +452,7 @@ export default function AdminContactsPage() {
                 size="sm"
                 variant="outline"
                 disabled={saving}
-                className="text-rose-600"
+                className="text-rose-700"
                 onClick={() => eraseGdpr(selected.id)}
               >
                 Apagar RGPD
@@ -458,7 +460,7 @@ export default function AdminContactsPage() {
             </div>
 
             <div className="mt-4">
-              <label className="text-xs font-bold uppercase text-slate-400" htmlFor="admin-notes">
+              <label className="text-xs font-bold uppercase text-slate-600" htmlFor="admin-notes">
                 Notas internas
               </label>
               <Textarea

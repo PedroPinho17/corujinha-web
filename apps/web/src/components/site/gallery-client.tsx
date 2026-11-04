@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import { useEffect, useId, useMemo, useRef, useState } from "react";
 import { mediaUrl } from "@/lib/utils";
 
@@ -74,6 +75,11 @@ export function GalleryClient({
     closeRef.current?.focus();
     const onKey = (e: KeyboardEvent) => {
       if (e.key === "Escape") setActive(null);
+      // "Fechar" is the only control in the dialog: keep focus from reaching the page behind.
+      if (e.key === "Tab") {
+        e.preventDefault();
+        closeRef.current?.focus();
+      }
     };
     document.addEventListener("keydown", onKey);
     const prev = document.body.style.overflow;
@@ -87,14 +93,14 @@ export function GalleryClient({
 
   return (
     <div>
-      <div className="flex flex-wrap gap-2" role="group" aria-label="Filtrar galeria">
+      <div className="flex flex-wrap justify-center gap-2" role="group" aria-label="Filtrar galeria">
         {filters.map((f) => (
           <button
             key={f.id}
             type="button"
             aria-pressed={filter === f.id}
             onClick={() => setFilter(f.id)}
-            className={`rounded-full px-4 py-2 text-sm font-medium transition ${
+            className={`min-h-11 rounded-full px-4 py-2 text-sm font-medium transition sm:min-h-0 ${
               filter === f.id ? "bg-pink text-white" : "bg-blush text-ink hover:bg-pink/10"
             }`}
           >
@@ -103,21 +109,24 @@ export function GalleryClient({
         ))}
       </div>
 
-      <div className="mt-8 grid gap-4 sm:grid-cols-2 md:grid-cols-3">
-        {visible.length === 0 && <p className="text-muted">Sem imagens neste filtro.</p>}
+      <div className="mt-8 grid grid-cols-2 gap-3 sm:gap-4 md:grid-cols-3">
+        {visible.length === 0 && (
+          <p className="col-span-full text-center text-muted">Sem imagens neste filtro.</p>
+        )}
         {visible.map((g) => (
           <button
             key={g.id}
             type="button"
-            className="overflow-hidden rounded-2xl shadow-md ring-1 ring-ink/5 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-pink"
+            className="relative aspect-[4/3] w-full overflow-hidden rounded-2xl shadow-md ring-1 ring-ink/5 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-pink"
             onClick={() => setActive(g)}
             aria-label={`Ampliar: ${g.alt || "imagem da galeria"}`}
           >
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img
-              src={mediaUrl(g.imageKey) ?? undefined}
+            <Image
+              src={mediaUrl(g.imageKey)!}
               alt={g.alt ?? "Galeria"}
-              className="aspect-[4/3] w-full object-cover transition hover:scale-105"
+              fill
+              sizes="(min-width: 1152px) 370px, (min-width: 768px) 33vw, 50vw"
+              className="object-cover transition hover:scale-105"
             />
           </button>
         ))}
@@ -137,16 +146,18 @@ export function GalleryClient({
           <button
             ref={closeRef}
             type="button"
-            className="absolute right-4 top-4 rounded-full bg-white px-4 py-2 text-sm font-semibold text-ink shadow focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-pink"
+            className="absolute right-4 top-4 min-h-11 rounded-full bg-white px-4 py-2 text-sm font-semibold text-ink shadow focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-pink"
             onClick={() => setActive(null)}
           >
             Fechar
           </button>
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img
-            src={mediaUrl(active.imageKey) ?? undefined}
+          <Image
+            src={mediaUrl(active.imageKey)!}
             alt={active.alt ?? "Galeria"}
-            className="max-h-[85vh] max-w-full rounded-xl object-contain"
+            width={1600}
+            height={1200}
+            sizes="100vw"
+            className="h-auto max-h-[85dvh] w-auto max-w-full rounded-xl object-contain"
             onClick={(e) => e.stopPropagation()}
           />
         </div>

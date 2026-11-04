@@ -52,7 +52,8 @@ export function buildCsp(nonce: string): string {
     "object-src 'none'",
     `img-src ${imgSrc}`,
     "font-src 'self' data:",
-    `style-src 'self' 'nonce-${nonce}' 'unsafe-inline'`,
+    // Dev only: a nonce makes browsers ignore 'unsafe-inline', which breaks the Next dev indicator.
+    isProd ? `style-src 'self' 'nonce-${nonce}' 'unsafe-inline'` : "style-src 'self' 'unsafe-inline'",
     "style-src-attr 'unsafe-inline'",
     `script-src 'self' 'nonce-${nonce}' 'strict-dynamic'`,
     `connect-src ${connectSrc}`,

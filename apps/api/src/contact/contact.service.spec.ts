@@ -152,11 +152,13 @@ describe("ContactService", () => {
     const exported = await service.exportGdpr("1");
     expect(exported.format).toBe("corujinha-contact-gdpr-v1");
     expect(exported.contact.email).toBe("a@b.com");
+    expect(exported.contact).toHaveProperty("adminNotes");
 
     expect(await service.eraseGdpr("1")).toEqual({ ok: true });
     expect(contacts.save).toHaveBeenCalledWith(
       expect.objectContaining({
         name: "Apagado (RGPD)",
+        adminNotes: null,
         erasedAt: expect.any(Date),
       }),
     );

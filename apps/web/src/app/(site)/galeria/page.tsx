@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { GalleryClient } from "@/components/site/gallery-client";
+import { PageHeading } from "@/components/site/page-heading";
 import { fetchPublicList } from "@/lib/public-api";
 
 export const metadata: Metadata = {
@@ -28,13 +29,12 @@ export default async function GaleriaPage() {
     fetchPublicList<GalleryCenter>("/api/public/centers", ["centers"]),
   ]);
   return (
-    <div className="mx-auto max-w-6xl px-4 py-16">
-      <h1 className="text-4xl font-bold">
-        Galeria de <span className="text-pink">Momentos</span>
-      </h1>
-      <p className="mt-2 text-muted">
-        Lobão, São João de Ver, Sanguedo — atividades e o dia a dia da Corujinha.
-      </p>
+    <div className="page-container py-16">
+      <PageHeading
+        title="Galeria de"
+        accent="Momentos"
+        subtitle="Lobão, São João de Ver, Sanguedo — atividades e o dia a dia da Corujinha."
+      />
       <div className="mt-10">
         <GalleryClient items={items} centers={centers} />
       </div>

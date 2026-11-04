@@ -24,8 +24,11 @@ docs/               RUNBOOK (go-live, backups, RGPD)
 
 ```bash
 cp .env.example .env          # preencher ADMIN_PASSWORD (≥12) e BETTER_AUTH_SECRET (≥32)
+# PostgreSQL local na porta 5432, com o utilizador e a base do DATABASE_URL:
+#   psql -U postgres -c "CREATE ROLE corujinha LOGIN PASSWORD 'corujinha'"
+#   psql -U postgres -c "CREATE DATABASE corujinha OWNER corujinha"
 pnpm install
-pnpm docker:up                # Postgres, Redis, Garage (S3), Mailpit
+pnpm docker:up                # Redis, Garage (S3), Mailpit
 pnpm db:deploy
 pnpm db:seed
 pnpm --filter @corujinha/shared build
@@ -134,7 +137,7 @@ Resumo:
 |---------|-----------|
 | `pnpm dev` | Web + API em desenvolvimento |
 | `pnpm build` | Build monorepo (Turbo) |
-| `pnpm docker:up` / `docker:down` | Infra local |
+| `pnpm docker:up` / `docker:down` | Redis, Garage e Mailpit |
 | `pnpm db:migrate` | TypeORM migrations (dev) |
 | `pnpm generate:favicons` | Favicons a partir do logo |
 

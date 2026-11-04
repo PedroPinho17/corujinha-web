@@ -2,7 +2,7 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { authClient } from "@/lib/auth-client";
 import { adminFetch } from "@/lib/admin-api";
 import { Button } from "@/components/ui/button";
@@ -20,6 +20,12 @@ export default function AdminLoginPage() {
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+  const { data: session } = authClient.useSession();
+
+  // Does not block the form: it is shown right away and only skipped for a valid session.
+  useEffect(() => {
+    if (session) void redirectAfterLogin().catch(() => undefined);
+  }, [session]);
 
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -71,7 +77,7 @@ export default function AdminLoginPage() {
         <div className="mb-6 flex flex-col items-center text-center">
           <Image src="/logo.webp" alt="Corujinha" width={80} height={80} className="h-16 w-16 object-contain" />
           <h1 className="mt-3 text-2xl font-bold text-slate-800">Backoffice Corujinha</h1>
-          <p className="text-sm text-slate-500">Entre para gerir o conteúdo</p>
+          <p className="text-sm text-slate-600">Entre para gerir o conteúdo</p>
         </div>
         <div className="grid gap-3">
           <div>

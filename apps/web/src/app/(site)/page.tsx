@@ -1,7 +1,6 @@
 import Image from "next/image";
 import Link from "next/link";
 import type { Metadata } from "next";
-import type { ReactNode } from "react";
 import {
   BookOpen,
   Briefcase,
@@ -19,6 +18,8 @@ import {
   Users,
 } from "lucide-react";
 import { ContactForm } from "@/components/site/contact-form";
+import { GradientWord } from "@/components/site/page-heading";
+import { ScrollToHash } from "@/components/site/scroll-to-hash";
 import { fetchPublicJson } from "@/lib/public-api";
 import { mediaUrl } from "@/lib/utils";
 import { mergeSiteContent, type SiteContent } from "@/lib/site-content";
@@ -184,12 +185,6 @@ function phoneLabel(phone: string) {
   return phone.replace(/^\+351\s?/, "");
 }
 
-function GradientWord({ children }: { children: ReactNode }) {
-  return (
-    <span className="bg-gradient-to-r from-pink to-orange bg-clip-text text-transparent">{children}</span>
-  );
-}
-
 function galleryAlbumLabel(
   album?: string | null,
   center?: { shortName?: string | null; name?: string | null } | null,
@@ -212,6 +207,21 @@ function galleryAlbumLabel(
     sala: "Salas",
   };
   return map[key] ?? album.trim().replace(/[-_]/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
+}
+
+/** Stretched link: the whole card (position: relative) is the click target. */
+function NewsLink({ href, children }: { href?: string | null; children: React.ReactNode }) {
+  const className = "after:absolute after:inset-0 hover:text-pink";
+  const target = href || "/noticias";
+  return target.startsWith("http") ? (
+    <a href={target} target="_blank" rel="noreferrer" className={className}>
+      {children}
+    </a>
+  ) : (
+    <Link href={target} className={className}>
+      {children}
+    </Link>
+  );
 }
 
 export default async function HomePage() {
@@ -259,6 +269,7 @@ export default async function HomePage() {
 
   // Topo = imagem/logo configurável no backoffice (não a 1.ª foto da galeria)
   const heroLogo = mediaUrl(hero.logoPath) || "/logo.webp";
+  const heroIsLogo = heroLogo === "/logo.webp";
   const founderPhoto = mediaUrl(about.founderImagePath) || "/Vera.webp";
   const galleryPreview = gallery.slice(0, 6);
 
@@ -313,9 +324,10 @@ export default async function HomePage() {
 
   return (
     <>
+      <ScrollToHash />
       {/* Hero + cartões flutuantes */}
       <section id="home" className="relative bg-gradient-to-b from-pink-50 via-white to-white">
-        <div className="mx-auto max-w-6xl px-4 pb-8 pt-12 md:pb-14 md:pt-16">
+        <div className="page-container pb-8 pt-12 md:pb-14 md:pt-16">
           <div className="grid items-center gap-10 md:grid-cols-2 md:gap-14">
             <div className="space-y-6 animate-rise">
               <h1 className="font-display text-4xl font-bold leading-[1.15] text-ink md:text-5xl lg:text-6xl">
@@ -342,25 +354,38 @@ export default async function HomePage() {
               </div>
             </div>
 
-            <div className="relative animate-rise-delay">
-              <div className="overflow-hidden rounded-[2rem] border-2 border-dashed border-pink/50 bg-white p-3 shadow-[0_20px_60px_rgba(219,39,119,0.12)]">
-                <div className="flex aspect-[4/3] flex-col items-center justify-center gap-3 rounded-[1.5rem] bg-gradient-to-br from-pink-50 via-white to-orange-50 px-6 text-center">
+            {/* O logótipo já está no cabeçalho: no telemóvel só se mostra uma fotografia real. */}
+            <div className={`relative animate-rise-delay ${heroIsLogo ? "hidden md:block" : ""}`}>
+              <div className="overflow-hidden rounded-[2rem] bg-white shadow-[0_20px_60px_rgba(219,39,119,0.12)] ring-1 ring-pink/10">
+                {heroIsLogo ? (
+                  <div className="flex aspect-[4/3] flex-col items-center justify-center gap-3 bg-gradient-to-br from-pink-50 via-white to-orange-50 px-6 text-center">
+                    <Image
+                      src={heroLogo}
+                      alt="Logótipo Corujinha"
+                      width={280}
+                      height={280}
+                      className="h-auto w-full max-w-[240px] object-contain"
+                      priority
+                    />
+                    <p className="text-sm font-medium text-muted">Educação com carinho</p>
+                  </div>
+                ) : (
                   <Image
                     src={heroLogo}
-                    alt="Logótipo Corujinha"
-                    width={280}
-                    height={280}
-                    className="h-auto w-full max-w-[240px] object-contain"
+                    alt="Crianças e equipa na Corujinha"
+                    width={800}
+                    height={600}
+                    sizes="(min-width: 768px) 50vw, 100vw"
+                    className="aspect-[4/3] w-full object-cover"
                     priority
                   />
-                  <p className="text-sm font-medium text-muted">Educação com carinho</p>
-                </div>
+                )}
               </div>
             </div>
           </div>
 
           {/* Cartões a flutuar sob o hero */}
-          <div className="relative z-10 mt-10 grid gap-4 md:mt-14 md:grid-cols-3 md:gap-5">
+          <div className="relative z-10 mt-10 grid gap-4 md:mt-14 lg:grid-cols-3 lg:gap-5">
             {hero.features.map((f, i) => {
               const Icon = featureIcons[i] ?? BookOpen;
               const tone = brandTone(f.tone);
@@ -390,14 +415,14 @@ export default async function HomePage() {
 
       {/* Serviços */}
       <section id="services" className="bg-white pb-16 pt-16 md:pb-20 md:pt-24">
-        <div className="mx-auto max-w-6xl px-4">
+        <div className="page-container">
           <div className="mb-12 text-center">
             <h2 className="font-display text-4xl font-bold md:text-5xl">
               {services.title} <GradientWord>{services.titleAccent}</GradientWord>
             </h2>
             <p className="mx-auto mt-4 max-w-2xl text-muted">{services.subtitle}</p>
           </div>
-          <div className="grid gap-6 md:grid-cols-3">
+          <div className="grid gap-6 lg:grid-cols-3">
             {services.cards.map((card, i) => {
               const Icon = serviceIcons[i] ?? GraduationCap;
               const tone = brandTone(card.tone);
@@ -433,7 +458,7 @@ export default async function HomePage() {
 
       {/* Sobre — foto à esquerda (como mockup) */}
       <section id="about" className="bg-purple-50/60 py-16 md:py-20">
-        <div className="mx-auto max-w-6xl px-4">
+        <div className="page-container">
           <div className="grid items-center gap-10 md:grid-cols-2 md:gap-14">
             <div className="relative mx-auto w-full max-w-md md:mx-0">
               <div className="absolute -inset-2 rounded-[2rem] bg-gradient-to-br from-pink-300/40 to-purple-300/40 blur-sm" />
@@ -475,11 +500,12 @@ export default async function HomePage() {
                     .map((m) => {
                       const src = m.imageKey ? mediaUrl(m.imageKey) : null;
                       return src ? (
-                        // eslint-disable-next-line @next/next/no-img-element
-                        <img
+                        <Image
                           key={m.id}
                           src={src}
                           alt=""
+                          width={36}
+                          height={36}
                           className="h-9 w-9 rounded-full border-2 border-white object-cover shadow-sm"
                         />
                       ) : (
@@ -506,7 +532,7 @@ export default async function HomePage() {
 
       {/* Galeria */}
       <section className="bg-gradient-to-b from-blush/40 via-white to-white py-16 md:py-20">
-        <div className="mx-auto max-w-6xl px-4">
+        <div className="page-container">
           <div className="mb-10 text-center">
             <h2 className="font-display text-4xl font-bold md:text-5xl">
               Galeria de <GradientWord>Momentos</GradientWord>
@@ -536,16 +562,17 @@ export default async function HomePage() {
                     href="/galeria"
                     className="group relative block overflow-hidden rounded-2xl bg-white ring-1 ring-ink/[0.06] transition hover:-translate-y-0.5 hover:shadow-[0_16px_40px_rgba(219,39,119,0.12)]"
                   >
-                    <div className="aspect-[4/3] overflow-hidden">
+                    <div className="relative aspect-[4/3] overflow-hidden">
                       {src ? (
-                        // eslint-disable-next-line @next/next/no-img-element
-                        <img
+                        <Image
                           src={src}
+                          fill
+                          sizes="(min-width: 1152px) 370px, (min-width: 768px) 33vw, 50vw"
                           alt={
                             g.alt ||
                             `Fotografia da galeria Corujinha${albumLabel ? ` — ${albumLabel}` : ""}`
                           }
-                          className="h-full w-full object-cover transition duration-500 group-hover:scale-[1.03]"
+                          className="object-cover transition duration-500 group-hover:scale-[1.03]"
                         />
                       ) : (
                         <div
@@ -557,7 +584,7 @@ export default async function HomePage() {
                       )}
                     </div>
                     {albumLabel ? (
-                      <div className="pointer-events-none absolute inset-x-0 bottom-0 bg-gradient-to-t from-ink/55 to-transparent px-3 pb-2.5 pt-8 opacity-0 transition group-hover:opacity-100">
+                      <div className="pointer-events-none absolute inset-x-0 bottom-0 bg-gradient-to-t from-ink/55 to-transparent px-3 pb-2.5 pt-8 transition group-focus-visible:opacity-100 md:opacity-0 md:group-hover:opacity-100">
                         <p className="text-xs font-semibold text-white">{albumLabel}</p>
                       </div>
                     ) : null}
@@ -579,7 +606,7 @@ export default async function HomePage() {
       {/* Novidades */}
       {featuredNews && (
         <section id="novidades" className="bg-gradient-to-b from-orange-50/90 via-[#fff7ed] to-pink-50/50 py-16 md:py-20">
-          <div className="mx-auto max-w-6xl px-4">
+          <div className="page-container">
             <div className="mb-10 text-center">
               <p className="mb-2 text-xs font-bold uppercase tracking-[0.2em] text-pink">Novidades</p>
               <h2 className="font-display text-4xl font-bold md:text-5xl">
@@ -588,14 +615,15 @@ export default async function HomePage() {
             </div>
 
             <div className="grid gap-5 lg:grid-cols-5 lg:gap-6">
-              <article className="overflow-hidden rounded-3xl bg-white shadow-[0_16px_50px_rgba(0,0,0,0.07)] lg:col-span-3">
+              <article className="relative overflow-hidden rounded-3xl bg-white shadow-[0_16px_50px_rgba(0,0,0,0.07)] transition hover:shadow-[0_20px_60px_rgba(219,39,119,0.14)] lg:col-span-3">
                 <div className="relative flex aspect-[16/10] items-center justify-center bg-gradient-to-br from-pink-100 via-rose-50 to-orange-100">
                   {featuredNews.imageKey && mediaUrl(featuredNews.imageKey) ? (
-                    // eslint-disable-next-line @next/next/no-img-element
-                    <img
+                    <Image
                       src={mediaUrl(featuredNews.imageKey)!}
                       alt={featuredNews.title}
-                      className="h-full w-full object-cover"
+                      fill
+                      sizes="(min-width: 1152px) 680px, (min-width: 1024px) 60vw, 100vw"
+                      className="object-contain"
                     />
                   ) : (
                     <Megaphone className="h-16 w-16 text-pink/35" aria-hidden />
@@ -605,7 +633,9 @@ export default async function HomePage() {
                   </span>
                 </div>
                 <div className="p-6 md:p-8">
-                  <h3 className="font-display text-2xl font-bold text-ink md:text-3xl">{featuredNews.title}</h3>
+                  <h3 className="font-display text-2xl font-bold text-ink md:text-3xl">
+                    <NewsLink href={featuredNews.href}>{featuredNews.title}</NewsLink>
+                  </h3>
                   {featuredNews.summary && (
                     <p className="mt-3 line-clamp-3 text-muted">{featuredNews.summary}</p>
                   )}
@@ -616,7 +646,7 @@ export default async function HomePage() {
                 {compactNews.map((item) => (
                   <article
                     key={item.id}
-                    className="flex flex-1 gap-4 rounded-2xl bg-white p-5 shadow-[0_10px_30px_rgba(0,0,0,0.05)]"
+                    className="relative flex flex-1 items-center gap-4 rounded-2xl bg-white p-5 shadow-[0_10px_30px_rgba(0,0,0,0.05)] transition hover:shadow-[0_14px_36px_rgba(219,39,119,0.12)]"
                   >
                     <div
                       className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-pink-100 text-pink"
@@ -632,7 +662,9 @@ export default async function HomePage() {
                     </div>
                     <div className="min-w-0">
                       <p className="text-[11px] font-bold uppercase tracking-wide text-orange-dark">{item.kind}</p>
-                      <h3 className="mt-1 font-display text-lg font-bold leading-snug text-ink">{item.title}</h3>
+                      <h3 className="mt-1 font-display text-lg font-bold leading-snug text-ink">
+                        <NewsLink href={item.href}>{item.title}</NewsLink>
+                      </h3>
                       {item.summary && (
                         <p className="mt-1 line-clamp-2 text-sm text-muted">{item.summary}</p>
                       )}
@@ -657,7 +689,7 @@ export default async function HomePage() {
       {/* Testemunhos */}
       {social.testimonials.length > 0 && (
         <section className="bg-white py-16 md:py-20">
-          <div className="mx-auto max-w-6xl px-4">
+          <div className="page-container">
             <div className="mb-10 text-center">
               <h2 className="font-display text-3xl font-bold md:text-4xl">
                 {social.testimonialsTitle} <GradientWord>as famílias</GradientWord>
@@ -692,7 +724,7 @@ export default async function HomePage() {
                 <p className="mx-auto mt-3 max-w-2xl text-muted">{social.testimonialsSubtitle}</p>
               ) : null}
             </div>
-            <div className="grid gap-5 md:grid-cols-3">
+            <div className="grid gap-5 lg:grid-cols-3">
               {social.testimonials.slice(0, 3).map((t) => (
                 <blockquote
                   key={`${t.author}-${t.quote.slice(0, 24)}`}
@@ -770,7 +802,7 @@ export default async function HomePage() {
 
       {/* Contacto */}
       <section id="contact" className="bg-gradient-to-b from-white to-pink-50/50 py-16 md:py-20">
-        <div className="mx-auto max-w-6xl px-4">
+        <div className="page-container">
           <div className="mb-12 text-center">
             <h2 className="font-display text-4xl font-bold md:text-5xl">
               {contact.title} <GradientWord>{contact.titleAccent}</GradientWord>
@@ -785,7 +817,7 @@ export default async function HomePage() {
                 </div>
                 <div>
                   <h4 className="font-bold text-ink">Telefone</h4>
-                  <a href={telHref(phone)} className="text-muted hover:text-pink">
+                  <a href={telHref(phone)} className="inline-block py-1 text-muted hover:text-pink">
                     {phone}
                   </a>
                 </div>
@@ -828,17 +860,17 @@ export default async function HomePage() {
                 </div>
                 <div>
                   <h4 className="font-bold text-ink">Email</h4>
-                  <a href={`mailto:${contact.emailPrimary}`} className="block text-muted hover:text-pink">
+                  <a href={`mailto:${contact.emailPrimary}`} className="block py-1 text-muted [overflow-wrap:anywhere] hover:text-pink">
                     {contact.emailPrimary}
                   </a>
-                  <a href={`mailto:${contact.emailSecondary}`} className="block text-muted hover:text-pink">
+                  <a href={`mailto:${contact.emailSecondary}`} className="block py-1 text-muted [overflow-wrap:anywhere] hover:text-pink">
                     {contact.emailSecondary}
                   </a>
                 </div>
               </div>
             </div>
 
-            <div className="rounded-3xl bg-white p-7 shadow-[0_20px_60px_rgba(219,39,119,0.1)] ring-1 ring-pink/10 md:p-9">
+            <div className="rounded-3xl bg-white p-5 shadow-[0_20px_60px_rgba(219,39,119,0.1)] ring-1 ring-pink/10 sm:p-7 md:p-9">
               <h3 className="mb-1 font-display text-2xl font-bold">Pedir inscrição</h3>
               <p className="mb-6 text-sm text-muted">Disciplina, ano e polo — respondemos com horário.</p>
               <ContactForm contact={contact} />

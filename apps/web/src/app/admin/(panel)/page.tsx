@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
+import { Contact, GraduationCap, Mail, Newspaper, Users, UsersRound } from "lucide-react";
 import { adminFetch } from "@/lib/admin-api";
 
 type RecentContact = {
@@ -28,12 +29,12 @@ type Dashboard = {
 };
 
 const cards = [
-  { key: "unreadContacts", label: "Por ler", href: "/admin/contacts", gradient: "from-amber-400 to-orange-500" },
-  { key: "contacts", label: "Email por enviar", href: "/admin/contacts", gradient: "from-emerald-400 to-green-500" },
-  { key: "posts", label: "Notícias", href: "/admin/posts", gradient: "from-cyan-400 to-teal-500" },
-  { key: "teams", label: "Equipa", href: "/admin/teams", gradient: "from-violet-400 to-purple-500" },
-  { key: "formations", label: "Formações", href: "/admin/formations", gradient: "from-rose-400 to-pink-500" },
-  { key: "users", label: "Utilizadores", href: "/admin/users", gradient: "from-sky-400 to-blue-500" },
+  { key: "unreadContacts", label: "Por ler", href: "/admin/contacts", icon: Contact, gradient: "from-amber-400 to-orange-500" },
+  { key: "contacts", label: "Email por enviar", href: "/admin/contacts", icon: Mail, gradient: "from-emerald-400 to-green-500" },
+  { key: "posts", label: "Notícias", href: "/admin/posts", icon: Newspaper, gradient: "from-cyan-400 to-teal-500" },
+  { key: "teams", label: "Equipa", href: "/admin/teams", icon: UsersRound, gradient: "from-violet-400 to-purple-500" },
+  { key: "formations", label: "Formações", href: "/admin/formations", icon: GraduationCap, gradient: "from-rose-400 to-pink-500" },
+  { key: "users", label: "Utilizadores", href: "/admin/users", icon: Users, gradient: "from-sky-400 to-blue-500" },
 ] as const;
 
 const shortcuts = [
@@ -114,7 +115,7 @@ export default function AdminDashboardPage() {
           >
             <div className="flex items-start justify-between gap-3">
               <div>
-                <p className="mb-0 text-sm font-bold capitalize text-slate-500">{c.label}</p>
+                <p className="mb-0 text-sm font-bold capitalize text-slate-600">{c.label}</p>
                 <p className="mt-1 text-xl font-bold text-slate-800">
                   {loading ? "…" : (stats?.[c.key] ?? "—")}
                 </p>
@@ -123,7 +124,7 @@ export default function AdminDashboardPage() {
                 className={`flex h-12 w-12 items-center justify-center rounded-xl bg-gradient-to-br text-lg text-white shadow-md ${c.gradient}`}
                 aria-hidden
               >
-                ●
+                <c.icon className="h-5 w-5" />
               </div>
             </div>
           </Link>
@@ -162,7 +163,7 @@ export default function AdminDashboardPage() {
                       </span>
                     )}
                   </p>
-                  <p className="text-xs text-slate-500">
+                  <p className="text-xs text-slate-600">
                     {c.subject || c.location
                       ? [c.subject, c.location].filter(Boolean).join(" · ")
                       : c.message.slice(0, 80)}

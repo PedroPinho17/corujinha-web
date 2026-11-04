@@ -5,6 +5,7 @@ import { DataSource, type DataSourceOptions } from "typeorm";
 import { entities } from "./entities";
 import { InitialSchema1730000000000 } from "./migrations/1730000000000-InitialSchema";
 import { UpdatedAtDefaults1730000001000 } from "./migrations/1730000001000-UpdatedAtDefaults";
+import { DropLegacyMigrationsTable1730000002000 } from "./migrations/1730000002000-DropLegacyMigrationsTable";
 
 for (const path of [
   resolve(__dirname, "../../../.env"),
@@ -27,7 +28,11 @@ export function buildDataSourceOptions(): DataSourceOptions {
     type: "postgres",
     url,
     entities,
-    migrations: [InitialSchema1730000000000, UpdatedAtDefaults1730000001000],
+    migrations: [
+      InitialSchema1730000000000,
+      UpdatedAtDefaults1730000001000,
+      DropLegacyMigrationsTable1730000002000,
+    ],
     synchronize: false,
     logging: process.env.NODE_ENV === "development" ? ["error", "warn"] : ["error"],
   };

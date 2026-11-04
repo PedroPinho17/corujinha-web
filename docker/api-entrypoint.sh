@@ -7,7 +7,7 @@ if [ -n "${POSTGRES_HOST:-}" ]; then
   ENCODED_USER=$(node -p "encodeURIComponent(process.env.POSTGRES_USER || 'corujinha')")
   ENCODED_PW=$(node -p "encodeURIComponent(process.env.POSTGRES_PASSWORD || '')")
   DB_NAME="${POSTGRES_DB:-corujinha}"
-  export DATABASE_URL="postgresql://${ENCODED_USER}:${ENCODED_PW}@${POSTGRES_HOST}:5432/${DB_NAME}?schema=public"
+  export DATABASE_URL="postgresql://${ENCODED_USER}:${ENCODED_PW}@${POSTGRES_HOST}:5432/${DB_NAME}"
 fi
 
 if [ -n "${REDIS_HOST:-}" ]; then

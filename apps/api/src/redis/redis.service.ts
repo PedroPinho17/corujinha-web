@@ -54,7 +54,10 @@ export class RedisService implements OnModuleDestroy {
       /\/$/,
       "",
     );
-    if (!secret || !appUrl) return;
+    if (!secret || !appUrl) {
+      console.warn("REVALIDATE_SECRET or NEXT_PUBLIC_APP_URL missing: the site will show old content until its cache expires.");
+      return;
+    }
 
     const tags = new Set<string>();
     for (const key of keys) {
@@ -63,7 +66,7 @@ export class RedisService implements OnModuleDestroy {
     if (tags.size === 0) return;
 
     try {
-      await fetch(`${appUrl}/api/revalidate`, {
+      const res = await fetch(`${appUrl}/api/revalidate`, {
         method: "POST",
         headers: {
           "content-type": "application/json",
@@ -72,6 +75,9 @@ export class RedisService implements OnModuleDestroy {
         body: JSON.stringify({ tags: [...tags] }),
         signal: AbortSignal.timeout(3_000),
       });
+      if (!res.ok) {
+        console.warn(`Site cache not refreshed: /api/revalidate returned ${res.status}. Check REVALIDATE_SECRET in web and api.`);
+      }
     } catch {
       // Next may be down in local/API-only runs — Redis bust still applies.
     }
