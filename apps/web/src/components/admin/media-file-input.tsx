@@ -20,10 +20,9 @@ type Props = {
 };
 
 /**
- * Upload com preview (substitui Krajee jQuery — estável em Next.js/React).
- * Mantém a API de props usada no admin (value string, onChange string).
+ * Upload com preview. API de props: value (chave S3) + onChange.
  */
-export function KrajeeFileInput({
+export function MediaFileInput({
   label = "Imagem",
   folder = "uploads",
   value = "",
@@ -121,7 +120,7 @@ export function KrajeeFileInput({
       <Label htmlFor={inputId} className="text-sm text-slate-700">
         {label}
         {optional ? (
-          <span className="ml-1 font-normal text-slate-400">opcional</span>
+          <span className="ml-1 font-normal text-slate-600">opcional</span>
         ) : null}
       </Label>
 
@@ -135,14 +134,14 @@ export function KrajeeFileInput({
         >
           <ImagePlus
             className={cn(
-              "text-slate-400 transition group-hover:text-pink-600",
+              "text-slate-600 transition group-hover:text-pink-600",
               tall ? "h-9 w-9" : "h-7 w-7",
             )}
           />
           <span className="text-sm font-medium text-slate-600">
             {allowPdf ? "Escolher ficheiro" : "Escolher imagem"}
           </span>
-          <span className="text-[11px] text-slate-400">
+          <span className="text-[11px] text-slate-600">
             {allowPdf ? "JPG · PNG · WEBP · PDF" : "JPG · PNG · WEBP"}
           </span>
         </label>
@@ -161,7 +160,7 @@ export function KrajeeFileInput({
           >
             {isPdf || (!displayUrl && value) ? (
               <div className="flex flex-col items-center gap-2 p-6 text-slate-600">
-                <FileText className="h-10 w-10 text-slate-400" />
+                <FileText className="h-10 w-10 text-slate-600" />
                 <p className="max-w-full truncate px-2 text-xs">{meta ?? "Documento"}</p>
               </div>
             ) : (
@@ -180,7 +179,7 @@ export function KrajeeFileInput({
             )}
             {uploading && (
               <div className="absolute inset-0 flex items-center justify-center bg-white/80">
-                <Loader2 className="h-6 w-6 animate-spin text-pink-600" />
+                <Loader2 className="h-6 w-6 animate-spin text-pink-700" />
               </div>
             )}
           </div>
@@ -189,7 +188,7 @@ export function KrajeeFileInput({
             <div className="min-w-0 flex-1">
               <p className="truncate text-xs font-medium text-slate-600">{meta}</p>
               {previewSize ? (
-                <p className="text-[11px] text-slate-400">{previewSize}</p>
+                <p className="text-[11px] text-slate-600">{previewSize}</p>
               ) : null}
             </div>
             <button
@@ -203,7 +202,7 @@ export function KrajeeFileInput({
             </button>
             <button
               type="button"
-              className="inline-flex h-8 w-8 items-center justify-center rounded-lg text-slate-400 transition hover:bg-red-50 hover:text-red-700 disabled:opacity-50"
+              className="inline-flex h-8 w-8 items-center justify-center rounded-lg text-slate-600 transition hover:bg-red-50 hover:text-red-700 disabled:opacity-50"
               onClick={clear}
               disabled={uploading}
               aria-label="Remover"
@@ -224,7 +223,7 @@ export function KrajeeFileInput({
         onChange={(e) => void onFile(e.target.files?.[0])}
       />
 
-      {hint ? <p className="text-[11px] leading-relaxed text-slate-400">{hint}</p> : null}
+      {hint ? <p className="text-[11px] leading-relaxed text-slate-600">{hint}</p> : null}
       {error ? <p className="text-sm text-red-600">{error}</p> : null}
     </div>
   );

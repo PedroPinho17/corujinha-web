@@ -14,8 +14,8 @@ const buttonVariants = cva(
         coral: "bg-orange text-white hover:bg-orange-dark",
       },
       size: {
-        default: "h-10 px-4 py-2",
-        sm: "h-8 px-3 text-xs",
+        default: "h-11 px-4 py-2 sm:h-10",
+        sm: "h-10 px-3 text-xs sm:h-8",
         lg: "h-12 px-6 text-base",
       },
     },

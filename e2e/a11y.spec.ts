@@ -92,7 +92,8 @@ test.describe("Accessibility (axe)", () => {
       test.skip(!adminEmail || !adminPassword, "Set E2E_ADMIN_EMAIL and E2E_ADMIN_PASSWORD (or ADMIN_*)");
     }
 
-    await page.goto(`${base}/admin/login`, { waitUntil: "domcontentloaded" });
+    // networkidle: filling before hydration would submit empty fields.
+    await page.goto(`${base}/admin/login`, { waitUntil: "networkidle" });
     await page.locator("#email").fill(adminEmail);
     await page.locator("#password").fill(adminPassword);
     await page.locator('button[type="submit"]').click();

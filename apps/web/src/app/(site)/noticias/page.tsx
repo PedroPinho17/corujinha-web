@@ -10,8 +10,6 @@ export const metadata: Metadata = {
 export default async function NoticiasPage() {
   const posts = await fetchPublicList<PostItem>("/api/public/posts", ["posts"]);
   return (
-    <div className="pt-4">
-      <PostsPageSection posts={posts} />
-    </div>
+    <PostsPageSection posts={posts} />
   );
 }

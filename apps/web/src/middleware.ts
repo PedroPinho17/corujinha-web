@@ -26,6 +26,17 @@ export function resolveClientIp(request: NextRequest): string {
   return "unknown";
 }
 
+const ADMIN_PUBLIC_PATHS = ["/admin/login", "/admin/forgot-password", "/admin/reset-password"];
+const SESSION_COOKIES = ["better-auth.session_token", "__Secure-better-auth.session_token"];
+
+/** UX only: skips loading the panel when there is clearly no session. The API enforces access. */
+function needsLoginRedirect(request: NextRequest): boolean {
+  const { pathname } = request.nextUrl;
+  if (pathname !== "/admin" && !pathname.startsWith("/admin/")) return false;
+  if (ADMIN_PUBLIC_PATHS.some((p) => pathname === p || pathname.startsWith(`${p}/`))) return false;
+  return !SESSION_COOKIES.some((name) => request.cookies.has(name));
+}
+
 function indexingEnabled() {
   return process.env.ALLOW_SEARCH_INDEXING === "true";
 }
@@ -44,6 +55,10 @@ export function middleware(request: NextRequest) {
   // Plain-text robots — no CSP HTML policy
   if (pathname === "/robots.txt" || pathname === "/sitemap.xml") {
     return NextResponse.next();
+  }
+
+  if (needsLoginRedirect(request)) {
+    return NextResponse.redirect(new URL("/admin/login", request.url));
   }
 
   // Edge-safe nonce (no Node Buffer).

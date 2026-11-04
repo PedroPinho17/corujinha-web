@@ -55,6 +55,8 @@ services:
     environment:
       NODE_ENV: production
       INTERNAL_API_URL: http://api:3001
+      # Tem de ser igual ao da API: sem ele, o site não recebe o aviso de conteúdo alterado.
+      REVALIDATE_SECRET: ${REVALIDATE_SECRET:-}
       # false por omissão — cópias de teste não indexáveis; true só no Coolify em produção
       ALLOW_SEARCH_INDEXING: ${ALLOW_SEARCH_INDEXING:-false}
       # Same as API — shown on /privacidade (server component)

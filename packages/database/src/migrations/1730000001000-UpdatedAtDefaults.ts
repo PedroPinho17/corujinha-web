@@ -17,7 +17,7 @@ const TABLES = [
 ] as const;
 
 /**
- * Prisma left updatedAt NOT NULL without DEFAULT; TypeORM inserts DEFAULT → NULL.
+ * updatedAt was NOT NULL without DEFAULT; TypeORM inserts DEFAULT → NULL.
  * Align with createdAt: DEFAULT CURRENT_TIMESTAMP.
  */
 export class UpdatedAtDefaults1730000001000 implements MigrationInterface {

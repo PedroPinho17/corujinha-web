@@ -54,7 +54,7 @@ function ResetPasswordForm() {
     return (
       <div className="space-y-4 text-center">
         <h1 className="text-2xl font-bold text-slate-800">Link inválido</h1>
-        <p className="text-sm text-slate-500">
+        <p className="text-sm text-slate-600">
           Este link de recuperação é inválido ou já expirou. Pede um novo a partir do login.
         </p>
         <Link href="/admin/forgot-password" className="inline-block text-sm font-medium text-pink hover:underline">
@@ -83,7 +83,7 @@ function ResetPasswordForm() {
     <>
       <div className="mb-6 text-center">
         <h1 className="text-2xl font-bold text-slate-800">Nova password</h1>
-        <p className="mt-1 text-sm text-slate-500">Define uma password forte para o backoffice.</p>
+        <p className="mt-1 text-sm text-slate-600">Define uma password forte para o backoffice.</p>
       </div>
       <form onSubmit={onSubmit} className="grid gap-3">
         <div>
@@ -124,7 +124,7 @@ export default function ResetPasswordPage() {
         <div className="mb-2 flex justify-center">
           <Image src="/logo.webp" alt="Corujinha" width={80} height={80} className="h-16 w-16 object-contain" />
         </div>
-        <Suspense fallback={<p className="text-center text-sm text-slate-500">A carregar…</p>}>
+        <Suspense fallback={<p className="text-center text-sm text-slate-600">A carregar…</p>}>
           <ResetPasswordForm />
         </Suspense>
       </div>

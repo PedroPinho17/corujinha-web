@@ -74,7 +74,7 @@ export default function SiteLayout({ children }: { children: React.ReactNode }) 
       <Suspense fallback={<SiteHeader />}>
         <BrandHeader />
       </Suspense>
-      <main id="main" className="pt-[72px]">
+      <main id="main">
         {children}
       </main>
       <Suspense fallback={<SiteFooter />}>

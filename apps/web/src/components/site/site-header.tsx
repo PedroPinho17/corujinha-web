@@ -2,7 +2,7 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
 const links = [
   { href: "/about", label: "Sobre" },
@@ -16,15 +16,24 @@ const links = [
 export function SiteHeader({ brand = "Corujinha" }: { brand?: string }) {
   const [open, setOpen] = useState(false);
 
+  useEffect(() => {
+    if (!open) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setOpen(false);
+    };
+    document.addEventListener("keydown", onKey);
+    return () => document.removeEventListener("keydown", onKey);
+  }, [open]);
+
   return (
-    <header className="fixed left-0 right-0 top-0 z-50 border-b border-pink/10 bg-white/95 shadow-sm backdrop-blur">
+    <header className="sticky top-0 z-50 border-b border-pink/10 bg-white/95 shadow-sm backdrop-blur">
       <a
         href="#main"
         className="absolute left-4 top-0 z-[60] -translate-y-full rounded-lg bg-pink px-4 py-2 text-sm font-medium text-white focus:translate-y-4"
       >
         Saltar para o conteúdo
       </a>
-      <div className="mx-auto flex max-w-6xl items-center justify-between gap-4 px-4 py-3">
+      <div className="page-container flex items-center justify-between gap-4 py-3">
         <Link href="/" className="flex shrink-0 items-center" aria-label={brand}>
           <Image
             src="/logo.webp"
@@ -56,7 +65,7 @@ export function SiteHeader({ brand = "Corujinha" }: { brand?: string }) {
 
         <button
           type="button"
-          className="rounded-lg p-2 text-ink hover:text-pink lg:hidden"
+          className="flex h-11 w-11 flex-col items-center justify-center rounded-lg text-ink hover:text-pink lg:hidden"
           aria-label={open ? "Fechar menu" : "Abrir menu"}
           aria-expanded={open}
           aria-controls="mobile-nav"
@@ -71,14 +80,14 @@ export function SiteHeader({ brand = "Corujinha" }: { brand?: string }) {
       {open && (
         <nav
           id="mobile-nav"
-          className="flex flex-col gap-2 border-t border-ink/10 px-4 py-4 lg:hidden"
+          className="absolute inset-x-0 top-full flex max-h-[calc(100dvh-4.5rem)] flex-col gap-1 overflow-y-auto border-t border-ink/10 bg-white px-4 py-3 shadow-lg lg:hidden"
           aria-label="Principal"
         >
           {links.map((l) => (
             <Link
               key={l.href}
               href={l.href}
-              className="py-2 font-medium text-ink/80 hover:text-pink"
+              className="py-3 font-medium text-ink/80 hover:text-pink"
               onClick={() => setOpen(false)}
             >
               {l.label}
@@ -86,7 +95,7 @@ export function SiteHeader({ brand = "Corujinha" }: { brand?: string }) {
           ))}
           <Link
             href="/#contact"
-            className="rounded-full bg-pink px-5 py-2 text-center font-medium text-white"
+            className="mt-1 shrink-0 rounded-full bg-pink px-5 py-3 text-center font-medium text-white"
             onClick={() => setOpen(false)}
           >
             Pedir inscrição

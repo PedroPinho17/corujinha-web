@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState, type ReactNode } from "react";
+import { useId, useMemo, useState, type ReactNode } from "react";
 import { ArrowDown, ArrowUp, ArrowUpDown, Search } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -45,6 +45,7 @@ export function AdminDataTable<T extends { id: string }>({
   mobileMeta,
   mobileActions,
 }: Props<T>) {
+  const fieldId = useId();
   const [query, setQuery] = useState("");
   const [pageSize, setPageSize] = useState(defaultPageSize);
   const [page, setPage] = useState(0);
@@ -137,10 +138,10 @@ export function AdminDataTable<T extends { id: string }>({
       )}
 
       <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-100 bg-slate-50/60 px-4 py-3 md:px-5">
-        <label className="flex items-center gap-2 text-sm text-slate-600" htmlFor="admin-table-page-size">
+        <label className="flex items-center gap-2 text-sm text-slate-600" htmlFor={`${fieldId}-size`}>
           <span>Mostrar</span>
           <select
-            id="admin-table-page-size"
+            id={`${fieldId}-size`}
             className="h-9 rounded-xl border border-slate-200 bg-white px-2.5 text-sm text-slate-700 shadow-sm outline-none focus:border-pink-300 focus:ring-2 focus:ring-pink-100"
             value={pageSize}
             onChange={(e) => {
@@ -157,12 +158,12 @@ export function AdminDataTable<T extends { id: string }>({
           <span>registos</span>
         </label>
 
-        <label className="relative flex items-center text-sm text-slate-600" htmlFor="admin-table-search">
-          <Search className="pointer-events-none absolute left-3 h-4 w-4 text-slate-500" aria-hidden />
+        <label className="relative flex w-full items-center text-sm text-slate-600 sm:w-auto" htmlFor={`${fieldId}-search`}>
+          <Search className="pointer-events-none absolute left-3 h-4 w-4 text-slate-600" aria-hidden />
           <input
-            id="admin-table-search"
+            id={`${fieldId}-search`}
             aria-label="Procurar registos"
-            className="h-9 w-[240px] rounded-xl border border-slate-200 bg-white py-2 pl-9 pr-3 text-sm text-slate-700 shadow-sm outline-none placeholder:text-slate-500 focus:border-pink-300 focus:ring-2 focus:ring-pink-100"
+            className="h-9 w-full rounded-xl sm:w-[240px] border border-slate-200 bg-white py-2 pl-9 pr-3 text-sm text-slate-700 shadow-sm outline-none placeholder:text-slate-500 focus:border-pink-300 focus:ring-2 focus:ring-pink-100"
             value={query}
             placeholder="Procurar…"
             onChange={(e) => {
@@ -174,13 +175,13 @@ export function AdminDataTable<T extends { id: string }>({
       </div>
 
       {loading ? (
-        <p className="px-4 py-14 text-center text-sm text-slate-500">A carregar…</p>
+        <p className="px-4 py-14 text-center text-sm text-slate-600">A carregar…</p>
       ) : (
         <>
           {/* Mobile cards */}
           <ul className="divide-y divide-slate-100 md:hidden">
             {pageRows.length === 0 ? (
-              <li className="px-4 py-12 text-center text-slate-500">{emptyMessage}</li>
+              <li className="px-4 py-12 text-center text-slate-600">{emptyMessage}</li>
             ) : (
               pageRows.map((row) => (
                 <li key={row.id} className="space-y-3 px-4 py-4">
@@ -208,28 +209,33 @@ export function AdminDataTable<T extends { id: string }>({
                       <th
                         key={col.id}
                         className={cn(
-                          "whitespace-nowrap px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-wider text-slate-500",
-                          canSort && "cursor-pointer select-none hover:text-slate-700",
+                          "whitespace-nowrap px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-wider text-slate-600",
                           col.headerClassName,
                         )}
-                        onClick={() => canSort && toggleSort(col)}
                         aria-sort={
-                          active ? (sortDir === "asc" ? "ascending" : "descending") : "none"
+                          active ? (sortDir === "asc" ? "ascending" : "descending") : undefined
                         }
                       >
-                        <span className="inline-flex items-center gap-1.5">
-                          {col.header}
-                          {canSort &&
-                            (active ? (
+                        {canSort ? (
+                          <button
+                            type="button"
+                            className="inline-flex items-center gap-1.5 font-semibold uppercase tracking-wider hover:text-slate-700"
+                            onClick={() => toggleSort(col)}
+                          >
+                            {col.header}
+                            {active ? (
                               sortDir === "asc" ? (
-                                <ArrowUp className="h-3.5 w-3.5 text-pink-600" />
+                                <ArrowUp className="h-3.5 w-3.5 text-pink-700" aria-hidden />
                               ) : (
-                                <ArrowDown className="h-3.5 w-3.5 text-pink-600" />
+                                <ArrowDown className="h-3.5 w-3.5 text-pink-700" aria-hidden />
                               )
                             ) : (
-                              <ArrowUpDown className="h-3.5 w-3.5 opacity-40" />
-                            ))}
-                        </span>
+                              <ArrowUpDown className="h-3.5 w-3.5 opacity-40" aria-hidden />
+                            )}
+                          </button>
+                        ) : (
+                          col.header
+                        )}
                       </th>
                     );
                   })}
@@ -238,7 +244,7 @@ export function AdminDataTable<T extends { id: string }>({
               <tbody>
                 {pageRows.length === 0 ? (
                   <tr>
-                    <td colSpan={columns.length} className="px-4 py-12 text-center text-slate-500">
+                    <td colSpan={columns.length} className="px-4 py-12 text-center text-slate-600">
                       {emptyMessage}
                     </td>
                   </tr>
@@ -268,11 +274,11 @@ export function AdminDataTable<T extends { id: string }>({
               {total === 0 ? "Sem registos" : `${start + 1}–${end} de ${total}`}
               {query.trim() && total !== rows.length ? ` (filtrado de ${rows.length})` : ""}
             </p>
-            <div className="flex items-center gap-1">
+            <div className="flex flex-wrap items-center gap-1">
               <button
                 type="button"
                 disabled={safePage <= 0}
-                className="rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-sm font-medium text-slate-600 transition hover:bg-slate-50 disabled:opacity-40"
+                className="min-h-11 rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-sm font-medium text-slate-600 transition hover:bg-slate-50 disabled:opacity-40 sm:min-h-0"
                 onClick={() => setPage((p) => Math.max(0, p - 1))}
               >
                 Anterior
@@ -292,7 +298,7 @@ export function AdminDataTable<T extends { id: string }>({
                 }, [])
                 .map((item, idx) =>
                   item === "…" ? (
-                    <span key={`e-${idx}`} className="px-1 text-slate-500">
+                    <span key={`e-${idx}`} className="px-1 text-slate-600">
                       …
                     </span>
                   ) : (
@@ -300,7 +306,7 @@ export function AdminDataTable<T extends { id: string }>({
                       key={item}
                       type="button"
                       className={cn(
-                        "min-w-9 rounded-lg border px-2.5 py-1.5 text-sm font-medium transition",
+                        "min-h-11 min-w-11 rounded-lg border px-2.5 py-1.5 text-sm font-medium transition sm:min-h-0 sm:min-w-9",
                         item === safePage
                           ? "border-pink-600 bg-pink-600 text-white shadow-sm"
                           : "border-slate-200 bg-white text-slate-600 hover:bg-slate-50",
@@ -314,7 +320,7 @@ export function AdminDataTable<T extends { id: string }>({
               <button
                 type="button"
                 disabled={safePage >= pageCount - 1}
-                className="rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-sm font-medium text-slate-600 transition hover:bg-slate-50 disabled:opacity-40"
+                className="min-h-11 rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-sm font-medium text-slate-600 transition hover:bg-slate-50 disabled:opacity-40 sm:min-h-0"
                 onClick={() => setPage((p) => Math.min(pageCount - 1, p + 1))}
               >
                 Seguinte

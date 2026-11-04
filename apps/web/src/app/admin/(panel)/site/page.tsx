@@ -1,14 +1,13 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { adminFetch } from "@/lib/admin-api";
-import { KrajeeFileInput } from "@/components/admin/krajee-file-input";
+import { MediaFileInput } from "@/components/admin/media-file-input";
 import { mergeSiteContent, type SiteContent, type ServiceCard } from "@/lib/site-content";
-import { mediaUrl } from "@/lib/utils";
 
 type Settings = {
   brandingName: string;
@@ -31,28 +30,175 @@ function fromLines(v: string) {
     .filter(Boolean);
 }
 
+const TABS = [
+  { id: "inicio", label: "Página inicial", help: "O que as famílias veem primeiro: imagem, título e os três cartões.", href: "/" },
+  { id: "servicos", label: "Serviços", help: "Os serviços apresentados na página inicial.", href: "/#services" },
+  { id: "sobre", label: "Sobre nós", help: "A fundadora, a formação e a história da Corujinha.", href: "/about" },
+  { id: "contactos", label: "Contactos", help: "Telefone, moradas, horário e opções do formulário de inscrição.", href: "/#contact" },
+  { id: "perguntas", label: "Perguntas e opiniões", help: "As perguntas frequentes e o que dizem as famílias.", href: "/#faq" },
+  { id: "mais", label: "Mais opções", help: "Parceria e rodapé. Raramente é preciso mudar.", href: "/#novidades" },
+] as const;
+
+type TabId = (typeof TABS)[number]["id"];
+
+/** Keeps the raw text while typing: parsing it back on each key would eat spaces and new lines. */
+function LinesField({
+  id,
+  value,
+  onChange,
+}: {
+  id: string;
+  value: string[];
+  onChange: (parsed: string[]) => void;
+}) {
+  const [text, setText] = useState(() => lines(value));
+  return (
+    <Textarea
+      id={id}
+      value={text}
+      onChange={(e) => {
+        setText(e.target.value);
+        onChange(fromLines(e.target.value));
+      }}
+    />
+  );
+}
+
+type Tone = "pink" | "orange" | "blue";
+
+function moveItem<T>(list: T[], from: number, to: number): T[] {
+  const next = [...list];
+  const [item] = next.splice(from, 1);
+  next.splice(to, 0, item as T);
+  return next;
+}
+
+function ToneSelect({ id, value, onChange }: { id: string; value: Tone; onChange: (tone: Tone) => void }) {
+  return (
+    <div>
+      <Label htmlFor={id}>Cor</Label>
+      <select
+        id={id}
+        className="flex h-10 w-full rounded-md border border-slate-200 bg-white px-3 text-sm"
+        value={value}
+        onChange={(e) => onChange(e.target.value as Tone)}
+      >
+        <option value="pink">Rosa</option>
+        <option value="orange">Laranja</option>
+        <option value="blue">Roxo</option>
+      </select>
+    </div>
+  );
+}
+
+function ItemControls({
+  label,
+  index,
+  count,
+  onMove,
+  onRemove,
+}: {
+  label: string;
+  index: number;
+  count: number;
+  onMove: (to: number) => void;
+  onRemove: () => void;
+}) {
+  const arrow =
+    "flex h-11 w-11 items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-700 hover:bg-slate-50 disabled:opacity-40 sm:h-8 sm:w-8";
+  return (
+    <div className="flex items-center justify-between gap-2">
+      <p className="text-xs font-bold uppercase text-slate-600">{label}</p>
+      <div className="flex items-center gap-1">
+        <button
+          type="button"
+          className={arrow}
+          disabled={index === 0}
+          aria-label={`Subir ${label}`}
+          onClick={() => onMove(index - 1)}
+        >
+          ↑
+        </button>
+        <button
+          type="button"
+          className={arrow}
+          disabled={index === count - 1}
+          aria-label={`Descer ${label}`}
+          onClick={() => onMove(index + 1)}
+        >
+          ↓
+        </button>
+        <button
+          type="button"
+          className="ml-1 min-h-11 px-2 text-xs font-semibold text-rose-700 hover:underline sm:min-h-0"
+          aria-label={`Remover ${label}`}
+          onClick={onRemove}
+        >
+          Remover
+        </button>
+      </div>
+    </div>
+  );
+}
+
 export default function AdminSiteContentPage() {
   const [settings, setSettings] = useState<Settings | null>(null);
   const [msg, setMsg] = useState("");
   const [saving, setSaving] = useState(false);
-  const [showPreview, setShowPreview] = useState(true);
+  const [tab, setTab] = useState<TabId>("inicio");
+  const [savedSnapshot, setSavedSnapshot] = useState("");
 
   useEffect(() => {
     adminFetch<Settings>("/api/admin/settings")
-      .then((data) =>
-        setSettings({
-          ...data,
-          content: mergeSiteContent(data.content),
-        }),
-      )
+      .then((data) => {
+        const loaded = { ...data, content: mergeSiteContent(data.content) };
+        setSettings(loaded);
+        setSavedSnapshot(JSON.stringify(loaded));
+      })
       .catch((e) => setMsg(e instanceof Error ? e.message : "Erro ao carregar"));
   }, []);
 
+  const dirty = useMemo(
+    () => settings !== null && JSON.stringify(settings) !== savedSnapshot,
+    [settings, savedSnapshot],
+  );
+
+  // Avisa antes de sair com alterações por guardar (fechar o separador ou clicar num link).
+  useEffect(() => {
+    if (!dirty) return;
+    const onBeforeUnload = (e: BeforeUnloadEvent) => e.preventDefault();
+    const onClick = (e: MouseEvent) => {
+      const link = (e.target as Element).closest?.("a[href]");
+      if (!link || link.getAttribute("target") === "_blank") return;
+      if (!window.confirm("Tens alterações por guardar. Sair sem guardar?")) {
+        e.preventDefault();
+        e.stopPropagation();
+      }
+    };
+    window.addEventListener("beforeunload", onBeforeUnload);
+    document.addEventListener("click", onClick, true);
+    return () => {
+      window.removeEventListener("beforeunload", onBeforeUnload);
+      document.removeEventListener("click", onClick, true);
+    };
+  }, [dirty]);
+
   if (!settings) {
-    return <p className="text-muted">A carregar…</p>;
+    return msg ? (
+      <div className="rounded-2xl bg-rose-50 p-5 text-sm text-rose-700 ring-1 ring-rose-100" role="alert">
+        <p className="font-semibold">Não foi possível carregar o conteúdo do site</p>
+        <p className="mt-1">{msg}</p>
+        <Button type="button" variant="outline" className="mt-3" onClick={() => window.location.reload()}>
+          Tentar de novo
+        </Button>
+      </div>
+    ) : (
+      <p className="text-slate-600">A carregar…</p>
+    );
   }
 
   const c = settings.content;
+  const activeTab = TABS.find((t) => t.id === tab) ?? TABS[0];
 
   function setContent(next: SiteContent) {
     setSettings({ ...settings!, content: next });
@@ -80,11 +226,9 @@ export default function AdminSiteContentPage() {
         method: "PUT",
         body: JSON.stringify(payload),
       });
-      setSettings({
-        ...updated,
-        content: mergeSiteContent(updated.content),
-      });
-      setMsg("Guardado com sucesso");
+      const fresh = { ...updated, content: mergeSiteContent(updated.content) };
+      setSettings(fresh);
+      setSavedSnapshot(JSON.stringify(fresh));
     } catch (e) {
       const raw = e instanceof Error ? e.message : "Erro ao guardar";
       setMsg(raw.includes("statusCode") ? "Não foi possível guardar. Verifique os campos e tente de novo." : raw);
@@ -94,32 +238,45 @@ export default function AdminSiteContentPage() {
   }
 
   return (
-    <div className="grid gap-6 xl:grid-cols-[1fr_300px]">
-      <div className="max-w-4xl space-y-6">
-        <div className="flex flex-wrap items-center justify-between gap-4 rounded-2xl bg-white p-5 shadow-sm ring-1 ring-slate-100">
-          <div>
-            <h1 className="text-2xl font-bold text-pink-600">Conteúdo do Site</h1>
-            <p className="text-sm text-slate-500">
-              Textos da home e páginas públicas — editáveis sem mexer no código.
-            </p>
-          </div>
-          <div className="flex gap-2">
-            <Button type="button" variant="outline" className="xl:hidden" onClick={() => setShowPreview((v) => !v)}>
-              Preview
-            </Button>
-            <Button onClick={save} disabled={saving}>
-              {saving ? "A guardar…" : "Guardar"}
-            </Button>
-          </div>
+    <div className="mx-auto max-w-4xl">
+      <div className="min-w-0 space-y-5">
+        <nav aria-label="Secções do site" className="flex flex-wrap gap-2">
+          {TABS.map((t) => (
+            <button
+              key={t.id}
+              type="button"
+              aria-current={tab === t.id ? "true" : undefined}
+              onClick={() => setTab(t.id)}
+              className={`min-h-11 rounded-full px-4 py-2 text-sm font-semibold transition sm:min-h-0 ${
+                tab === t.id
+                  ? "bg-pink text-white"
+                  : "bg-white text-slate-700 ring-1 ring-slate-200 hover:bg-pink-50"
+              }`}
+            >
+              {t.label}
+            </button>
+          ))}
+        </nav>
+
+        <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-1">
+          <p className="text-sm text-slate-600">{activeTab.help}</p>
+          <a
+            href={activeTab.href}
+            target="_blank"
+            rel="noreferrer"
+            className="inline-flex min-h-11 items-center gap-1 text-sm font-semibold text-pink-700 hover:underline sm:min-h-0"
+          >
+            Ver no site ↗
+          </a>
         </div>
-        {msg && <p className="text-sm font-medium text-pink-600">{msg}</p>}
 
         {/* Marca */}
+        {tab === "contactos" && (
         <section className="space-y-3 rounded-2xl bg-white p-5 shadow-sm ring-1 ring-slate-100">
-          <h2 className="text-lg font-semibold">Marca</h2>
+          <h2 className="text-lg font-semibold">Dados gerais</h2>
           <div className="grid gap-3 md:grid-cols-2">
             <div>
-              <Label htmlFor="branding-name">Nome da marca</Label>
+              <Label htmlFor="branding-name">Nome do centro</Label>
               <Input
                 id="branding-name"
                 value={settings.brandingName}
@@ -127,7 +284,7 @@ export default function AdminSiteContentPage() {
               />
             </div>
             <div>
-              <Label htmlFor="contact-phone">Telefone (geral)</Label>
+              <Label htmlFor="contact-phone">Telefone</Label>
               <Input
                 id="contact-phone"
                 value={settings.contactPhone ?? ""}
@@ -135,57 +292,27 @@ export default function AdminSiteContentPage() {
               />
             </div>
             <div>
-              <Label htmlFor="contact-email">Email (geral)</Label>
+              <Label htmlFor="contact-email">Email mostrado no rodapé</Label>
               <Input
                 id="contact-email"
                 value={settings.contactEmail ?? ""}
                 onChange={(e) => setSettings({ ...settings, contactEmail: e.target.value })}
               />
             </div>
-            <div>
-              <Label htmlFor="contact-address">Morada (resumo)</Label>
-              <Input
-                id="contact-address"
-                value={settings.address ?? ""}
-                onChange={(e) => setSettings({ ...settings, address: e.target.value })}
-              />
-            </div>
-            <div>
-              <Label htmlFor="contact-facebook">Facebook URL</Label>
-              <Input
-                id="contact-facebook"
-                value={settings.facebookUrl ?? ""}
-                onChange={(e) => setSettings({ ...settings, facebookUrl: e.target.value })}
-              />
-            </div>
-            <div>
-              <Label htmlFor="contact-instagram">Instagram URL</Label>
-              <Input
-                id="contact-instagram"
-                value={settings.instagramUrl ?? ""}
-                onChange={(e) => setSettings({ ...settings, instagramUrl: e.target.value })}
-              />
-            </div>
           </div>
         </section>
+        )}
 
-        {/* Imagens principais */}
-        <section className="space-y-4 rounded-2xl bg-white p-5 shadow-sm ring-1 ring-slate-100">
-          <div>
-            <h2 className="text-lg font-semibold">Imagens principais</h2>
-            <p className="text-sm text-slate-500">
-              Logótipo do topo na home e fotografia da fundadora. Pré-visualiza e guarda com o resto do conteúdo.
-            </p>
-          </div>
-          <div className="grid gap-5 md:grid-cols-2">
-            <div className="space-y-2 rounded-2xl bg-slate-50/80 p-4 ring-1 ring-slate-100">
-              <p className="text-xs font-bold uppercase tracking-wide text-pink-600">Topo da home</p>
-              <KrajeeFileInput
+        {/* Imagem do topo */}
+        {tab === "inicio" && (
+        <section className="space-y-3 rounded-2xl bg-white p-5 shadow-sm ring-1 ring-slate-100">
+              <h2 className="text-lg font-semibold">Imagem</h2>
+              <MediaFileInput
                 label="Imagem do topo"
-                folder="site"
+                folder="branding"
                 size="large"
                 value={c.hero.logoPath}
-                hint="Aparece no quadro à direita do título. Se removeres, volta a /logo.webp."
+                hint="Aparece ao lado do título. Uma fotografia real das crianças ou das salas funciona melhor. Se a removeres, volta o logótipo."
                 onChange={(key) =>
                   setContent({
                     ...c,
@@ -193,15 +320,19 @@ export default function AdminSiteContentPage() {
                   })
                 }
               />
-            </div>
-            <div className="space-y-2 rounded-2xl bg-slate-50/80 p-4 ring-1 ring-slate-100">
-              <p className="text-xs font-bold uppercase tracking-wide text-orange-600">Fundadora</p>
-              <KrajeeFileInput
+        </section>
+        )}
+
+        {/* Fotografia da fundadora */}
+        {tab === "sobre" && (
+        <section className="space-y-3 rounded-2xl bg-white p-5 shadow-sm ring-1 ring-slate-100">
+              <h2 className="text-lg font-semibold">Fotografia da fundadora</h2>
+              <MediaFileInput
                 label="Fotografia da fundadora"
-                folder="site"
+                folder="branding"
                 size="large"
                 value={c.about.founderImagePath}
-                hint="Usada na home e em Sobre. Se removeres, volta a /Vera.webp."
+                hint="Aparece na página inicial e em Sobre. Se a removeres, volta a fotografia original."
                 onChange={(key) =>
                   setContent({
                     ...c,
@@ -209,21 +340,16 @@ export default function AdminSiteContentPage() {
                   })
                 }
               />
-            </div>
-          </div>
         </section>
+        )}
 
         {/* Topo da home */}
+        {tab === "inicio" && (
         <section className="space-y-4 rounded-2xl bg-white p-5 shadow-sm ring-1 ring-slate-100">
-          <div>
-            <h2 className="text-lg font-semibold">Topo da página inicial</h2>
-            <p className="text-sm text-slate-500">
-              Textos do destaque — a imagem configura-se acima, em Imagens principais.
-            </p>
-          </div>
+          <h2 className="text-lg font-semibold">Textos</h2>
           <div className="grid gap-3 md:grid-cols-2">
             <div>
-              <Label htmlFor="hero-title-before">Início do título</Label>
+              <Label htmlFor="hero-title-before">Título: primeira parte (a preto)</Label>
               <Input
                 id="hero-title-before"
                 value={c.hero.titleBefore}
@@ -231,7 +357,7 @@ export default function AdminSiteContentPage() {
               />
             </div>
             <div>
-              <Label htmlFor="hero-title-pink">Palavra em destaque (rosa)</Label>
+              <Label htmlFor="hero-title-pink">Título: primeira palavra colorida</Label>
               <Input
                 id="hero-title-pink"
                 value={c.hero.titlePink}
@@ -239,7 +365,7 @@ export default function AdminSiteContentPage() {
               />
             </div>
             <div>
-              <Label htmlFor="hero-title-mid">Palavra do meio (ex.: &quot;e&quot;)</Label>
+              <Label htmlFor="hero-title-mid">Título: palavra de ligação (ex.: &quot;e&quot;)</Label>
               <Input
                 id="hero-title-mid"
                 value={c.hero.titleMid}
@@ -247,7 +373,7 @@ export default function AdminSiteContentPage() {
               />
             </div>
             <div>
-              <Label htmlFor="hero-title-orange">Palavra em destaque (laranja)</Label>
+              <Label htmlFor="hero-title-orange">Título: segunda palavra colorida</Label>
               <Input
                 id="hero-title-orange"
                 value={c.hero.titleOrange}
@@ -255,40 +381,16 @@ export default function AdminSiteContentPage() {
               />
             </div>
             <div>
-              <Label htmlFor="hero-cta-primary">Botão principal</Label>
+              <Label htmlFor="hero-cta-primary">Texto do botão principal</Label>
               <Input
                 id="hero-cta-primary"
                 value={c.hero.ctaPrimary}
                 onChange={(e) => setContent({ ...c, hero: { ...c.hero, ctaPrimary: e.target.value } })}
               />
             </div>
-            <div>
-              <Label htmlFor="hero-cta-secondary">Botão secundário</Label>
-              <Input
-                id="hero-cta-secondary"
-                value={c.hero.ctaSecondary}
-                onChange={(e) => setContent({ ...c, hero: { ...c.hero, ctaSecondary: e.target.value } })}
-              />
-            </div>
-            <div>
-              <Label htmlFor="hero-badge-value">Número do destaque (ex.: +500)</Label>
-              <Input
-                id="hero-badge-value"
-                value={c.hero.badgeValue}
-                onChange={(e) => setContent({ ...c, hero: { ...c.hero, badgeValue: e.target.value } })}
-              />
-            </div>
-            <div>
-              <Label htmlFor="hero-badge-label">Texto do destaque (ex.: Crianças apoiadas)</Label>
-              <Input
-                id="hero-badge-label"
-                value={c.hero.badgeLabel}
-                onChange={(e) => setContent({ ...c, hero: { ...c.hero, badgeLabel: e.target.value } })}
-              />
-            </div>
           </div>
           <div>
-            <Label htmlFor="hero-subtitle">Texto de apoio</Label>
+            <Label htmlFor="hero-subtitle">Texto por baixo do título</Label>
             <Textarea
               id="hero-subtitle"
               value={c.hero.subtitle}
@@ -296,7 +398,7 @@ export default function AdminSiteContentPage() {
             />
           </div>
           <div className="space-y-3">
-            <p className="text-sm font-medium leading-none">Cartões de destaque no topo</p>
+            <p className="text-sm font-medium">Os três cartões por baixo do título</p>
             {c.hero.features.map((f, i) => (
               <div key={i} className="grid gap-2 rounded-xl border border-slate-100 bg-slate-50/50 p-3 md:grid-cols-3">
                 <div>
@@ -328,7 +430,7 @@ export default function AdminSiteContentPage() {
                   />
                 </div>
                 <div>
-                  <Label htmlFor={`hero-feature-${i}-tone`}>Tom da cor</Label>
+                  <Label htmlFor={`hero-feature-${i}-tone`}>Cor</Label>
                   <select
                     id={`hero-feature-${i}-tone`}
                     className="flex h-10 w-full rounded-md border border-slate-200 bg-white px-3 text-sm"
@@ -343,20 +445,22 @@ export default function AdminSiteContentPage() {
                   >
                     <option value="pink">Rosa</option>
                     <option value="orange">Laranja</option>
-                    <option value="blue">Azul</option>
+                    <option value="blue">Roxo</option>
                   </select>
                 </div>
               </div>
             ))}
           </div>
         </section>
+        )}
 
         {/* Serviços */}
+        {tab === "servicos" && (
         <section className="space-y-4 rounded-2xl bg-white p-5 shadow-sm ring-1 ring-slate-100">
           <h2 className="text-lg font-semibold">Serviços</h2>
           <div className="grid gap-3 md:grid-cols-2">
             <div>
-              <Label htmlFor="services-title">Título</Label>
+              <Label htmlFor="services-title">Título da secção</Label>
               <Input
                 id="services-title"
                 value={c.services.title}
@@ -364,7 +468,7 @@ export default function AdminSiteContentPage() {
               />
             </div>
             <div>
-              <Label htmlFor="services-title-accent">Palavra em destaque</Label>
+              <Label htmlFor="services-title-accent">Palavra colorida do título</Label>
               <Input
                 id="services-title-accent"
                 value={c.services.titleAccent}
@@ -375,7 +479,7 @@ export default function AdminSiteContentPage() {
             </div>
           </div>
           <div>
-            <Label htmlFor="services-subtitle">Subtítulo</Label>
+            <Label htmlFor="services-subtitle">Frase por baixo do título</Label>
             <Textarea
               id="services-subtitle"
               value={c.services.subtitle}
@@ -384,7 +488,7 @@ export default function AdminSiteContentPage() {
           </div>
           {c.services.cards.map((card, i) => (
             <div key={i} className="space-y-2 rounded-xl border border-slate-100 bg-slate-50/50 p-4">
-              <p className="text-xs font-bold uppercase text-slate-500">Cartão {i + 1}</p>
+              <p className="text-xs font-bold uppercase text-slate-600">Cartão {i + 1}</p>
               <div className="grid gap-2 md:grid-cols-2">
                 <div>
                   <Label htmlFor={`service-${i}-title`}>Título</Label>
@@ -395,7 +499,7 @@ export default function AdminSiteContentPage() {
                   />
                 </div>
                 <div>
-                  <Label htmlFor={`service-${i}-tone`}>Tom da cor</Label>
+                  <Label htmlFor={`service-${i}-tone`}>Cor</Label>
                   <select
                     id={`service-${i}-tone`}
                     className="flex h-10 w-full rounded-md border border-slate-200 bg-white px-3 text-sm"
@@ -408,7 +512,7 @@ export default function AdminSiteContentPage() {
                   >
                     <option value="pink">Rosa</option>
                     <option value="orange">Laranja</option>
-                    <option value="blue">Azul</option>
+                    <option value="blue">Roxo</option>
                   </select>
                 </div>
               </div>
@@ -421,28 +525,27 @@ export default function AdminSiteContentPage() {
                 />
               </div>
               <div>
-                <Label htmlFor={`service-${i}-items`}>Itens (um por linha)</Label>
-                <Textarea
-                  id={`service-${i}-items`}
-                  value={lines(card.items)}
-                  onChange={(e) => updateService(i, { items: fromLines(e.target.value) })}
-                />
+                <Label htmlFor={`service-${i}-items`}>Pontos da lista (um por linha; o site mostra os 3 primeiros)</Label>
+                <LinesField
+                id={`service-${i}-items`}
+                value={card.items}
+                onChange={(parsed) =>
+                  updateService(i, { items: parsed })
+                }
+              />
               </div>
             </div>
           ))}
         </section>
+        )}
 
         {/* Sobre / Fundadora */}
+        {tab === "sobre" && (
         <section className="space-y-4 rounded-2xl bg-white p-5 shadow-sm ring-1 ring-slate-100">
-          <div>
-            <h2 className="text-lg font-semibold">Sobre / Fundadora</h2>
-            <p className="text-sm text-slate-500">
-              Textos da fundadora — a fotografia configura-se acima, em Imagens principais.
-            </p>
-          </div>
+          <h2 className="text-lg font-semibold">Textos</h2>
           <div className="grid gap-3 md:grid-cols-2">
             <div>
-              <Label htmlFor="about-section-title">Título secção</Label>
+              <Label htmlFor="about-section-title">Título da secção</Label>
               <Input
                 id="about-section-title"
                 value={c.about.sectionTitle}
@@ -450,7 +553,7 @@ export default function AdminSiteContentPage() {
               />
             </div>
             <div>
-              <Label htmlFor="about-section-accent">Palavra em destaque</Label>
+              <Label htmlFor="about-section-accent">Palavra colorida do título</Label>
               <Input
                 id="about-section-accent"
                 value={c.about.sectionAccent}
@@ -458,7 +561,7 @@ export default function AdminSiteContentPage() {
               />
             </div>
             <div>
-              <Label htmlFor="about-founder-name">Nome</Label>
+              <Label htmlFor="about-founder-name">Nome da fundadora</Label>
               <Input
                 id="about-founder-name"
                 value={c.about.founderName}
@@ -466,7 +569,7 @@ export default function AdminSiteContentPage() {
               />
             </div>
             <div>
-              <Label htmlFor="about-founder-role">Cargo</Label>
+              <Label htmlFor="about-founder-role">Função</Label>
               <Input
                 id="about-founder-role"
                 value={c.about.founderRole}
@@ -475,7 +578,7 @@ export default function AdminSiteContentPage() {
             </div>
           </div>
           <div>
-            <Label htmlFor="about-section-subtitle">Subtítulo secção</Label>
+            <Label htmlFor="about-section-subtitle">Frase por baixo do título (página Sobre)</Label>
             <Textarea
               id="about-section-subtitle"
               value={c.about.sectionSubtitle}
@@ -483,7 +586,7 @@ export default function AdminSiteContentPage() {
             />
           </div>
           <div>
-            <Label htmlFor="about-founder-bio">Bio (home)</Label>
+            <Label htmlFor="about-founder-bio">Apresentação da fundadora</Label>
             <Textarea
               id="about-founder-bio"
               value={c.about.founderBio}
@@ -491,7 +594,7 @@ export default function AdminSiteContentPage() {
             />
           </div>
           <div>
-            <Label htmlFor="about-story">História (página Sobre)</Label>
+            <Label htmlFor="about-story">A história da Corujinha (página Sobre)</Label>
             <Textarea
               id="about-story"
               rows={4}
@@ -500,7 +603,7 @@ export default function AdminSiteContentPage() {
             />
           </div>
           <div>
-            <Label htmlFor="about-quote">Citação</Label>
+            <Label htmlFor="about-quote">Frase em destaque</Label>
             <Textarea
               id="about-quote"
               value={c.about.quote}
@@ -508,13 +611,160 @@ export default function AdminSiteContentPage() {
             />
           </div>
         </section>
+        )}
 
-        {/* Contacto / inscrição */}
-        <section className="space-y-3 rounded-2xl bg-white p-5 shadow-sm ring-1 ring-slate-100">
-          <h2 className="text-lg font-semibold">Contacto e inscrição</h2>
+        {/* Formação e experiência */}
+        {tab === "sobre" && (
+        <section className="space-y-4 rounded-2xl bg-white p-5 shadow-sm ring-1 ring-slate-100">
+          <h2 className="text-lg font-semibold">Formação e experiência</h2>
           <div className="grid gap-3 md:grid-cols-2">
             <div>
-              <Label htmlFor="contact-title">Título</Label>
+              <Label htmlFor="about-experience-title">Título da secção</Label>
+              <Input
+                id="about-experience-title"
+                value={c.about.experienceTitle}
+                onChange={(e) => setContent({ ...c, about: { ...c.about, experienceTitle: e.target.value } })}
+              />
+            </div>
+            <div>
+              <Label htmlFor="about-experience-subtitle">Frase por baixo do título</Label>
+              <Input
+                id="about-experience-subtitle"
+                value={c.about.experienceSubtitle}
+                onChange={(e) => setContent({ ...c, about: { ...c.about, experienceSubtitle: e.target.value } })}
+              />
+            </div>
+          </div>
+          <div className="flex items-center justify-between gap-2">
+            <p className="text-sm font-medium">Cartões</p>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={() =>
+                setContent({
+                  ...c,
+                  about: {
+                    ...c.about,
+                    experienceCards: [...c.about.experienceCards, { title: "", body: "", tone: "pink" }],
+                  },
+                })
+              }
+            >
+              + Cartão
+            </Button>
+          </div>
+          {c.about.experienceCards.map((card, i) => {
+            const setCards = (experienceCards: typeof c.about.experienceCards) =>
+              setContent({ ...c, about: { ...c.about, experienceCards } });
+            const patch = (change: Partial<(typeof c.about.experienceCards)[number]>) =>
+              setCards(c.about.experienceCards.map((x, idx) => (idx === i ? { ...x, ...change } : x)));
+            return (
+              <div key={i} className="space-y-2 rounded-xl border border-slate-100 bg-slate-50/50 p-3">
+                <ItemControls
+                  label={`Cartão ${i + 1}`}
+                  index={i}
+                  count={c.about.experienceCards.length}
+                  onMove={(to) => setCards(moveItem(c.about.experienceCards, i, to))}
+                  onRemove={() => setCards(c.about.experienceCards.filter((_, idx) => idx !== i))}
+                />
+                <div className="grid gap-2 md:grid-cols-[1fr_180px]">
+                  <div>
+                    <Label htmlFor={`experience-${i}-title`}>Título</Label>
+                    <Input
+                      id={`experience-${i}-title`}
+                      value={card.title}
+                      onChange={(e) => patch({ title: e.target.value })}
+                    />
+                  </div>
+                  <ToneSelect id={`experience-${i}-tone`} value={card.tone} onChange={(tone) => patch({ tone })} />
+                </div>
+                <div>
+                  <Label htmlFor={`experience-${i}-body`}>Texto</Label>
+                  <Textarea
+                    id={`experience-${i}-body`}
+                    value={card.body}
+                    onChange={(e) => patch({ body: e.target.value })}
+                  />
+                </div>
+              </div>
+            );
+          })}
+        </section>
+        )}
+
+        {/* A nossa história */}
+        {tab === "sobre" && (
+        <section className="space-y-4 rounded-2xl bg-white p-5 shadow-sm ring-1 ring-slate-100">
+          <div className="flex items-center justify-between gap-2">
+            <div>
+              <h2 className="text-lg font-semibold">A nossa história</h2>
+              <p className="text-sm text-slate-600">Os momentos aparecem por esta ordem na página Sobre.</p>
+            </div>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={() =>
+                setContent({
+                  ...c,
+                  about: {
+                    ...c.about,
+                    timeline: [...c.about.timeline, { title: "", description: "", tone: "pink" }],
+                  },
+                })
+              }
+            >
+              + Momento
+            </Button>
+          </div>
+          {c.about.timeline.map((item, i) => {
+            const setTimeline = (timeline: typeof c.about.timeline) =>
+              setContent({ ...c, about: { ...c.about, timeline } });
+            const patch = (change: Partial<(typeof c.about.timeline)[number]>) =>
+              setTimeline(c.about.timeline.map((x, idx) => (idx === i ? { ...x, ...change } : x)));
+            return (
+              <div key={i} className="space-y-2 rounded-xl border border-slate-100 bg-slate-50/50 p-3">
+                <ItemControls
+                  label={`Momento ${i + 1}`}
+                  index={i}
+                  count={c.about.timeline.length}
+                  onMove={(to) => setTimeline(moveItem(c.about.timeline, i, to))}
+                  onRemove={() => setTimeline(c.about.timeline.filter((_, idx) => idx !== i))}
+                />
+                <div className="grid gap-2 md:grid-cols-[1fr_180px]">
+                  <div>
+                    <Label htmlFor={`timeline-${i}-title`}>Título</Label>
+                    <Input
+                      id={`timeline-${i}-title`}
+                      value={item.title}
+                      onChange={(e) => patch({ title: e.target.value })}
+                    />
+                  </div>
+                  <ToneSelect id={`timeline-${i}-tone`} value={item.tone} onChange={(tone) => patch({ tone })} />
+                </div>
+                <div>
+                  <Label htmlFor={`timeline-${i}-description`}>Texto</Label>
+                  <Textarea
+                    id={`timeline-${i}-description`}
+                    rows={2}
+                    value={item.description}
+                    onChange={(e) => patch({ description: e.target.value })}
+                  />
+                </div>
+              </div>
+            );
+          })}
+        </section>
+        )}
+
+        {/* Contacto / inscrição */}
+        {tab === "contactos" && (
+        <section className="space-y-3 rounded-2xl bg-white p-5 shadow-sm ring-1 ring-slate-100">
+          <h2 className="text-lg font-semibold">Secção de contacto</h2>
+          <div className="grid gap-3 md:grid-cols-2">
+            <div>
+              <Label htmlFor="contact-title">Título da secção</Label>
               <Input
                 id="contact-title"
                 value={c.contact.title}
@@ -522,7 +772,7 @@ export default function AdminSiteContentPage() {
               />
             </div>
             <div>
-              <Label htmlFor="contact-title-accent">Palavra em destaque</Label>
+              <Label htmlFor="contact-title-accent">Palavra colorida do título</Label>
               <Input
                 id="contact-title-accent"
                 value={c.contact.titleAccent}
@@ -530,15 +780,7 @@ export default function AdminSiteContentPage() {
               />
             </div>
             <div>
-              <Label htmlFor="contact-page-phone">Telefone (página)</Label>
-              <Input
-                id="contact-page-phone"
-                value={c.contact.phone}
-                onChange={(e) => setContent({ ...c, contact: { ...c.contact, phone: e.target.value } })}
-              />
-            </div>
-            <div>
-              <Label htmlFor="contact-email-primary">Email principal</Label>
+              <Label htmlFor="contact-email-primary">Primeiro email</Label>
               <Input
                 id="contact-email-primary"
                 value={c.contact.emailPrimary}
@@ -546,7 +788,7 @@ export default function AdminSiteContentPage() {
               />
             </div>
             <div>
-              <Label htmlFor="contact-email-secondary">Email secundário</Label>
+              <Label htmlFor="contact-email-secondary">Segundo email</Label>
               <Input
                 id="contact-email-secondary"
                 value={c.contact.emailSecondary}
@@ -556,7 +798,7 @@ export default function AdminSiteContentPage() {
               />
             </div>
             <div>
-              <Label htmlFor="contact-address-main-label">Etiqueta da morada principal</Label>
+              <Label htmlFor="contact-address-main-label">Nome do primeiro centro</Label>
               <Input
                 id="contact-address-main-label"
                 value={c.contact.addressMainLabel}
@@ -566,7 +808,7 @@ export default function AdminSiteContentPage() {
               />
             </div>
             <div>
-              <Label htmlFor="contact-address-secondary-label">Etiqueta da morada secundária</Label>
+              <Label htmlFor="contact-address-secondary-label">Nome do segundo centro</Label>
               <Input
                 id="contact-address-secondary-label"
                 value={c.contact.addressSecondaryLabel}
@@ -577,7 +819,7 @@ export default function AdminSiteContentPage() {
             </div>
           </div>
           <div>
-            <Label htmlFor="contact-subtitle">Subtítulo</Label>
+            <Label htmlFor="contact-subtitle">Frase por baixo do título</Label>
             <Textarea
               id="contact-subtitle"
               value={c.contact.subtitle}
@@ -586,88 +828,72 @@ export default function AdminSiteContentPage() {
           </div>
           <div className="grid gap-3 md:grid-cols-2">
             <div>
-              <Label htmlFor="contact-address-main-lines">Morada principal (linhas)</Label>
-              <Textarea
+              <Label htmlFor="contact-address-main-lines">Morada do primeiro centro (uma linha de cada vez)</Label>
+              <LinesField
                 id="contact-address-main-lines"
-                value={lines(c.contact.addressMainLines)}
-                onChange={(e) =>
+                value={c.contact.addressMainLines}
+                onChange={(parsed) =>
                   setContent({
                     ...c,
-                    contact: { ...c.contact, addressMainLines: fromLines(e.target.value) },
+                    contact: { ...c.contact, addressMainLines: parsed },
                   })
                 }
               />
             </div>
             <div>
-              <Label htmlFor="contact-address-secondary-lines">Morada secundária (linhas)</Label>
-              <Textarea
+              <Label htmlFor="contact-address-secondary-lines">Morada do segundo centro (uma linha de cada vez)</Label>
+              <LinesField
                 id="contact-address-secondary-lines"
-                value={lines(c.contact.addressSecondaryLines)}
-                onChange={(e) =>
+                value={c.contact.addressSecondaryLines}
+                onChange={(parsed) =>
                   setContent({
                     ...c,
-                    contact: { ...c.contact, addressSecondaryLines: fromLines(e.target.value) },
+                    contact: { ...c.contact, addressSecondaryLines: parsed },
                   })
                 }
               />
             </div>
           </div>
           <div>
-            <Label htmlFor="contact-hours">Horários (um por linha)</Label>
-            <Textarea
-              id="contact-hours"
-              value={lines(c.contact.hoursLines)}
-              onChange={(e) =>
-                setContent({ ...c, contact: { ...c.contact, hoursLines: fromLines(e.target.value) } })
-              }
-            />
+            <Label htmlFor="contact-hours">Horário (uma linha de cada vez)</Label>
+            <LinesField
+                id="contact-hours"
+                value={c.contact.hoursLines}
+                onChange={(parsed) =>
+                  setContent({ ...c, contact: { ...c.contact, hoursLines: parsed } })
+                }
+              />
           </div>
           <div>
-            <Label htmlFor="contact-locations">Polos (formulário)</Label>
-            <Textarea
-              id="contact-locations"
-              value={lines(c.contact.locations)}
-              onChange={(e) =>
-                setContent({ ...c, contact: { ...c.contact, locations: fromLines(e.target.value) } })
-              }
-            />
+            <Label htmlFor="contact-subjects">Disciplinas a escolher no formulário (uma por linha)</Label>
+            <LinesField
+                id="contact-subjects"
+                value={c.contact.subjects}
+                onChange={(parsed) =>
+                  setContent({ ...c, contact: { ...c.contact, subjects: parsed } })
+                }
+              />
           </div>
           <div>
-            <Label htmlFor="contact-subjects">Disciplinas (formulário)</Label>
-            <Textarea
-              id="contact-subjects"
-              value={lines(c.contact.subjects)}
-              onChange={(e) =>
-                setContent({ ...c, contact: { ...c.contact, subjects: fromLines(e.target.value) } })
-              }
-            />
-          </div>
-          <div>
-            <Label htmlFor="contact-school-years">Anos escolares (formulário)</Label>
-            <Textarea
-              id="contact-school-years"
-              value={lines(c.contact.schoolYears)}
-              onChange={(e) =>
-                setContent({ ...c, contact: { ...c.contact, schoolYears: fromLines(e.target.value) } })
-              }
-            />
+            <Label htmlFor="contact-school-years">Anos a escolher no formulário (um por linha)</Label>
+            <LinesField
+                id="contact-school-years"
+                value={c.contact.schoolYears}
+                onChange={(parsed) =>
+                  setContent({ ...c, contact: { ...c.contact, schoolYears: parsed } })
+                }
+              />
           </div>
         </section>
+        )}
 
         {/* Parceria */}
+        {tab === "mais" && (
         <section className="space-y-3 rounded-2xl bg-white p-5 shadow-sm ring-1 ring-slate-100">
           <h2 className="text-lg font-semibold">Parceria</h2>
           <div className="grid gap-3 md:grid-cols-2">
             <div>
-              <Label htmlFor="partner-badge">Etiqueta</Label>
-              <Input
-                id="partner-badge"
-                value={c.partner.badge}
-                onChange={(e) => setContent({ ...c, partner: { ...c.partner, badge: e.target.value } })}
-              />
-            </div>
-            <div>
-              <Label htmlFor="partner-website">Website</Label>
+              <Label htmlFor="partner-website">Site do parceiro</Label>
               <Input
                 id="partner-website"
                 value={c.partner.website ?? ""}
@@ -675,25 +901,7 @@ export default function AdminSiteContentPage() {
               />
             </div>
             <div>
-              <Label htmlFor="partner-title">Título</Label>
-              <Input
-                id="partner-title"
-                value={c.partner.title}
-                onChange={(e) => setContent({ ...c, partner: { ...c.partner, title: e.target.value } })}
-              />
-            </div>
-            <div>
-              <Label htmlFor="partner-title-accent">Palavra em destaque</Label>
-              <Input
-                id="partner-title-accent"
-                value={c.partner.titleAccent}
-                onChange={(e) =>
-                  setContent({ ...c, partner: { ...c.partner, titleAccent: e.target.value } })
-                }
-              />
-            </div>
-            <div>
-              <Label htmlFor="partner-name">Nome</Label>
+              <Label htmlFor="partner-name">Nome do parceiro</Label>
               <Input
                 id="partner-name"
                 value={c.partner.name}
@@ -710,15 +918,7 @@ export default function AdminSiteContentPage() {
             </div>
           </div>
           <div>
-            <Label htmlFor="partner-subtitle">Subtítulo</Label>
-            <Textarea
-              id="partner-subtitle"
-              value={c.partner.subtitle}
-              onChange={(e) => setContent({ ...c, partner: { ...c.partner, subtitle: e.target.value } })}
-            />
-          </div>
-          <div>
-            <Label htmlFor="partner-body">Texto</Label>
+            <Label htmlFor="partner-body">Texto sobre a parceria</Label>
             <Textarea
               id="partner-body"
               value={c.partner.body}
@@ -726,26 +926,28 @@ export default function AdminSiteContentPage() {
             />
           </div>
           <div>
-            <Label htmlFor="partner-services">Serviços (um por linha)</Label>
-            <Textarea
-              id="partner-services"
-              value={lines(c.partner.services)}
-              onChange={(e) =>
-                setContent({
+            <Label htmlFor="partner-services">O que o parceiro oferece (um por linha)</Label>
+            <LinesField
+                id="partner-services"
+                value={c.partner.services}
+                onChange={(parsed) =>
+                  setContent({
                   ...c,
-                  partner: { ...c.partner, services: fromLines(e.target.value) },
+                  partner: { ...c.partner, services: parsed },
                 })
-              }
-            />
+                }
+              />
           </div>
         </section>
+        )}
 
         {/* FAQ + testemunhos */}
+        {tab === "perguntas" && (
         <section className="space-y-3 rounded-2xl bg-white p-5 shadow-sm ring-1 ring-slate-100">
-          <h2 className="text-lg font-semibold">FAQ e testemunhos</h2>
+          <h2 className="text-lg font-semibold">Perguntas e opiniões</h2>
           <div className="grid gap-3 md:grid-cols-2">
             <div>
-              <Label htmlFor="social-faq-title">Título FAQ</Label>
+              <Label htmlFor="social-faq-title">Título das perguntas</Label>
               <Input
                 id="social-faq-title"
                 value={c.social.faqTitle}
@@ -753,7 +955,7 @@ export default function AdminSiteContentPage() {
               />
             </div>
             <div>
-              <Label htmlFor="social-testimonials-title">Título testemunhos</Label>
+              <Label htmlFor="social-testimonials-title">Título das opiniões</Label>
               <Input
                 id="social-testimonials-title"
                 value={c.social.testimonialsTitle}
@@ -765,7 +967,10 @@ export default function AdminSiteContentPage() {
           </div>
           <div className="space-y-3">
             <div className="flex items-center justify-between gap-2">
-              <p className="text-sm font-medium leading-none">Perguntas frequentes</p>
+              <div>
+                <p className="text-sm font-medium">Perguntas frequentes</p>
+                <p className="text-xs text-slate-600">A página inicial mostra as 5 primeiras.</p>
+              </div>
               <Button
                 type="button"
                 variant="outline"
@@ -786,10 +991,10 @@ export default function AdminSiteContentPage() {
             {c.social.faq.map((f, i) => (
               <div key={i} className="space-y-2 rounded-xl border border-slate-100 bg-slate-50/50 p-3">
                 <div className="flex items-center justify-between">
-                  <p className="text-xs font-bold uppercase text-slate-500">Pergunta {i + 1}</p>
+                  <p className="text-xs font-bold uppercase text-slate-600">Pergunta {i + 1}</p>
                   <button
                     type="button"
-                    className="text-xs font-semibold text-rose-600 hover:underline"
+                    className="text-xs font-semibold text-rose-700 hover:underline"
                     onClick={() =>
                       setContent({
                         ...c,
@@ -837,7 +1042,10 @@ export default function AdminSiteContentPage() {
           </div>
           <div className="space-y-3">
             <div className="flex items-center justify-between gap-2">
-              <p className="text-sm font-medium leading-none">Testemunhos</p>
+              <div>
+                <p className="text-sm font-medium">Opiniões das famílias</p>
+                <p className="text-xs text-slate-600">A página inicial mostra as 3 primeiras.</p>
+              </div>
               <Button
                 type="button"
                 variant="outline"
@@ -852,16 +1060,16 @@ export default function AdminSiteContentPage() {
                   })
                 }
               >
-                + Testemunho
+                + Opinião
               </Button>
             </div>
             {c.social.testimonials.map((t, i) => (
               <div key={i} className="space-y-2 rounded-xl border border-slate-100 bg-slate-50/50 p-3">
                 <div className="flex items-center justify-between">
-                  <p className="text-xs font-bold uppercase text-slate-500">Testemunho {i + 1}</p>
+                  <p className="text-xs font-bold uppercase text-slate-600">Opinião {i + 1}</p>
                   <button
                     type="button"
-                    className="text-xs font-semibold text-rose-600 hover:underline"
+                    className="text-xs font-semibold text-rose-700 hover:underline"
                     onClick={() =>
                       setContent({
                         ...c,
@@ -876,11 +1084,11 @@ export default function AdminSiteContentPage() {
                   </button>
                 </div>
                 <div>
-                  <Label htmlFor={`testimonial-${i}-quote`}>Citação</Label>
+                  <Label htmlFor={`testimonial-${i}-quote`}>Opinião</Label>
                   <Textarea
                     id={`testimonial-${i}-quote`}
                     value={t.quote}
-                    placeholder="Citação"
+                    placeholder="O que a família disse"
                     rows={2}
                     onChange={(e) => {
                       const testimonials = c.social.testimonials.map((x, idx) =>
@@ -906,11 +1114,11 @@ export default function AdminSiteContentPage() {
                     />
                   </div>
                   <div>
-                    <Label htmlFor={`testimonial-${i}-role`}>Papel (ex.: no Google)</Label>
+                    <Label htmlFor={`testimonial-${i}-role`}>Origem (ex.: no Google)</Label>
                     <Input
                       id={`testimonial-${i}-role`}
                       value={t.role}
-                      placeholder="Papel (ex.: no Google)"
+                      placeholder="no Google"
                       onChange={(e) => {
                         const testimonials = c.social.testimonials.map((x, idx) =>
                           idx === i ? { ...x, role: e.target.value } : x,
@@ -924,8 +1132,10 @@ export default function AdminSiteContentPage() {
             ))}
           </div>
         </section>
+        )}
 
         {/* Rodapé */}
+        {tab === "mais" && (
         <section className="space-y-3 rounded-2xl bg-white p-5 shadow-sm ring-1 ring-slate-100">
           <h2 className="text-lg font-semibold">Rodapé do site</h2>
           <div>
@@ -938,7 +1148,7 @@ export default function AdminSiteContentPage() {
           </div>
           <div className="space-y-3">
             <div className="flex items-center justify-between gap-2">
-              <p className="text-sm font-medium leading-none">Ligações rápidas</p>
+              <p className="text-sm font-medium">Ligações do rodapé</p>
               <Button
                 type="button"
                 variant="outline"
@@ -963,7 +1173,7 @@ export default function AdminSiteContentPage() {
                   <Input
                     id={`footer-link-${i}-label`}
                     value={l.label}
-                    placeholder="Texto (ex.: Sobre)"
+                    placeholder="Sobre"
                     onChange={(e) => {
                       const quickLinks = c.footer.quickLinks.map((x, idx) =>
                         idx === i ? { ...x, label: e.target.value } : x,
@@ -973,11 +1183,11 @@ export default function AdminSiteContentPage() {
                   />
                 </div>
                 <div>
-                  <Label htmlFor={`footer-link-${i}-href`}>Caminho</Label>
+                  <Label htmlFor={`footer-link-${i}-href`}>Endereço (ex.: /about)</Label>
                   <Input
                     id={`footer-link-${i}-href`}
                     value={l.href}
-                    placeholder="Caminho (ex.: /about)"
+                    placeholder="/about"
                     onChange={(e) => {
                       const quickLinks = c.footer.quickLinks.map((x, idx) =>
                         idx === i ? { ...x, href: e.target.value } : x,
@@ -1006,69 +1216,23 @@ export default function AdminSiteContentPage() {
             ))}
           </div>
         </section>
+        )}
 
-        <Button onClick={save} disabled={saving}>
-          {saving ? "A guardar…" : "Guardar alterações"}
-        </Button>
+        {/* Sempre à vista: quem edita tem de saber se já guardou. */}
+        <div className="sticky bottom-3 z-20 flex flex-wrap items-center justify-between gap-3 rounded-2xl bg-white/95 p-3 shadow-lg ring-1 ring-slate-200 backdrop-blur">
+          <p
+            className={`min-w-0 pl-1 text-sm font-medium ${
+              msg ? "text-rose-700" : dirty ? "text-amber-800" : "text-emerald-700"
+            }`}
+            role="status"
+          >
+            {msg || (dirty ? "Tens alterações por guardar" : "Tudo guardado")}
+          </p>
+          <Button className="ml-auto" onClick={save} disabled={saving || !dirty}>
+            {saving ? "A guardar…" : "Guardar alterações"}
+          </Button>
+        </div>
       </div>
-
-      {showPreview && (
-        <aside className="xl:sticky xl:top-24 xl:self-start">
-          <div className="overflow-hidden rounded-2xl bg-gradient-to-br from-pink-50 via-white to-orange-50 p-4 shadow-lg ring-1 ring-pink-100">
-            <p className="mb-3 text-[10px] font-bold uppercase tracking-wide text-pink-600">Preview</p>
-            <p className="text-xs font-semibold uppercase tracking-widest text-pink-600">
-              {settings.brandingName}
-            </p>
-            <h2 className="mt-2 text-xl font-bold leading-tight text-slate-900">
-              {c.hero.titleBefore} <span className="text-pink-600">{c.hero.titlePink}</span>{" "}
-              {c.hero.titleMid} <span className="text-orange-600">{c.hero.titleOrange}</span>
-            </h2>
-            <p className="mt-2 line-clamp-3 text-sm text-slate-600">{c.hero.subtitle}</p>
-            <div className="mt-3 flex flex-wrap gap-2">
-              <span className="rounded-full bg-pink-600 px-3 py-1 text-xs font-semibold text-white">
-                {c.hero.ctaPrimary}
-              </span>
-              <span className="rounded-full border border-pink-300 px-3 py-1 text-xs font-semibold text-pink-700">
-                {c.hero.ctaSecondary}
-              </span>
-            </div>
-            <div className="mt-4 grid grid-cols-2 gap-2 border-t border-pink-100 pt-3">
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img
-                src={mediaUrl(c.hero.logoPath) || "/logo.webp"}
-                alt="Topo"
-                className="h-16 w-full rounded-xl bg-white object-contain p-1 ring-1 ring-pink-100"
-              />
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img
-                src={mediaUrl(c.about.founderImagePath) || "/Vera.webp"}
-                alt="Fundadora"
-                className="h-16 w-full rounded-xl bg-white object-cover ring-1 ring-pink-100"
-              />
-            </div>
-            <ul className="mt-3 space-y-1 text-xs text-slate-500">
-              <li>
-                <strong>Serviços:</strong> {c.services.cards.map((x) => x.title).join(", ")}
-              </li>
-              <li>
-                <strong>Polos:</strong> {c.contact.locations.join(", ")}
-              </li>
-              <li>
-                <strong>FAQ:</strong> {c.social.faq.length} · <strong>Testemunhos:</strong>{" "}
-                {c.social.testimonials.length}
-              </li>
-            </ul>
-            <a
-              href="/"
-              target="_blank"
-              rel="noreferrer"
-              className="mt-4 block text-center text-xs font-bold text-pink-600 hover:underline"
-            >
-              Abrir site ↗
-            </a>
-          </div>
-        </aside>
-      )}
     </div>
   );
 }

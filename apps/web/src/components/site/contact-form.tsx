@@ -21,6 +21,7 @@ export function ContactForm({
   const [status, setStatus] = useState<"idle" | "ok" | "err">("idle");
   const [loading, setLoading] = useState(false);
   const [okMessage, setOkMessage] = useState("Mensagem enviada!");
+  const [errorMessage, setErrorMessage] = useState("");
 
   async function onSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -35,6 +36,7 @@ export function ContactForm({
     const privacyConsent = fd.get("privacyConsent") === "on";
 
     if (!privacyConsent) {
+      setErrorMessage("É necessário aceitar a política de privacidade.");
       setStatus("err");
       setLoading(false);
       return;
@@ -65,7 +67,13 @@ export function ContactForm({
       setOkMessage(res.message || "Enviado com sucesso!");
       setStatus("ok");
       form.reset();
-    } catch {
+    } catch (err) {
+      // TypeError = rede em baixo; as restantes mensagens já vêm legíveis da API (ex.: limite de pedidos).
+      setErrorMessage(
+        err instanceof Error && !(err instanceof TypeError)
+          ? err.message
+          : "Não foi possível enviar. Verifique a ligação e tente novamente.",
+      );
       setStatus("err");
     } finally {
       setLoading(false);
@@ -106,14 +114,13 @@ export function ContactForm({
 
       <div
         className="grid grid-cols-2 gap-1 rounded-xl bg-white/70 p-1 ring-1 ring-ink/10"
-        role="tablist"
+        role="group"
         aria-label="Tipo de pedido"
       >
         <button
           type="button"
-          role="tab"
-          aria-selected={mode === "ENROLLMENT"}
-          className={`rounded-lg px-3 py-2 text-sm font-semibold transition ${
+          aria-pressed={mode === "ENROLLMENT"}
+          className={`min-h-11 rounded-lg px-3 py-2 text-sm font-semibold transition ${
             mode === "ENROLLMENT" ? "bg-pink text-white shadow" : "text-ink/70 hover:bg-white"
           }`}
           onClick={() => setMode("ENROLLMENT")}
@@ -122,9 +129,8 @@ export function ContactForm({
         </button>
         <button
           type="button"
-          role="tab"
-          aria-selected={mode === "GENERAL"}
-          className={`rounded-lg px-3 py-2 text-sm font-semibold transition ${
+          aria-pressed={mode === "GENERAL"}
+          className={`min-h-11 rounded-lg px-3 py-2 text-sm font-semibold transition ${
             mode === "GENERAL" ? "bg-pink text-white shadow" : "text-ink/70 hover:bg-white"
           }`}
           onClick={() => setMode("GENERAL")}
@@ -220,7 +226,7 @@ export function ContactForm({
           type="checkbox"
           name="privacyConsent"
           required
-          className="mt-1"
+          className="mt-0.5 h-5 w-5 shrink-0"
         />
         <span>
           Aceito o tratamento dos meus dados para responder a este pedido, nos termos da{" "}
@@ -235,8 +241,8 @@ export function ContactForm({
         {loading ? "A enviar..." : mode === "ENROLLMENT" ? "Pedir inscrição" : "Enviar mensagem"}
       </Button>
       {status === "err" && (
-        <p className="text-sm text-orange" role="alert">
-          Erro ao enviar. Verifique o consentimento e tente novamente.
+        <p className="text-sm text-orange-dark" role="alert">
+          {errorMessage}
         </p>
       )}
     </form>

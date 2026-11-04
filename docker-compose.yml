@@ -1,5 +1,7 @@
 # Infra local. Portas só em 127.0.0.1.
-# Object storage (Garage) e Mailpit: perfil `local` — pnpm docker:up ou --profile local.
+# Object storage (Garage) e Mailpit: perfil `local`.
+# pnpm docker:up arranca Redis, Garage e Mailpit; em desenvolvimento a base de dados é o PostgreSQL local.
+# O serviço postgres é usado pelo stack de produção e pelo CI.
 # Passwords e chaves S3: obrigatórias no .env (ver .env.example).
 
 services:

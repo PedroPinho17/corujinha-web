@@ -51,7 +51,7 @@ export function SiteFooter({
   return (
     <>
       <footer className="border-t border-pink/15 bg-gradient-to-b from-blush via-white to-peach pb-24 md:pb-0">
-        <div className="mx-auto grid max-w-6xl gap-10 px-4 py-14 md:grid-cols-4 md:gap-8">
+        <div className="page-container grid gap-10 py-14 sm:grid-cols-2 lg:grid-cols-4 lg:gap-8">
           <div>
             <Image
               src="/logo.webp"
@@ -64,10 +64,10 @@ export function SiteFooter({
           </div>
           <div>
             <p className="font-display text-sm font-bold text-ink">Links rápidos</p>
-            <ul className="mt-3 space-y-2 text-sm text-muted">
+            <ul className="mt-2 text-sm text-muted">
               {items.map((l) => (
                 <li key={`${l.href}-${l.label}`}>
-                  <Link href={l.href} className="transition hover:text-pink">
+                  <Link href={l.href} className="inline-block py-2 transition hover:text-pink">
                     {l.label}
                   </Link>
                 </li>
@@ -77,31 +77,32 @@ export function SiteFooter({
           <div>
             <p className="font-display text-sm font-bold text-ink">Centros</p>
             <ul className="mt-3 space-y-2 text-sm text-muted">
-              {centerList.map((c) => (
-                <li key={c.name}>
-                  <span className="font-medium text-ink/80">{c.shortName || c.name}</span>
-                  {c.city || c.address ? (
-                    <span className="block text-xs text-muted">
-                      {[c.address, c.city].filter(Boolean).join(", ")}
-                    </span>
-                  ) : null}
-                </li>
-              ))}
+              {centerList.map((c) => {
+                const label = c.shortName || c.name;
+                // Avoid "Sanguedo / Sanguedo" when the city is all we know.
+                const where = [c.address, c.city].filter((v) => v && v !== label).join(", ");
+                return (
+                  <li key={c.name}>
+                    <span className="font-medium text-ink/80">{label}</span>
+                    {where ? <span className="block text-xs text-muted">{where}</span> : null}
+                  </li>
+                );
+              })}
             </ul>
           </div>
           <div>
             <p className="font-display text-sm font-bold text-ink">Contacto</p>
-            <ul className="mt-3 space-y-2 text-sm text-muted">
+            <ul className="mt-2 text-sm text-muted">
               {phone && (
                 <li>
-                  <a href={`tel:${phone.replace(/\s/g, "")}`} className="transition hover:text-pink">
+                  <a href={`tel:${phone.replace(/\s/g, "")}`} className="inline-block py-2 transition hover:text-pink">
                     {phone}
                   </a>
                 </li>
               )}
               {email && (
                 <li>
-                  <a href={`mailto:${email}`} className="transition hover:text-pink">
+                  <a href={`mailto:${email}`} className="inline-block py-2 transition [overflow-wrap:anywhere] hover:text-pink">
                     {email}
                   </a>
                 </li>

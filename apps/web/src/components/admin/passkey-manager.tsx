@@ -72,7 +72,7 @@ export function PasskeyManager({ compact = false }: { compact?: boolean }) {
   return (
     <div className={compact ? "space-y-3" : "space-y-4"}>
       {!compact && (
-        <p className="text-sm text-slate-500">
+        <p className="text-sm text-slate-600">
           Regista uma passkey para entrar no backoffice com biometria ou PIN, sem password.
         </p>
       )}
@@ -95,7 +95,7 @@ export function PasskeyManager({ compact = false }: { compact?: boolean }) {
             className={`text-sm ${
               msg.includes("sucesso") || msg.includes("removida")
                 ? "text-emerald-600"
-                : "text-rose-600"
+                : "text-rose-700"
             }`}
           >
             {msg}
@@ -107,11 +107,11 @@ export function PasskeyManager({ compact = false }: { compact?: boolean }) {
         {!compact && (
           <div className="border-b border-slate-100 bg-slate-50/50 px-4 py-3">
             <p className="text-sm font-bold text-slate-800">Passkeys registadas</p>
-            <p className="text-xs text-slate-400">{passkeys.length} dispositivo(s)</p>
+            <p className="text-xs text-slate-600">{passkeys.length} dispositivo(s)</p>
           </div>
         )}
         {passkeys.length === 0 ? (
-          <p className={`text-sm text-slate-400 ${compact ? "" : "px-4 py-6 text-center"}`}>
+          <p className={`text-sm text-slate-600 ${compact ? "" : "px-4 py-6 text-center"}`}>
             Ainda não tens passkeys registadas.
           </p>
         ) : (
@@ -126,7 +126,7 @@ export function PasskeyManager({ compact = false }: { compact?: boolean }) {
                 <div>
                   <p className="font-semibold text-slate-800">{p.name || "Passkey"}</p>
                   {p.createdAt && (
-                    <p className="text-xs text-slate-400">
+                    <p className="text-xs text-slate-600">
                       {new Date(p.createdAt).toLocaleString("pt-PT")}
                     </p>
                   )}

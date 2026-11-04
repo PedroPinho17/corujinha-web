@@ -1,12 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import { connection } from "next/server";
-import { Fraunces, Nunito } from "next/font/google";
+import { Nunito } from "next/font/google";
 import "./globals.css";
-
-const display = Fraunces({
-  subsets: ["latin"],
-  variable: "--font-display-face",
-});
 
 const body = Nunito({
   subsets: ["latin"],
@@ -63,7 +58,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
   await connection();
   return (
     <html lang="pt-PT">
-      <body className={`${body.variable} ${display.variable} font-sans antialiased`}>{children}</body>
+      <body className={`${body.variable} font-sans antialiased`}>{children}</body>
     </html>
   );
 }

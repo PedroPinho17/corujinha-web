@@ -11,9 +11,9 @@ export default function SecurityPage() {
         <PasskeyManager />
       </div>
 
-      <p className="text-sm text-slate-500">
+      <p className="text-sm text-slate-600">
         Também podes gerir passkeys em{" "}
-        <Link href="/admin/profile" className="font-semibold text-indigo-500 hover:underline">
+        <Link href="/admin/profile" className="font-semibold text-indigo-700 hover:underline">
           Perfil
         </Link>
         .

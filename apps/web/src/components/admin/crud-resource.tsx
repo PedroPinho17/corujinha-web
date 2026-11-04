@@ -7,7 +7,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { adminFetch } from "@/lib/admin-api";
 import { DeepLTranslateButton } from "@/components/admin/deepl-button";
-import { KrajeeFileInput } from "@/components/admin/krajee-file-input";
+import { MediaFileInput } from "@/components/admin/media-file-input";
 import { AdminToggle } from "@/components/admin/admin-toggle";
 import { AdminDataTable, type DataTableColumn } from "@/components/admin/admin-data-table";
 import { mediaUrl } from "@/lib/utils";
@@ -198,6 +198,46 @@ export function CrudResourcePage({
     }
   }
 
+  const renderReorder = useCallback(
+    (r: Row, sizeClass: string) => (
+      <div className="flex gap-1">
+        <button
+          type="button"
+          className={`inline-flex items-center justify-center rounded border border-slate-300 bg-white text-xs text-slate-600 hover:bg-slate-50 ${sizeClass}`}
+          onClick={() => move(r.id, -1)}
+          aria-label="Mover para cima"
+        >
+          ↑
+        </button>
+        <button
+          type="button"
+          className={`inline-flex items-center justify-center rounded border border-slate-300 bg-white text-xs text-slate-600 hover:bg-slate-50 ${sizeClass}`}
+          onClick={() => move(r.id, 1)}
+          aria-label="Mover para baixo"
+        >
+          ↓
+        </button>
+      </div>
+    ),
+    [move],
+  );
+
+  const renderToggle = useCallback(
+    (r: Row) => {
+      const on = (r.published ?? r.active ?? true) as boolean;
+      const name = String(r[nameField] || r.title || r.name || r.id);
+      return (
+        <AdminToggle
+          checked={on}
+          disabled={togglingId === r.id}
+          aria-label={on ? `Desativar ${name}` : `Ativar ${name}`}
+          onChange={() => toggleRow(r.id)}
+        />
+      );
+    },
+    [nameField, togglingId, toggleRow],
+  );
+
   const columns = useMemo<DataTableColumn<Row>[]>(() => {
     const cols: DataTableColumn<Row>[] = [
       {
@@ -205,26 +245,7 @@ export function CrudResourcePage({
         header: "Ordem",
         headerClassName: "w-[100px]",
         sortable: false,
-        cell: (r) => (
-          <div className="flex gap-1">
-            <button
-              type="button"
-              className="inline-flex h-7 w-7 items-center justify-center rounded border border-slate-300 bg-white text-xs text-slate-600 hover:bg-slate-50"
-              onClick={() => move(r.id, -1)}
-              aria-label="Mover para cima"
-            >
-              ↑
-            </button>
-            <button
-              type="button"
-              className="inline-flex h-7 w-7 items-center justify-center rounded border border-slate-300 bg-white text-xs text-slate-600 hover:bg-slate-50"
-              onClick={() => move(r.id, 1)}
-              aria-label="Mover para baixo"
-            >
-              ↓
-            </button>
-          </div>
-        ),
+        cell: (r) => renderReorder(r, "h-8 w-8"),
       },
     ];
 
@@ -280,21 +301,7 @@ export function CrudResourcePage({
         sortable: true,
         sortValue: (r) => ((r.published ?? r.active ?? true) ? 1 : 0),
         searchValue: (r) => ((r.published ?? r.active ?? true) ? "ativo" : "inativo"),
-        cell: (r) => {
-          const on = (r.published ?? r.active ?? true) as boolean;
-          return (
-            <AdminToggle
-              checked={on}
-              disabled={togglingId === r.id}
-              aria-label={
-                on
-                  ? `Desativar ${String(r[nameField] || r.title || r.name || r.id)}`
-                  : `Ativar ${String(r[nameField] || r.title || r.name || r.id)}`
-              }
-              onChange={async () => toggleRow(r.id)}
-            />
-          );
-        },
+        cell: renderToggle,
       },
       {
         id: "actions",
@@ -324,17 +331,12 @@ export function CrudResourcePage({
     );
 
     return cols;
-  }, [imageField, nameField, bodyField, togglingId, move, startEdit, toggleRow]);
+  }, [imageField, nameField, bodyField, startEdit, renderReorder, renderToggle]);
 
   const mobileTitle = useCallback(
     (r: Row): ReactNode => String(r[nameField] || r.title || r.name || r.schoolName || r.id),
     [nameField],
   );
-
-  const mobileMeta = useCallback((r: Row): ReactNode => {
-    const on = (r.published ?? r.active ?? true) as boolean;
-    return on ? "Ativo" : "Inativo";
-  }, []);
 
   return (
     <div className="space-y-4">
@@ -363,7 +365,7 @@ export function CrudResourcePage({
             <h3 id="delete-title" className="text-lg font-bold text-slate-800">
               Eliminar registo?
             </h3>
-            <p className="mt-2 text-sm text-slate-500">Esta ação não pode ser anulada.</p>
+            <p className="mt-2 text-sm text-slate-600">Esta ação não pode ser anulada.</p>
             <div className="mt-5 flex justify-end gap-2">
               <Button type="button" variant="outline" onClick={() => setPendingDelete(null)}>
                 Cancelar
@@ -419,7 +421,7 @@ export function CrudResourcePage({
               }
               if (f.type === "image") {
                 return (
-                  <KrajeeFileInput
+                  <MediaFileInput
                     key={`${f.key}-${editing?.id ?? "new"}`}
                     label={f.label}
                     value={String(form[f.key] ?? "")}
@@ -464,7 +466,7 @@ export function CrudResourcePage({
             <div className="rounded-lg border border-dashed border-slate-200 p-3">
               <button
                 type="button"
-                className="text-xs font-semibold text-slate-500 hover:text-slate-700"
+                className="text-xs font-semibold text-slate-600 hover:text-slate-700"
                 onClick={() => setShowTranslate((v) => !v)}
                 aria-expanded={showTranslate}
               >
@@ -472,7 +474,7 @@ export function CrudResourcePage({
               </button>
               {showTranslate && (
                 <div className="mt-3 space-y-2">
-                  <p className="text-xs text-slate-400">
+                  <p className="text-xs text-slate-600">
                     O site público está apenas em português. DeepL guarda traduções no CMS para uso futuro.
                   </p>
                   <DeepLTranslateButton
@@ -506,27 +508,32 @@ export function CrudResourcePage({
         title={title}
         rows={rows}
         columns={columns}
-        loading={loading}
+        loading={loading && rows.length === 0}
         defaultPageSize={25}
         emptyMessage="Nenhum registo encontrado."
         mobileTitle={mobileTitle}
-        mobileMeta={mobileMeta}
         mobileActions={(r) => (
-          <div className="flex gap-2">
-            <button
-              type="button"
-              className="inline-flex h-8 flex-1 items-center justify-center rounded border border-slate-300 bg-sky-50 px-2.5 text-xs font-semibold text-sky-700"
-              onClick={() => startEdit(r)}
-            >
-              Editar
-            </button>
-            <button
-              type="button"
-              className="inline-flex h-8 flex-1 items-center justify-center rounded border border-rose-200 bg-rose-50 px-2.5 text-xs font-semibold text-rose-700"
-              onClick={() => setPendingDelete(r.id)}
-            >
-              Eliminar
-            </button>
+          <div className="space-y-2">
+            <div className="flex items-center justify-between gap-2">
+              {renderToggle(r)}
+              {renderReorder(r, "h-11 w-11")}
+            </div>
+            <div className="flex gap-2">
+              <button
+                type="button"
+                className="inline-flex h-11 flex-1 items-center justify-center rounded border border-slate-300 bg-sky-50 px-2.5 text-sm font-semibold text-sky-700"
+                onClick={() => startEdit(r)}
+              >
+                Editar
+              </button>
+              <button
+                type="button"
+                className="inline-flex h-11 flex-1 items-center justify-center rounded border border-rose-200 bg-rose-50 px-2.5 text-sm font-semibold text-rose-700"
+                onClick={() => setPendingDelete(r.id)}
+              >
+                Eliminar
+              </button>
+            </div>
           </div>
         )}
         toolbar={

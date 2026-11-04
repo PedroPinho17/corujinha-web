@@ -7,6 +7,13 @@ import { expect, test } from "@playwright/test";
 const base = process.env.E2E_BASE_URL ?? "http://localhost:3000";
 
 test.describe("Corujinha public smoke", () => {
+  test("backoffice without a session goes straight to the login page", async ({ request }) => {
+    const res = await request.get(`${base}/admin/posts`, { maxRedirects: 0 });
+
+    expect(res.status()).toBe(307);
+    expect(res.headers().location).toContain("/admin/login");
+  });
+
   test("home loads with brand and contact form", async ({ page }) => {
     await page.goto(base);
     await expect(page.locator("body")).toContainText(/Corujinha/i);

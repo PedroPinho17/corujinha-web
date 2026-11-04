@@ -1,6 +1,23 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { PostsController } from "./posts.controller";
+import { plainToInstance } from "class-transformer";
+import { validate } from "class-validator";
+import { PostDto, PostsController } from "./posts.controller";
 import { mockRedis, mockRepo } from "../test/mocks";
+
+describe("PostDto", () => {
+  it("turns empty link/email into null so clearing them is persisted", async () => {
+    const dto = plainToInstance(PostDto, { title: "T", link: "", email: "" });
+    expect(dto.link).toBeNull();
+    expect(dto.email).toBeNull();
+    expect(await validate(dto)).toEqual([]);
+  });
+
+  it("still rejects an invalid link or email", async () => {
+    const dto = plainToInstance(PostDto, { title: "T", link: "http://x.pt", email: "nope" });
+    const props = (await validate(dto)).map((e) => e.property);
+    expect(props).toEqual(expect.arrayContaining(["link", "email"]));
+  });
+});
 
 describe("PostsController", () => {
   let posts: ReturnType<typeof mockRepo>;

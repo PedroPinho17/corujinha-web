@@ -28,7 +28,7 @@ import { AdminGuard } from "../auth/auth.guard";
 import { nextSortOrder } from "../common/sort-order";
 import { RedisService } from "../redis/redis.service";
 
-class PostDto {
+export class PostDto {
   @IsString()
   @MaxLength(255)
   title!: string;
@@ -39,20 +39,21 @@ class PostDto {
   content?: string;
 
   @IsOptional()
-  @Transform(({ value }) => (value === "" || value === null ? undefined : value))
+  // null (not undefined) so that clearing the field is persisted: save() skips undefined.
+  @Transform(({ value }) => (value === "" ? null : value))
   @IsUrl({ protocols: ["https"], require_protocol: true })
   @MaxLength(2048)
-  link?: string;
+  link?: string | null;
 
   @IsOptional()
   @IsString()
   phone?: string;
 
-  /** Empty string from the admin form must not fail @IsEmail. */
+  /** Empty string from the admin form clears the field and must not fail @IsEmail. */
   @IsOptional()
-  @Transform(({ value }) => (value === "" || value === null ? undefined : value))
+  @Transform(({ value }) => (value === "" ? null : value))
   @IsEmail({}, { message: "Email inválido" })
-  email?: string;
+  email?: string | null;
 
   @IsOptional()
   @IsBoolean()

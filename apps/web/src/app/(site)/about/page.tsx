@@ -1,7 +1,8 @@
 import Image from "next/image";
 import type { Metadata } from "next";
+import { PageHeading } from "@/components/site/page-heading";
 import { fetchPublicJson } from "@/lib/public-api";
-import { DEFAULT_SITE_CONTENT, type SiteContent } from "@/lib/site-content";
+import { mergeSiteContent, type SiteContent } from "@/lib/site-content";
 import { mediaUrl } from "@/lib/utils";
 
 export const metadata: Metadata = {
@@ -26,23 +27,27 @@ const toneDot = {
   blue: "bg-purple",
 } as const;
 
+/** Items still blank in the backoffice are not shown; a section with none disappears. */
 export default async function AboutPage() {
   const settings = await getSettings();
-  const about = ((settings?.content as SiteContent) ?? DEFAULT_SITE_CONTENT).about;
+  const about = mergeSiteContent(settings?.content as SiteContent | null).about;
+  const experienceCards = about.experienceCards.filter((c) => c.title.trim() || c.body.trim());
+  const timeline = about.timeline.filter((t) => t.title.trim() || t.description.trim());
 
   return (
     <div className="bg-white pb-20">
       <section className="hero-wash py-16">
         <div className="mx-auto max-w-4xl px-4 text-center">
-          <h1 className="text-4xl font-bold md:text-5xl">
-            {about.sectionTitle} <span className="text-pink">{about.sectionAccent}</span>
-          </h1>
-          <p className="mx-auto mt-4 max-w-3xl text-xl text-muted">{about.sectionSubtitle}</p>
+          <PageHeading
+            title={about.sectionTitle}
+            accent={about.sectionAccent}
+            subtitle={about.sectionSubtitle}
+          />
         </div>
       </section>
 
       <section className="mx-auto max-w-4xl px-4 py-12">
-        <div className="rounded-3xl bg-gradient-to-br from-blush to-peach p-8 shadow-xl md:p-12">
+        <div className="rounded-3xl bg-gradient-to-br from-blush to-peach p-5 shadow-xl sm:p-8 md:p-12">
           <div className="grid items-center gap-8 md:grid-cols-2">
             <div>
               <h2 className="text-3xl font-bold">Conheça a Fundadora</h2>
@@ -57,7 +62,7 @@ export default async function AboutPage() {
                 alt={about.founderName}
                 width={480}
                 height={560}
-                className="relative w-full rounded-2xl object-cover shadow-2xl"
+                className="relative aspect-[6/7] w-full rounded-2xl object-cover shadow-2xl"
               />
             </div>
           </div>
@@ -70,26 +75,29 @@ export default async function AboutPage() {
         </div>
       </section>
 
-      <section className="mx-auto max-w-6xl px-4 py-12">
+      {experienceCards.length > 0 && (
+      <section className="page-container py-12">
         <div className="mb-10 text-center">
           <h2 className="text-3xl font-bold">{about.experienceTitle}</h2>
           <p className="mt-2 text-muted">{about.experienceSubtitle}</p>
         </div>
-        <div className="grid gap-6 md:grid-cols-3">
-          {about.experienceCards.map((c) => (
-            <article key={c.title} className={`rounded-2xl bg-gradient-to-br p-6 ${toneCard[c.tone]}`}>
+        <div className="grid gap-6 lg:grid-cols-3">
+          {experienceCards.map((c, i) => (
+            <article key={i} className={`rounded-2xl bg-gradient-to-br p-6 ${toneCard[c.tone]}`}>
               <h3 className="text-lg font-bold">{c.title}</h3>
               <p className="mt-3 text-sm leading-relaxed text-ink/80">{c.body}</p>
             </article>
           ))}
         </div>
       </section>
+      )}
 
+      {timeline.length > 0 && (
       <section className="mx-auto max-w-3xl px-4 py-12">
         <h2 className="mb-10 text-center text-3xl font-bold">A Nossa História</h2>
         <ol className="relative space-y-8 border-l-2 border-pink/30 pl-8">
-          {about.timeline.map((t) => (
-            <li key={t.title} className="relative">
+          {timeline.map((t, i) => (
+            <li key={i} className="relative">
               <span className={`absolute -left-[41px] top-1 h-4 w-4 rounded-full ring-4 ring-white ${toneDot[t.tone]}`} />
               <h3 className="text-xl font-bold">{t.title}</h3>
               <p className="mt-1 text-muted">{t.description}</p>
@@ -97,6 +105,7 @@ export default async function AboutPage() {
           ))}
         </ol>
       </section>
+      )}
     </div>
   );
 }

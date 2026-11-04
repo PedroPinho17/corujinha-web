@@ -1,4 +1,12 @@
+import { existsSync } from "node:fs";
+import { resolve } from "node:path";
 import type { NextConfig } from "next";
+
+// Next only reads apps/web/.env*; the monorepo keeps its config in the root .env.
+// Without this, REVALIDATE_SECRET is missing locally and the site never hears about CMS edits.
+// loadEnvFile does not override variables that are already set (Docker, CI).
+const rootEnv = resolve(process.cwd(), "../../.env");
+if (existsSync(rootEnv)) process.loadEnvFile(rootEnv);
 
 const apiOrigin = process.env.INTERNAL_API_URL ?? "http://localhost:3001";
 const enableStandalone =
@@ -55,6 +63,19 @@ function remotePatterns(): NonNullable<NextConfig["images"]>["remotePatterns"] {
   return patterns;
 }
 
+/**
+ * Node cannot resolve *.localhost (the local Garage website host), so the image optimizer could
+ * not fetch from it. Local development serves the originals; real media domains are optimized.
+ */
+function mediaOnLocalhost(): boolean {
+  const raw = process.env.NEXT_PUBLIC_S3_PUBLIC_URL?.trim() || "http://corujinha-media.web.garage.localhost:3902";
+  try {
+    return new URL(raw).hostname.endsWith(".localhost");
+  } catch {
+    return false;
+  }
+}
+
 const nextConfig: NextConfig = {
   ...(enableStandalone ? { output: "standalone" as const } : {}),
   poweredByHeader: false,
@@ -77,6 +98,7 @@ const nextConfig: NextConfig = {
   },
   images: {
     remotePatterns: remotePatterns(),
+    unoptimized: mediaOnLocalhost(),
   },
 };
 

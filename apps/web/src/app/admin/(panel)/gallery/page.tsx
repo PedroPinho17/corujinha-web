@@ -4,7 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { KrajeeFileInput } from "@/components/admin/krajee-file-input";
+import { MediaFileInput } from "@/components/admin/media-file-input";
 import { adminFetch } from "@/lib/admin-api";
 import { mediaUrl } from "@/lib/utils";
 
@@ -150,7 +150,7 @@ export default function AdminGalleryPage() {
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4" role="dialog" aria-modal="true">
           <div className="w-full max-w-sm rounded-2xl bg-white p-5 shadow-xl">
             <h3 className="text-lg font-bold">Apagar imagem?</h3>
-            <p className="mt-2 text-sm text-slate-500">Esta ação não pode ser anulada.</p>
+            <p className="mt-2 text-sm text-slate-600">Esta ação não pode ser anulada.</p>
             <div className="mt-5 flex justify-end gap-2">
               <Button type="button" variant="outline" onClick={() => setPendingDelete(null)}>
                 Cancelar
@@ -169,7 +169,7 @@ export default function AdminGalleryPage() {
       >
         <p className="mb-4 text-sm font-bold text-slate-700">Nova imagem</p>
         <div className="max-w-xl space-y-3">
-          <KrajeeFileInput
+          <MediaFileInput
             key={formKey}
             label="Imagem"
             value={imageKey}
@@ -229,7 +229,7 @@ export default function AdminGalleryPage() {
         </div>
 
         {rows.length === 0 ? (
-          <p className="px-5 py-10 text-center text-sm text-slate-500">Nenhuma imagem na galeria.</p>
+          <p className="px-5 py-10 text-center text-sm text-slate-600">Nenhuma imagem na galeria.</p>
         ) : (
           <>
             <ul className="grid gap-4 p-5 sm:grid-cols-2 lg:grid-cols-3">
@@ -251,7 +251,7 @@ export default function AdminGalleryPage() {
                           loading="lazy"
                         />
                       ) : (
-                        <div className="flex h-full items-center justify-center text-xs text-slate-400">
+                        <div className="flex h-full items-center justify-center text-xs text-slate-600">
                           Sem imagem
                         </div>
                       )}
@@ -262,7 +262,7 @@ export default function AdminGalleryPage() {
                           {r.alt || "Sem descrição"}
                         </p>
                         {label && (
-                          <p className="mt-0.5 text-[11px] font-medium text-pink-600">{label}</p>
+                          <p className="mt-0.5 text-[11px] font-medium text-pink-700">{label}</p>
                         )}
                       </div>
                       <Button size="sm" variant="outline" onClick={() => setPendingDelete(r.id)}>
@@ -275,7 +275,7 @@ export default function AdminGalleryPage() {
             </ul>
             {totalPages > 1 && (
               <div className="flex items-center justify-between gap-3 border-t border-slate-100 px-5 py-3">
-                <p className="text-xs text-slate-500">
+                <p className="text-xs text-slate-600">
                   Página {page} de {totalPages}
                 </p>
                 <div className="flex gap-2">

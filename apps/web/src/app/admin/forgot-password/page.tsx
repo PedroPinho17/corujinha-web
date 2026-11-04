@@ -38,7 +38,7 @@ export default function ForgotPasswordPage() {
         <div className="mb-6 flex flex-col items-center text-center">
           <Image src="/logo.webp" alt="Corujinha" width={80} height={80} className="h-16 w-16 object-contain" />
           <h1 className="mt-3 text-2xl font-bold text-slate-800">Esqueci-me da password</h1>
-          <p className="mt-1 text-sm text-slate-500">
+          <p className="mt-1 text-sm text-slate-600">
             Enviamos um link de recuperação para o email da conta.
           </p>
         </div>
@@ -72,7 +72,7 @@ export default function ForgotPasswordPage() {
             </Button>
             <Link
               href="/admin/login"
-              className="text-center text-sm text-slate-500 transition hover:text-pink"
+              className="text-center text-sm text-slate-600 transition hover:text-pink"
             >
               Voltar ao login
             </Link>

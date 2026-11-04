@@ -1,7 +1,7 @@
 import type { MigrationInterface, QueryRunner } from "typeorm";
 
 /**
- * Baseline schema (parity with former Prisma migrations).
+ * Baseline schema.
  * Safe on existing DBs: skips if the `user` table already exists.
  */
 export class InitialSchema1730000000000 implements MigrationInterface {
