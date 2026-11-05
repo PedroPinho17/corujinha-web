@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { adminFetch } from "@/lib/admin-api";
+import { apiFetch } from "@/lib/admin-api";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 
@@ -39,6 +39,7 @@ export default function AdminContactsPage() {
   const [notes, setNotes] = useState("");
   const [saving, setSaving] = useState(false);
   const [toast, setToast] = useState("");
+  const [isAdmin, setIsAdmin] = useState(false);
 
   const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
 
@@ -46,7 +47,7 @@ export default function AdminContactsPage() {
     setLoading(true);
     setError("");
     try {
-      const data = await adminFetch<{
+      const data = await apiFetch<{
         items: Contact[];
         total: number;
         page: number;
@@ -65,6 +66,10 @@ export default function AdminContactsPage() {
   }
 
   useEffect(() => {
+    // RGPD actions are ADMIN only; the API enforces it, this just hides what would be refused.
+    apiFetch<{ user: { role?: string } | null }>("/api/me")
+      .then((res) => setIsAdmin(res.user?.role === "ADMIN"))
+      .catch(() => setIsAdmin(false));
     load(1).catch(() => undefined);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -86,7 +91,7 @@ export default function AdminContactsPage() {
   async function markRead(id: string, read: boolean) {
     setSaving(true);
     try {
-      const updated = await adminFetch<Contact>(`/api/admin/contacts/${id}`, {
+      const updated = await apiFetch<Contact>(`/api/admin/contacts/${id}`, {
         method: "PATCH",
         body: JSON.stringify({ read }),
       });
@@ -104,7 +109,7 @@ export default function AdminContactsPage() {
     if (!selected) return;
     setSaving(true);
     try {
-      const updated = await adminFetch<Contact>(`/api/admin/contacts/${selected.id}`, {
+      const updated = await apiFetch<Contact>(`/api/admin/contacts/${selected.id}`, {
         method: "PATCH",
         body: JSON.stringify({ adminNotes: notes }),
       });
@@ -146,7 +151,7 @@ export default function AdminContactsPage() {
     }
     setSaving(true);
     try {
-      await adminFetch(`/api/admin/contacts/${id}/gdpr-erase`, {
+      await apiFetch(`/api/admin/contacts/${id}/gdpr-erase`, {
         method: "POST",
         body: JSON.stringify({ confirm: true }),
       });
@@ -438,25 +443,29 @@ export default function AdminContactsPage() {
               >
                 {selected.readAt ? "Marcar não lido" : "Marcar como lido"}
               </Button>
-              <Button
-                type="button"
-                size="sm"
-                variant="outline"
-                disabled={saving}
-                onClick={() => exportGdpr(selected.id)}
-              >
-                Exportar RGPD
-              </Button>
-              <Button
-                type="button"
-                size="sm"
-                variant="outline"
-                disabled={saving}
-                className="text-rose-700"
-                onClick={() => eraseGdpr(selected.id)}
-              >
-                Apagar RGPD
-              </Button>
+              {isAdmin && (
+                <>
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="outline"
+                    disabled={saving}
+                    onClick={() => exportGdpr(selected.id)}
+                  >
+                    Exportar RGPD
+                  </Button>
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="outline"
+                    disabled={saving}
+                    className="text-rose-700"
+                    onClick={() => eraseGdpr(selected.id)}
+                  >
+                    Apagar RGPD
+                  </Button>
+                </>
+              )}
             </div>
 
             <div className="mt-4">

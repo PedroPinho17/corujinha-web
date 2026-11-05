@@ -1,8 +1,8 @@
 import {
-  BadRequestException,
   Body,
   Controller,
   Get,
+  Logger,
   Param,
   Patch,
   Post,
@@ -12,13 +12,15 @@ import {
   UseGuards,
 } from "@nestjs/common";
 import type { Response } from "express";
-import { AdminGuard } from "../auth/auth.guard";
+import { AdminGuard, CurrentUser, SuperAdminGuard, type SessionUser } from "../auth/auth.guard";
 import { clientIp } from "../common/rate-limit";
 import { ContactService } from "./contact.service";
-import { ContactDto, UpdateContactDto } from "./contact.dto";
+import { ContactDto, GdprEraseDto, UpdateContactDto } from "./contact.dto";
 
 @Controller("api")
 export class ContactController {
+  private readonly logger = new Logger(ContactController.name);
+
   constructor(private readonly contacts: ContactService) {}
 
   @Post("public/contact")
@@ -39,9 +41,15 @@ export class ContactController {
   }
 
   @Get("admin/contacts/:id/gdpr-export")
-  @UseGuards(AdminGuard)
-  async gdprExport(@Param("id") id: string, @Res({ passthrough: true }) res: Response) {
+  @UseGuards(SuperAdminGuard)
+  async gdprExport(
+    @Param("id") id: string,
+    @Res({ passthrough: true }) res: Response,
+    @CurrentUser() user: SessionUser,
+  ) {
     const payload = await this.contacts.exportGdpr(id);
+    // Audit trail: identifiers only, never the personal data itself.
+    this.logger.log(`RGPD export: contact=${id} by user=${user.id}`);
     res.setHeader("Content-Type", "application/json; charset=utf-8");
     res.setHeader(
       "Content-Disposition",
@@ -51,11 +59,14 @@ export class ContactController {
   }
 
   @Post("admin/contacts/:id/gdpr-erase")
-  @UseGuards(AdminGuard)
-  erase(@Param("id") id: string, @Body() body: { confirm?: boolean }) {
-    if (body?.confirm !== true) {
-      throw new BadRequestException("confirm: true é obrigatório");
-    }
-    return this.contacts.eraseGdpr(id);
+  @UseGuards(SuperAdminGuard)
+  async erase(
+    @Param("id") id: string,
+    @Body() _dto: GdprEraseDto,
+    @CurrentUser() user: SessionUser,
+  ) {
+    const result = await this.contacts.eraseGdpr(id);
+    this.logger.log(`RGPD erase: contact=${id} by user=${user.id}`);
+    return result;
   }
 }

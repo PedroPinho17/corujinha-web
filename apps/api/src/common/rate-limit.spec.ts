@@ -2,6 +2,9 @@ import { describe, expect, it, vi } from "vitest";
 import {
   SlidingWindowRateLimiter,
   RedisRateLimiter,
+  RATE_LIMIT_ALLOW_SCRIPT,
+  RATE_LIMIT_HIT_SCRIPT,
+  RATE_LIMIT_RELEASE_SCRIPT,
   clientIp,
   isTrustedPeer,
   CLIENT_IP_HEADER,
@@ -21,6 +24,19 @@ describe("SlidingWindowRateLimiter", () => {
     expect(limiter.allow("a")).toBe(true);
     expect(limiter.allow("b")).toBe(true);
     expect(limiter.allow("a")).toBe(false);
+  });
+
+  it("forgets keys whose window has passed", () => {
+    vi.useFakeTimers();
+    try {
+      const limiter = new SlidingWindowRateLimiter(1, 1_000);
+      limiter.hit("old");
+      vi.advanceTimersByTime(2_000);
+      expect(limiter.check("old")).toBe(true);
+      expect((limiter as unknown as { hits: Map<string, number[]> }).hits.has("old")).toBe(false);
+    } finally {
+      vi.useRealTimers();
+    }
   });
 
   it("check does not record; hit does", () => {
@@ -101,22 +117,57 @@ describe("RedisRateLimiter", () => {
     expect(await limiter.allow("a")).toBe(false);
   });
 
-  it("check/hit with mocked redis", async () => {
-    const store = new Map<string, string>();
-    const redis = {
-      get: vi.fn(async (k: string) => store.get(k) ?? null),
-      incr: vi.fn(async (k: string) => {
-        const next = Number(store.get(k) ?? 0) + 1;
-        store.set(k, String(next));
-        return next;
+  function fakeRedis() {
+    const store = new Map<string, number>();
+    return {
+      get: vi.fn(async (k: string) => (store.has(k) ? String(store.get(k)) : null)),
+      eval: vi.fn(async (script: string, _keys: number, key: string, _ttl?: number, limit?: number) => {
+        const count = store.get(key) ?? 0;
+        if (script === RATE_LIMIT_HIT_SCRIPT) {
+          store.set(key, count + 1);
+          return count + 1;
+        }
+        if (script === RATE_LIMIT_ALLOW_SCRIPT) {
+          if (count >= Number(limit)) return 0;
+          store.set(key, count + 1);
+          return 1;
+        }
+        if (script === RATE_LIMIT_RELEASE_SCRIPT && count > 0) store.set(key, count - 1);
+        return 1;
       }),
-      pexpire: vi.fn(async () => 1),
     };
+  }
+
+  it("check/hit use the atomic script with the window as TTL", async () => {
+    const redis = fakeRedis();
     const limiter = new RedisRateLimiter(redis as never, 2, 60_000, "rl:auth");
     expect(await limiter.check("ip")).toBe(true);
     await limiter.hit("ip");
     await limiter.hit("ip");
     expect(await limiter.check("ip")).toBe(false);
-    expect(redis.incr).toHaveBeenCalledTimes(2);
+    expect(redis.eval).toHaveBeenCalledWith(RATE_LIMIT_HIT_SCRIPT, 1, "rl:auth:ip", 60_000);
+  });
+
+  it("allow never lets concurrent requests past the limit", async () => {
+    const limiter = new RedisRateLimiter(fakeRedis() as never, 5, 60_000, "rl:auth");
+    const results = await Promise.all(Array.from({ length: 20 }, () => limiter.allow("ip")));
+    expect(results.filter(Boolean)).toHaveLength(5);
+  });
+
+  it("release gives back a hit, in redis and in the memory fallback", async () => {
+    for (const client of [fakeRedis(), null]) {
+      const limiter = new RedisRateLimiter(client as never, 1, 60_000, "rl:auth");
+      expect(await limiter.allow("ip")).toBe(true);
+      expect(await limiter.allow("ip")).toBe(false);
+      await limiter.release("ip");
+      expect(await limiter.allow("ip")).toBe(true);
+    }
+  });
+
+  it("falls back to memory when redis fails", async () => {
+    const redis = { eval: vi.fn().mockRejectedValue(new Error("down")) };
+    const limiter = new RedisRateLimiter(redis as never, 1, 60_000, "rl:auth");
+    expect(await limiter.allow("ip")).toBe(true);
+    expect(await limiter.allow("ip")).toBe(false);
   });
 });

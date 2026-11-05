@@ -13,3 +13,6 @@ playwright-report
 .vercel
 uploads
 *.tsbuildinfo
+
+# Exports with real data must never be committed
+scripts/legacy-export/

@@ -38,20 +38,15 @@ export async function apiFetch<T = unknown>(
     const text = await res.text();
     throw new Error(friendlyHttpError(res.status, text));
   }
-  return res.json() as Promise<T>;
-}
-
-export async function adminFetch<T = unknown>(
-  path: string,
-  init?: RequestInit,
-): Promise<T> {
-  return apiFetch<T>(path, init);
+  // Some responses have no body (204): parsing them directly would throw.
+  const body = await res.text();
+  return (body ? JSON.parse(body) : undefined) as T;
 }
 
 export async function uploadImage(file: File, folder = "uploads") {
   const contentType = file.type || "image/jpeg";
   const size = file.size;
-  const { key, uploadUrl, publicUrl } = await adminFetch<{
+  const { key, uploadUrl, publicUrl } = await apiFetch<{
     key: string;
     uploadUrl: string;
     publicUrl: string;

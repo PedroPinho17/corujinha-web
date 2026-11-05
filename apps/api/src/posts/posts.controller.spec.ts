@@ -1,7 +1,9 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { plainToInstance } from "class-transformer";
 import { validate } from "class-validator";
-import { PostDto, PostsController } from "./posts.controller";
+import { PostsController } from "./posts.controller";
+import { PostDto } from "./posts.dto";
+import { PostsService } from "./posts.service";
 import { mockRedis, mockRepo } from "../test/mocks";
 
 describe("PostDto", () => {
@@ -26,9 +28,9 @@ describe("PostsController", () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
-    posts = mockRepo();
+    posts = mockRepo({ query: vi.fn().mockResolvedValue([]) });
     redis = mockRedis();
-    controller = new PostsController(posts as never, redis as never);
+    controller = new PostsController(new PostsService(posts as never, redis as never));
   });
 
   it("public list and featured with cache", async () => {
@@ -42,6 +44,31 @@ describe("PostsController", () => {
     posts.find.mockResolvedValue([{ id: "f" }]);
     expect(await controller.featured()).toEqual([{ id: "f" }]);
     expect(redis.setJson).toHaveBeenCalledWith("public:posts:featured", [{ id: "f" }]);
+  });
+
+  it("sets publishedAt when an update publishes a hidden post, and keeps it otherwise", async () => {
+    const old = new Date("2026-01-01");
+    posts.findOneByOrFail.mockResolvedValueOnce({ id: "1", published: false, publishedAt: null });
+    await controller.update("1", { title: "T", published: true });
+    expect(posts.save.mock.calls[0][0].publishedAt).toBeInstanceOf(Date);
+
+    posts.findOneByOrFail.mockResolvedValueOnce({ id: "2", published: true, publishedAt: old });
+    await controller.update("2", { title: "T", published: true });
+    expect(posts.save.mock.calls[1][0].publishedAt).toBe(old);
+
+    posts.findOneByOrFail.mockResolvedValueOnce({ id: "3", published: true, publishedAt: old });
+    await controller.update("3", { title: "T" });
+    expect(posts.save.mock.calls[2][0].published).toBe(true);
+  });
+
+  it("reorders with one statement and clears the public cache", async () => {
+    await controller.reorder({ ids: ["a", "b", "c"] });
+    expect(posts.query).toHaveBeenCalledTimes(1);
+    expect(posts.query.mock.calls[0][1]).toEqual([["a", "b", "c"]]);
+    expect(redis.del).toHaveBeenCalled();
+    posts.query.mockClear();
+    await controller.reorder({ ids: [] });
+    expect(posts.query).not.toHaveBeenCalled();
   });
 
   it("admin create/update/toggle/feature/reorder/remove", async () => {

@@ -13,6 +13,7 @@ vi.mock("ioredis", () => ({
     set = set;
     del = del;
     quit = quit;
+    on = vi.fn();
   },
 }));
 
@@ -36,5 +37,18 @@ describe("RedisService", () => {
     expect(del).toHaveBeenCalledWith("a", "b");
     await svc.onModuleDestroy();
     expect(quit).toHaveBeenCalled();
+  });
+
+  it("treats Redis failures as cache misses instead of failing the request", async () => {
+    const { RedisService } = await import("./redis.service");
+    const svc = new RedisService();
+    get.mockRejectedValue(new Error("down"));
+    set.mockRejectedValue(new Error("down"));
+    del.mockRejectedValue(new Error("down"));
+    quit.mockRejectedValue(new Error("down"));
+    await expect(svc.getJson("k")).resolves.toBeNull();
+    await expect(svc.setJson("k", 1)).resolves.toBeUndefined();
+    await expect(svc.del("k")).resolves.toBeUndefined();
+    await expect(svc.onModuleDestroy()).resolves.toBeUndefined();
   });
 });

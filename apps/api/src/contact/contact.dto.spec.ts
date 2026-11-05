@@ -1,7 +1,16 @@
 import { describe, expect, it } from "vitest";
 import { plainToInstance } from "class-transformer";
 import { validate } from "class-validator";
-import { ContactDto, UpdateContactDto } from "./contact.dto";
+import { ContactDto, GdprEraseDto, UpdateContactDto } from "./contact.dto";
+
+describe("GdprEraseDto", () => {
+  it("only accepts confirm: true", async () => {
+    for (const bad of [{}, { confirm: false }, { confirm: "true" }]) {
+      expect((await validate(plainToInstance(GdprEraseDto, bad))).length).toBeGreaterThan(0);
+    }
+    expect(await validate(plainToInstance(GdprEraseDto, { confirm: true }))).toEqual([]);
+  });
+});
 
 describe("ContactDto", () => {
   it("requires privacyConsent true and valid fields", async () => {

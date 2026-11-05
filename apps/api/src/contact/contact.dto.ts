@@ -63,6 +63,11 @@ export class ContactDto {
   privacyConsent!: boolean;
 }
 
+export class GdprEraseDto {
+  @Equals(true, { message: "confirm: true é obrigatório" })
+  confirm!: boolean;
+}
+
 export class UpdateContactDto {
   @IsOptional()
   @IsBoolean()

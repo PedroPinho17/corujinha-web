@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { BadRequestException } from "@nestjs/common";
+import { GUARDS_METADATA } from "@nestjs/common/constants";
+import { AdminGuard, SuperAdminGuard } from "../auth/auth.guard";
 import { ContactController } from "./contact.controller";
 
 describe("ContactController", () => {
@@ -35,13 +36,21 @@ describe("ContactController", () => {
     expect(contacts.update).toHaveBeenCalledWith("1", { read: true });
 
     const res = { setHeader: vi.fn() };
-    expect(await controller.gdprExport("1", res as never)).toEqual({ format: "v1" });
+    const user = { id: "admin-1" } as never;
+    expect(await controller.gdprExport("1", res as never, user)).toEqual({ format: "v1" });
     expect(res.setHeader).toHaveBeenCalledWith(
       "Content-Type",
       "application/json; charset=utf-8",
     );
 
-    expect(() => controller.erase("1", {})).toThrow(BadRequestException);
-    expect(await controller.erase("1", { confirm: true })).toEqual({ ok: true });
+    expect(await controller.erase("1", { confirm: true }, user)).toEqual({ ok: true });
+  });
+
+  it("restricts RGPD export and erase to ADMIN; EDITOR keeps the contact list", () => {
+    const guards = (name: keyof ContactController) =>
+      Reflect.getMetadata(GUARDS_METADATA, ContactController.prototype[name]);
+    expect(guards("gdprExport")).toEqual([SuperAdminGuard]);
+    expect(guards("erase")).toEqual([SuperAdminGuard]);
+    expect(guards("list")).toEqual([AdminGuard]);
   });
 });

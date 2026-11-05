@@ -4,13 +4,13 @@ import Image from "next/image";
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { authClient } from "@/lib/auth-client";
-import { adminFetch } from "@/lib/admin-api";
+import { apiFetch } from "@/lib/admin-api";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 
 async function redirectAfterLogin() {
-  const me = await adminFetch<{ user: { mustChangePassword?: boolean } | null }>("/api/me");
+  const me = await apiFetch<{ user: { mustChangePassword?: boolean } | null }>("/api/me");
   const mustChange = Boolean(me.user?.mustChangePassword);
   window.location.assign(mustChange ? "/admin/change-password" : "/admin");
 }

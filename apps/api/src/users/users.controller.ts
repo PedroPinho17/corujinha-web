@@ -115,7 +115,8 @@ export class UsersController {
       await accountRepo.save(
         accountRepo.create({
           userId: user.id,
-          accountId: dto.email,
+          // Better Auth looks up credential accounts by user id.
+          accountId: user.id,
           providerId: "credential",
           password: passwordHash,
         }),

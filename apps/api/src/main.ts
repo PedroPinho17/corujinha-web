@@ -82,22 +82,21 @@ async function bootstrap() {
     if (isLoginRateLimitedPath(req.method, req.path)) {
       const ip = clientIp(req);
       const key = `auth:${ip}`;
-      if (!(await authLimiter.check(key))) {
+      // Reserve the attempt up front so parallel requests cannot exceed the limit,
+      // and give it back unless the login actually failed.
+      if (!(await authLimiter.allow(key))) {
         res.status(429).json({
           message: "Demasiadas tentativas. Aguarde alguns minutos e tente novamente.",
         });
         return;
       }
 
-      const originalEnd = res.end.bind(res);
-      // Count only client/auth failures — not successes or 429.
-      res.end = ((...args: Parameters<typeof res.end>) => {
+      res.once("finish", () => {
         const code = res.statusCode;
-        if (code === 400 || code === 401 || code === 403) {
-          void authLimiter.hit(key);
+        if (code !== 400 && code !== 401 && code !== 403) {
+          void authLimiter.release(key);
         }
-        return originalEnd(...args);
-      }) as typeof res.end;
+      });
     }
 
     return authHandler(req, res);
