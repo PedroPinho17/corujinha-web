@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { Contact, GraduationCap, Mail, Newspaper, Users, UsersRound } from "lucide-react";
-import { adminFetch } from "@/lib/admin-api";
+import { apiFetch } from "@/lib/admin-api";
 
 type RecentContact = {
   id: string;
@@ -53,7 +53,7 @@ export default function AdminDashboardPage() {
 
   useEffect(() => {
     setLoading(true);
-    adminFetch<Dashboard>("/api/admin/dashboard")
+    apiFetch<Dashboard>("/api/admin/dashboard")
       .then((data) => {
         setStats(data);
         setError("");

@@ -22,7 +22,7 @@ import {
   type LucideProps,
 } from "lucide-react";
 import { authClient } from "@/lib/auth-client";
-import { adminFetch } from "@/lib/admin-api";
+import { apiFetch } from "@/lib/admin-api";
 import { AdminUserMenu } from "@/components/admin/admin-user-menu";
 
 type NavItem = {
@@ -120,7 +120,7 @@ export default function AdminPanelLayout({ children }: { children: React.ReactNo
       return;
     }
     let cancelled = false;
-    adminFetch<{ user: { mustChangePassword: boolean; role?: string } | null }>("/api/me")
+    apiFetch<{ user: { mustChangePassword: boolean; role?: string } | null }>("/api/me")
       .then((res) => {
         if (cancelled) return;
         const needsChange = Boolean(res.user?.mustChangePassword);

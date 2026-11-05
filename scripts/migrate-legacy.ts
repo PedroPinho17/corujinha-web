@@ -328,7 +328,7 @@ async function main() {
     await siteSettings.save(
       siteSettings.create({
         brandingName: "Corujinha",
-        contactEmail: "pedro0409romariz@gmail.com",
+        contactEmail: process.env.CONTACT_NOTIFY_TO ?? null,
       }),
     );
   }

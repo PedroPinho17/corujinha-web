@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
-import { adminFetch } from "@/lib/admin-api";
+import { apiFetch } from "@/lib/admin-api";
 import { MediaFileInput } from "@/components/admin/media-file-input";
 import { mergeSiteContent, type SiteContent, type ServiceCard } from "@/lib/site-content";
 
@@ -149,7 +149,7 @@ export default function AdminSiteContentPage() {
   const [savedSnapshot, setSavedSnapshot] = useState("");
 
   useEffect(() => {
-    adminFetch<Settings>("/api/admin/settings")
+    apiFetch<Settings>("/api/admin/settings")
       .then((data) => {
         const loaded = { ...data, content: mergeSiteContent(data.content) };
         setSettings(loaded);
@@ -222,7 +222,7 @@ export default function AdminSiteContentPage() {
       void _id;
       void _c;
       void _u;
-      const updated = await adminFetch<Settings>("/api/admin/settings", {
+      const updated = await apiFetch<Settings>("/api/admin/settings", {
         method: "PUT",
         body: JSON.stringify(payload),
       });

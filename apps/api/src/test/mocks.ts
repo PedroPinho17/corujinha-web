@@ -28,7 +28,6 @@ function chainableQueryBuilder() {
 }
 
 /** TypeORM Repository mock — intentionally loose for unit tests. */
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
 export function mockRepo(extras: Record<string, unknown> = {}): any {
   const qb = chainableQueryBuilder();
   const repo: Record<string, unknown> = {

@@ -12,9 +12,14 @@ export async function fetchPublicJson<T>(
     const res = await fetch(`${api}${path}`, {
       next: { revalidate: revalidateSeconds, tags },
     });
-    if (!res.ok) return null;
+    if (!res.ok) {
+      console.error(`Public API ${path} returned ${res.status}`);
+      return null;
+    }
     return (await res.json()) as T;
-  } catch {
+  } catch (err) {
+    // Pages fall back to default content, so the outage must at least reach the logs.
+    console.error(`Public API ${path} failed:`, err);
     return null;
   }
 }

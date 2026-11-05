@@ -64,6 +64,13 @@ describe("UsersController", () => {
     );
   });
 
+  it("creates credential accounts keyed by user id, which Better Auth requires to sign in", async () => {
+    await controller.create({ name: "N", email: "new@example.test", password: "PasswordLong12" });
+    expect(txAccountRepo.create).toHaveBeenCalledWith(
+      expect.objectContaining({ userId: "1", accountId: "1", providerId: "credential" }),
+    );
+  });
+
   it("update with optional password rotation revokes sessions", async () => {
     users.findOneByOrFail.mockResolvedValue({
       id: "1",

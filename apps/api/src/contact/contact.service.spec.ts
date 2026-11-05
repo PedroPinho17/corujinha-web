@@ -7,11 +7,7 @@ describe("ContactService", () => {
   let contacts: ReturnType<typeof mockRepo>;
   let queue: { add: ReturnType<typeof vi.fn> };
   let redis: {
-    client: {
-      get: ReturnType<typeof vi.fn>;
-      incr: ReturnType<typeof vi.fn>;
-      pexpire: ReturnType<typeof vi.fn>;
-    };
+    client: { eval: ReturnType<typeof vi.fn> };
   };
   let service: ContactService;
 
@@ -20,11 +16,7 @@ describe("ContactService", () => {
     contacts = mockRepo();
     queue = { add: vi.fn().mockResolvedValue(undefined) };
     redis = {
-      client: {
-        get: vi.fn().mockResolvedValue(null),
-        incr: vi.fn().mockResolvedValue(1),
-        pexpire: vi.fn().mockResolvedValue(1),
-      },
+      client: { eval: vi.fn().mockResolvedValue(1) },
     };
     service = new ContactService(contacts as never, redis as never, queue as never);
   });
@@ -45,7 +37,7 @@ describe("ContactService", () => {
   });
 
   it("rate limits by IP and by destination email, and requires privacyConsent", async () => {
-    redis.client.get.mockResolvedValue("5");
+    redis.client.eval.mockResolvedValue(0);
     await expect(
       service.submit(
         { name: "A", email: "a@b.com", message: "hello!", privacyConsent: true } as never,
@@ -53,7 +45,7 @@ describe("ContactService", () => {
       ),
     ).rejects.toBeInstanceOf(HttpException);
 
-    redis.client.get.mockResolvedValueOnce(null).mockResolvedValueOnce("3");
+    redis.client.eval.mockResolvedValueOnce(1).mockResolvedValueOnce(0);
     await expect(
       service.submit(
         { name: "A", email: "flood@example.com", message: "hello!", privacyConsent: true } as never,
@@ -61,14 +53,23 @@ describe("ContactService", () => {
       ),
     ).rejects.toBeInstanceOf(HttpException);
 
-    redis.client.get.mockResolvedValue(null);
-    redis.client.incr.mockResolvedValue(1);
+    redis.client.eval.mockResolvedValue(1);
     await expect(
       service.submit(
         { name: "A", email: "a@b.com", message: "hello!", privacyConsent: false } as never,
         "ip",
       ),
     ).rejects.toBeInstanceOf(BadRequestException);
+  });
+
+  it("keeps the message and still succeeds when the email queue is down", async () => {
+    queue.add.mockRejectedValue(new Error("redis down"));
+    const res = await service.submit(
+      { name: "A", email: "a@b.com", message: "hello!", privacyConsent: true } as never,
+      "ip",
+    );
+    expect(res.success).toBe(true);
+    expect(contacts.save).toHaveBeenCalledTimes(1);
   });
 
   it("rejects missing privacyConsent before spending rate-limit quota", async () => {
@@ -78,8 +79,7 @@ describe("ContactService", () => {
         "ip",
       ),
     ).rejects.toBeInstanceOf(BadRequestException);
-    expect(redis.client.get).not.toHaveBeenCalled();
-    expect(redis.client.incr).not.toHaveBeenCalled();
+    expect(redis.client.eval).not.toHaveBeenCalled();
   });
 
   it("creates GENERAL and ENROLLMENT messages", async () => {
@@ -169,16 +169,6 @@ describe("ContactService", () => {
 
   it("eraseExpired anonymizes messages older than retention window", async () => {
     contacts.find.mockResolvedValue([{ id: "old-1" }, { id: "old-2" }]);
-    contacts.findOneBy
-      .mockResolvedValueOnce({
-        id: "old-1",
-        erasedAt: null,
-      })
-      .mockResolvedValueOnce({
-        id: "old-2",
-        erasedAt: null,
-      });
-    contacts.save.mockResolvedValue({});
 
     const result = await service.eraseExpired(24);
     expect(result.erased).toBe(2);
@@ -189,6 +179,13 @@ describe("ContactService", () => {
         take: 500,
       }),
     );
-    expect(contacts.save).toHaveBeenCalledTimes(2);
+    // A single statement for the whole batch, clearing every personal field.
+    expect(contacts.update).toHaveBeenCalledTimes(1);
+    expect(contacts.update.mock.calls[0][1]).toMatchObject({
+      name: "Apagado (RGPD)",
+      adminNotes: null,
+      phone: null,
+      erasedAt: expect.any(Date),
+    });
   });
 });

@@ -4,14 +4,14 @@ import { passkey } from "@better-auth/passkey";
 import { AppDataSource, User } from "@corujinha/database";
 import { resolveAuthSecret } from "../env";
 import { sendMail } from "../mail/send-mail";
-import { authEmailPassword } from "./auth.config";
+import { authCookieSecure, authEmailPassword, resolveWebAuthnRpId } from "./auth.config";
 import { buildResetPasswordMail } from "./reset-password-mail";
 
 export { authEmailPassword } from "./auth.config";
 
 const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000";
 const authUrl = process.env.BETTER_AUTH_URL ?? appUrl;
-const rpID = process.env.WEBAUTHN_RP_ID ?? "localhost";
+const rpID = resolveWebAuthnRpId(process.env.WEBAUTHN_RP_ID, appUrl);
 const isProd = process.env.NODE_ENV === "production";
 
 /** Local hosts browsers treat as different origins (localhost ≠ 127.0.0.1). */
@@ -71,7 +71,7 @@ export const auth = betterAuth({
   advanced: {
     defaultCookieAttributes: {
       sameSite: "lax",
-      secure: isProd && process.env.ALLOW_INSECURE_S3 !== "true",
+      secure: authCookieSecure(isProd, authUrl),
       path: "/",
     },
   },

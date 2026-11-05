@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { PasskeyManager } from "@/components/admin/passkey-manager";
-import { adminFetch } from "@/lib/admin-api";
+import { apiFetch } from "@/lib/admin-api";
 import { authClient } from "@/lib/auth-client";
 
 type Me = {
@@ -24,7 +24,7 @@ export default function AdminProfilePage() {
   const [msg, setMsg] = useState("");
 
   useEffect(() => {
-    adminFetch<{ user: Me }>("/api/me")
+    apiFetch<{ user: Me }>("/api/me")
       .then((r) => {
         setMe(r.user);
         setName(r.user.name);
@@ -36,7 +36,7 @@ export default function AdminProfilePage() {
     e.preventDefault();
     setMsg("");
     try {
-      const r = await adminFetch<{ user: Me }>("/api/me", {
+      const r = await apiFetch<{ user: Me }>("/api/me", {
         method: "PUT",
         body: JSON.stringify({ name }),
       });
@@ -55,7 +55,7 @@ export default function AdminProfilePage() {
       return;
     }
     try {
-      await adminFetch("/api/admin/me/change-password", {
+      await apiFetch("/api/admin/me/change-password", {
         method: "POST",
         body: JSON.stringify({ currentPassword, newPassword: password }),
       });

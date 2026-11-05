@@ -5,6 +5,7 @@ export const CLIENT_IP_HEADER = "x-corujinha-client-ip";
 /** In-memory sliding-window rate limiter (per process) — fallback when Redis is down. */
 export class SlidingWindowRateLimiter {
   private readonly hits = new Map<string, number[]>();
+  private static readonly SWEEP_ABOVE_KEYS = 10_000;
 
   constructor(
     private readonly limit: number,
@@ -15,8 +16,15 @@ export class SlidingWindowRateLimiter {
     const cutoff = now - this.windowMs;
     const prev = this.hits.get(key) ?? [];
     const kept = prev.filter((t) => t > cutoff);
-    this.hits.set(key, kept);
+    if (kept.length) this.hits.set(key, kept);
+    else this.hits.delete(key);
     return kept;
+  }
+
+  /** Bounds memory: a key that is never queried again would otherwise stay forever. */
+  private sweep(now: number) {
+    if (this.hits.size <= SlidingWindowRateLimiter.SWEEP_ABOVE_KEYS) return;
+    for (const key of [...this.hits.keys()]) this.recent(key, now);
   }
 
   /** True if under the limit (does not record a hit). */
@@ -27,9 +35,18 @@ export class SlidingWindowRateLimiter {
   /** Record one hit. */
   hit(key: string): void {
     const now = Date.now();
+    this.sweep(now);
     const recent = this.recent(key, now);
     recent.push(now);
     this.hits.set(key, recent);
+  }
+
+  /** Gives back the most recent hit. */
+  release(key: string): void {
+    const recent = this.recent(key);
+    recent.pop();
+    if (recent.length) this.hits.set(key, recent);
+    else this.hits.delete(key);
   }
 
   /** Returns true if the request is allowed (records a hit when allowed). */
@@ -88,6 +105,32 @@ export function clientIp(req: {
   return "unknown";
 }
 
+// Lua runs atomically in Redis: concurrent requests cannot slip past the limit, and a crash
+// cannot leave a counter without expiry (which would block that key forever).
+export const RATE_LIMIT_HIT_SCRIPT = `
+local count = redis.call('INCR', KEYS[1])
+if count == 1 or redis.call('PTTL', KEYS[1]) < 0 then
+  redis.call('PEXPIRE', KEYS[1], ARGV[1])
+end
+return count`;
+
+export const RATE_LIMIT_ALLOW_SCRIPT = `
+local count = tonumber(redis.call('GET', KEYS[1]) or '0')
+if count >= tonumber(ARGV[2]) then
+  return 0
+end
+count = redis.call('INCR', KEYS[1])
+if count == 1 or redis.call('PTTL', KEYS[1]) < 0 then
+  redis.call('PEXPIRE', KEYS[1], ARGV[1])
+end
+return 1`;
+
+export const RATE_LIMIT_RELEASE_SCRIPT = `
+if tonumber(redis.call('GET', KEYS[1]) or '0') > 0 then
+  redis.call('DECR', KEYS[1])
+end
+return 1`;
+
 /** Redis fixed-window counter; falls back to memory limiter on error. */
 export class RedisRateLimiter {
   private readonly memory: SlidingWindowRateLimiter;
@@ -122,21 +165,40 @@ export class RedisRateLimiter {
       this.memory.hit(key);
       return;
     }
-    const redisKey = this.redisKey(key);
     try {
-      const count = await this.redis.incr(redisKey);
-      if (count === 1) {
-        await this.redis.pexpire(redisKey, this.windowMs);
-      }
+      await this.redis.eval(RATE_LIMIT_HIT_SCRIPT, 1, this.redisKey(key), this.windowMs);
     } catch {
       this.memory.hit(key);
     }
   }
 
-  /** Returns true if allowed (records a hit when allowed). */
+  /** Atomically checks the limit and records a hit when allowed. */
   async allow(key: string): Promise<boolean> {
-    if (!(await this.check(key))) return false;
-    await this.hit(key);
-    return true;
+    if (!this.redis) return this.memory.allow(key);
+    try {
+      const allowed = await this.redis.eval(
+        RATE_LIMIT_ALLOW_SCRIPT,
+        1,
+        this.redisKey(key),
+        this.windowMs,
+        this.limit,
+      );
+      return allowed === 1;
+    } catch {
+      return this.memory.allow(key);
+    }
+  }
+
+  /** Gives back a hit taken by allow(), e.g. when a login attempt succeeded. */
+  async release(key: string): Promise<void> {
+    if (!this.redis) {
+      this.memory.release(key);
+      return;
+    }
+    try {
+      await this.redis.eval(RATE_LIMIT_RELEASE_SCRIPT, 1, this.redisKey(key));
+    } catch {
+      this.memory.release(key);
+    }
   }
 }

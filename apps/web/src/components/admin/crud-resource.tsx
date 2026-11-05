@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
-import { adminFetch } from "@/lib/admin-api";
+import { apiFetch } from "@/lib/admin-api";
 import { DeepLTranslateButton } from "@/components/admin/deepl-button";
 import { MediaFileInput } from "@/components/admin/media-file-input";
 import { AdminToggle } from "@/components/admin/admin-toggle";
@@ -58,7 +58,7 @@ export function CrudResourcePage({
     setLoading(true);
     setError("");
     try {
-      const data = await adminFetch<Row[]>(endpoint);
+      const data = await apiFetch<Row[]>(endpoint);
       setRows(Array.isArray(data) ? data : []);
     } catch (e) {
       setError(e instanceof Error ? e.message : "Erro ao carregar");
@@ -129,13 +129,13 @@ export function CrudResourcePage({
     }
     try {
       if (editing) {
-        await adminFetch(`${endpoint}/${editing.id}`, {
+        await apiFetch(`${endpoint}/${editing.id}`, {
           method: "PUT",
           body: JSON.stringify(payload),
         });
         flash("Registo atualizado");
       } else {
-        await adminFetch(endpoint, { method: "POST", body: JSON.stringify(payload) });
+        await apiFetch(endpoint, { method: "POST", body: JSON.stringify(payload) });
         flash("Registo criado");
       }
       cancelForm();
@@ -149,7 +149,7 @@ export function CrudResourcePage({
     async (id: string) => {
       setTogglingId(id);
       try {
-        await adminFetch(`${endpoint}/${id}/toggle`, { method: "PATCH" });
+        await apiFetch(`${endpoint}/${id}/toggle`, { method: "PATCH" });
         await load();
       } catch (err) {
         setError(err instanceof Error ? err.message : "Erro ao alternar estado");
@@ -172,7 +172,7 @@ export function CrudResourcePage({
       next[swap] = tmp;
       setRows(next);
       try {
-        await adminFetch(`${endpoint}/reorder`, {
+        await apiFetch(`${endpoint}/reorder`, {
           method: "POST",
           body: JSON.stringify({ ids: next.map((r) => r.id) }),
         });
@@ -190,7 +190,7 @@ export function CrudResourcePage({
     const id = pendingDelete;
     setPendingDelete(null);
     try {
-      await adminFetch(`${endpoint}/${id}`, { method: "DELETE" });
+      await apiFetch(`${endpoint}/${id}`, { method: "DELETE" });
       flash("Registo eliminado");
       await load();
     } catch (err) {

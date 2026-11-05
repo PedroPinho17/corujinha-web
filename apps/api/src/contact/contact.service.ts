@@ -3,6 +3,7 @@ import {
   HttpException,
   HttpStatus,
   Injectable,
+  Logger,
   NotFoundException,
 } from "@nestjs/common";
 import { InjectQueue } from "@nestjs/bullmq";
@@ -10,7 +11,7 @@ import { InjectRepository } from "@nestjs/typeorm";
 import { ContactKind, ContactMessage } from "@corujinha/database";
 import { CONTACT_QUEUE } from "@corujinha/shared";
 import { Queue } from "bullmq";
-import { IsNull, LessThan, Repository } from "typeorm";
+import { In, IsNull, LessThan, Repository } from "typeorm";
 import { RedisService } from "../redis/redis.service";
 import { RedisRateLimiter } from "../common/rate-limit";
 import type { ContactDto } from "./contact.dto";
@@ -18,8 +19,24 @@ import type { ContactDto } from "./contact.dto";
 /** Default RGPD retention for contact messages (months). Override with CONTACT_RETENTION_MONTHS. */
 export const CONTACT_RETENTION_MONTHS_DEFAULT = 24;
 
+const QUEUE_ADD_TIMEOUT_MS = 3_000;
+
+/** Every field that can hold personal data. The email is set apart: it must stay unique per row. */
+const ERASED_FIELDS = {
+  name: "Apagado (RGPD)",
+  phone: null,
+  message: "[apagado]",
+  subject: null,
+  schoolYear: null,
+  location: null,
+  adminNotes: null,
+  privacyConsent: false,
+  consentAt: null,
+};
+
 @Injectable()
 export class ContactService {
+  private readonly logger = new Logger(ContactService.name);
   private readonly limiter: RedisRateLimiter;
   /** Caps confirmation emails to arbitrary destinations (B4). */
   private readonly emailLimiter: RedisRateLimiter;
@@ -80,14 +97,7 @@ export class ContactService {
         consentAt: new Date(),
       }),
     );
-    await this.queue.add(
-      "send",
-      { contactId: row.id },
-      {
-        attempts: 3,
-        backoff: { type: "exponential", delay: 2000 },
-      },
-    );
+    await this.enqueueEmails(row.id);
     return {
       success: true,
       message:
@@ -95,6 +105,31 @@ export class ContactService {
           ? "Pedido de inscrição enviado! Entraremos em contacto em breve."
           : "Mensagem enviada com sucesso!",
     };
+  }
+
+  /**
+   * The message is already saved, so a queue outage must not fail or hang the visitor's request.
+   * It stays "Email pendente" in the backoffice, where it can still be answered.
+   */
+  private async enqueueEmails(contactId: string) {
+    let timer: NodeJS.Timeout | undefined;
+    const timeout = new Promise<never>((_, reject) => {
+      timer = setTimeout(() => reject(new Error("queue timeout")), QUEUE_ADD_TIMEOUT_MS);
+    });
+    try {
+      await Promise.race([
+        this.queue.add(
+          "send",
+          { contactId },
+          { attempts: 3, backoff: { type: "exponential", delay: 2000 } },
+        ),
+        timeout,
+      ]);
+    } catch (err) {
+      this.logger.error(`Contact ${contactId} saved but email not queued: ${String(err)}`);
+    } finally {
+      clearTimeout(timer);
+    }
   }
 
   async list(page = 1, pageSize = 50) {
@@ -148,17 +183,10 @@ export class ContactService {
 
   async eraseGdpr(id: string) {
     const existing = await this.requireActive(id);
-    existing.name = "Apagado (RGPD)";
-    existing.email = `erased-${existing.id}@anon.corujinha.local`;
-    existing.phone = null;
-    existing.message = "[apagado]";
-    existing.subject = null;
-    existing.schoolYear = null;
-    existing.location = null;
-    existing.adminNotes = null;
-    existing.privacyConsent = false;
-    existing.consentAt = null;
-    existing.erasedAt = new Date();
+    Object.assign(existing, ERASED_FIELDS, {
+      email: `erased-${existing.id}@anon.corujinha.local`,
+      erasedAt: new Date(),
+    });
     await this.contacts.save(existing);
     return { ok: true };
   }
@@ -181,13 +209,18 @@ export class ContactService {
       order: { createdAt: "ASC" },
     });
 
-    let erased = 0;
-    for (const row of stale) {
-      await this.eraseGdpr(row.id);
-      erased += 1;
+    if (stale.length > 0) {
+      await this.contacts.update(
+        { id: In(stale.map((row) => row.id)) },
+        {
+          ...ERASED_FIELDS,
+          email: () => `'erased-' || "id" || '@anon.corujinha.local'`,
+          erasedAt: new Date(),
+        },
+      );
     }
 
-    return { erased, cutoff: cutoff.toISOString(), retentionMonths: months };
+    return { erased: stale.length, cutoff: cutoff.toISOString(), retentionMonths: months };
   }
 
   private async requireActive(id: string) {

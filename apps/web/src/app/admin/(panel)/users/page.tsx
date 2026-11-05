@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { adminFetch } from "@/lib/admin-api";
+import { apiFetch } from "@/lib/admin-api";
 
 type UserRole = "ADMIN" | "EDITOR";
 
@@ -30,8 +30,8 @@ export default function AdminUsersPage() {
 
   async function load() {
     const [users, session] = await Promise.all([
-      adminFetch<User[]>("/api/admin/users"),
-      adminFetch<{ user: Me }>("/api/me"),
+      apiFetch<User[]>("/api/admin/users"),
+      apiFetch<{ user: Me }>("/api/me"),
     ]);
     setRows(users);
     setMe(session.user);
@@ -46,14 +46,13 @@ export default function AdminUsersPage() {
     setSaving(true);
     setError("");
     try {
-      await adminFetch("/api/admin/users", {
+      await apiFetch("/api/admin/users", {
         method: "POST",
         body: JSON.stringify({
           name,
           email,
           password,
           role,
-          mustChangePassword: true,
         }),
       });
       setName("");
@@ -73,7 +72,7 @@ export default function AdminUsersPage() {
     if (!user) return;
     setError("");
     try {
-      await adminFetch(`/api/admin/users/${id}`, {
+      await apiFetch(`/api/admin/users/${id}`, {
         method: "PUT",
         body: JSON.stringify({
           name: user.name,
@@ -93,7 +92,7 @@ export default function AdminUsersPage() {
     if (!confirm("Apagar utilizador?")) return;
     setError("");
     try {
-      await adminFetch(`/api/admin/users/${id}`, { method: "DELETE" });
+      await apiFetch(`/api/admin/users/${id}`, { method: "DELETE" });
       await load();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Erro ao apagar");

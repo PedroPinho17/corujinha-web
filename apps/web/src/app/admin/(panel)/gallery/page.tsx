@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { MediaFileInput } from "@/components/admin/media-file-input";
-import { adminFetch } from "@/lib/admin-api";
+import { apiFetch } from "@/lib/admin-api";
 import { mediaUrl } from "@/lib/utils";
 
 type Center = {
@@ -60,10 +60,10 @@ export default function AdminGalleryPage() {
     setError("");
     try {
       const [gallery, ctrs] = await Promise.all([
-        adminFetch<{ items: Item[]; total: number; page: number }>(
+        apiFetch<{ items: Item[]; total: number; page: number }>(
           `/api/admin/gallery?page=${nextPage}&pageSize=${PAGE_SIZE}`,
         ),
-        adminFetch<Center[]>("/api/admin/centers"),
+        apiFetch<Center[]>("/api/admin/centers"),
       ]);
       setRows(Array.isArray(gallery.items) ? gallery.items : []);
       setTotal(gallery.total ?? 0);
@@ -93,7 +93,7 @@ export default function AdminGalleryPage() {
     setError("");
     try {
       const opt = albumOptions.find((a) => a.value === album);
-      await adminFetch("/api/admin/gallery", {
+      await apiFetch("/api/admin/gallery", {
         method: "POST",
         body: JSON.stringify({
           imageKey,
@@ -118,7 +118,7 @@ export default function AdminGalleryPage() {
     const id = pendingDelete;
     setPendingDelete(null);
     try {
-      await adminFetch(`/api/admin/gallery/${id}`, { method: "DELETE" });
+      await apiFetch(`/api/admin/gallery/${id}`, { method: "DELETE" });
       setToast("Imagem apagada");
       await load(page);
     } catch (err) {

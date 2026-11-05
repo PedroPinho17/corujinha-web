@@ -2,7 +2,7 @@
 
 import { useCallback, useState } from "react";
 import { Button } from "@/components/ui/button";
-import { adminFetch } from "@/lib/admin-api";
+import { apiFetch } from "@/lib/admin-api";
 
 type TranslateResult = {
   success: boolean;
@@ -36,7 +36,7 @@ export function DeepLTranslateButton({
     setLoading(true);
     setMsg("");
     try {
-      const data = await adminFetch<TranslateResult>("/api/admin/translate", {
+      const data = await apiFetch<TranslateResult>("/api/admin/translate", {
         method: "POST",
         body: JSON.stringify({ text, targets, source_code: sourceCode }),
       });

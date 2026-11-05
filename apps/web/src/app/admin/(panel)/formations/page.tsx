@@ -2,13 +2,13 @@
 
 import { useEffect, useState } from "react";
 import { CrudResourcePage } from "@/components/admin/crud-resource";
-import { adminFetch } from "@/lib/admin-api";
+import { apiFetch } from "@/lib/admin-api";
 
 export default function AdminFormationsPage() {
   const [entityOptions, setEntityOptions] = useState<{ value: string; label: string }[]>([]);
 
   useEffect(() => {
-    adminFetch<{ id: string; name: string }[]>("/api/admin/entities")
+    apiFetch<{ id: string; name: string }[]>("/api/admin/entities")
       .then((rows) =>
         setEntityOptions(
           (Array.isArray(rows) ? rows : []).map((e) => ({ value: e.id, label: e.name })),
