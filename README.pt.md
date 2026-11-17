@@ -4,6 +4,11 @@ Portal e CMS da **Corujinha**, centro de apoio escolar e explicações.
 
 > English version: [README.md](README.md) · Decisões de arquitetura: [docs/DECISIONS.md](docs/DECISIONS.md)
 
+<p align="center">
+  <img src="docs/media/demo.gif" alt="Demonstração: site público, formulário de inscrição e versão mobile" width="900">
+</p>
+<p align="center"><sub>Demonstração a 2× · <a href="docs/media/demo.mp4">vídeo em qualidade total</a> · os dados do formulário são fictícios e não são enviados</sub></p>
+
 Monorepo com **Next.js 15**, **NestJS**, **PostgreSQL**, **TypeORM**, Redis, BullMQ, S3/R2, Better Auth (passkeys), Tailwind/shadcn/ui, Docker/Coolify e Sentry.
 
 ---

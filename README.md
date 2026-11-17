@@ -8,6 +8,11 @@ Website and CMS for **Corujinha**, a tutoring and school support centre in Portu
 
 **Status:** ready for deployment, not yet live.
 
+<p align="center">
+  <img src="docs/media/demo.gif" alt="Demo: browsing the public site, filling in the enrolment form and the mobile layout" width="900">
+</p>
+<p align="center"><sub>Demo at 2× speed · <a href="docs/media/demo.mp4">full-quality video</a> · the form data is fictional and never submitted</sub></p>
+
 | Public site | Mobile | Backoffice |
 |---|---|---|
 | ![Home page on desktop](docs/screenshots/home-desktop.png) | ![Home page on mobile](docs/screenshots/home-mobile.png) | ![Site content editor](docs/screenshots/backoffice-editor.png) |
