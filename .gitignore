@@ -16,3 +16,6 @@ uploads
 
 # Exports with real data must never be committed
 scripts/legacy-export/
+
+# Local exports (e.g. demo video for sharing)
+/media/
